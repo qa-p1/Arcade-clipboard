@@ -1,0 +1,9 @@
+rust_input: crate::api
+rust_root: core/rust
+rust_output: core/rust/src/frb_generated.rs
+dart_root: apps/flutter_app
+dart_output: apps/flutter_app/lib/src/rust
+dart_entrypoint_class_name: RustLib
+web: false
+auto_upgrade_dependency: false
+stop_on_error: true

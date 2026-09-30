@@ -1,0 +1,4 @@
+<resources>
+    <string name="mobile_share_target_label">Add to Mesh Clipboard</string>
+    <string name="mobile_ime_label">Mesh Clipboard</string>
+</resources>

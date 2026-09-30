@@ -1,0 +1,19 @@
+name: arcade_desktop_bridge
+description: Minimal native focus and paste bridge for Arcade Clipboard desktop.
+version: 0.1.0
+publish_to: none
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+  flutter: '>=3.24.0'
+dependencies:
+  flutter:
+    sdk: flutter
+flutter:
+  plugin:
+    platforms:
+      windows:
+        pluginClass: ArcadeDesktopBridgePlugin
+      macos:
+        pluginClass: ArcadeDesktopBridgePlugin
+      linux:
+        pluginClass: ArcadeDesktopBridgePlugin

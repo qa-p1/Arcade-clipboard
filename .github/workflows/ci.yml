@@ -1,0 +1,40 @@
+name: Core and client checks
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.98.1
+          components: rustfmt, clippy
+      - run: sudo apt-get update && sudo apt-get install -y pkg-config libdbus-1-dev libsecret-1-dev
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - run: cargo test --workspace --locked
+  flutter-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.98.1
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.5
+          channel: stable
+      - run: sudo apt-get update && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libdbus-1-dev libsecret-1-dev libclang-dev
+      - run: cargo install flutter_rust_bridge_codegen --version 2.13.0 --locked
+      - run: bash scripts/prepare-runners.sh
+      - run: bash scripts/dev.sh generate
+      - run: flutter analyze
+        working-directory: apps/flutter_app
+      - run: flutter test
+        working-directory: apps/flutter_app
+      - run: bash scripts/dev.sh build-linux

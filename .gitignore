@@ -1,0 +1,17 @@
+/target/
+**/target/
+**/.dart_tool/
+**/build/
+**/.flutter-plugins-dependencies
+**/ephemeral/
+*.db
+*.db-shm
+*.db-wal
+.DS_Store
+.tools/
+
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+**/__pycache__/
+*.pyc

@@ -1,0 +1,20 @@
+[package]
+name = "arcade_relay"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+publish = false
+
+[dependencies]
+axum = { version = "=0.8.9", features = ["ws"] }
+base64 = "=0.23.1"
+futures-util = "=0.3.31"
+serde = { version = "=1.0.228", features = ["derive"] }
+serde_json = "=1.0.145"
+sha2 = "=0.11.0"
+tokio = { version = "=1.53.1", features = ["macros", "net", "rt-multi-thread", "signal", "sync", "time"] }
+tracing = "=0.1.41"
+tracing-subscriber = { version = "=0.3.20", features = ["env-filter", "fmt"] }
+
+[dev-dependencies]
+tokio-tungstenite = "=0.30.0"
