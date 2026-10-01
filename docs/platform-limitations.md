@@ -1,19 +1,33 @@
-# Platform limitations and release gates
+# Platform behavior and limits
 
-No platform in this checkout is release-ready. Source code, a successful native build, and observed behavior on a real device are separate evidence levels. Flutter runners and bridge bindings are absent, and no native or emulator acceptance was performed for this publishing checkpoint.
-
-| Platform | Source present | Current blocker / evidence still needed |
+| Platform | Implemented integration | Verification |
 | --- | --- | --- |
-| Linux X11 | Flutter desktop adapter, native bridge, clipboard watcher, shortcut, remembered target, and `xdotool` paste path | Generate the Flutter runner and bridge; verify copy capture, shortcut conflict/rebinding, focus restoration, paste, and resume after sleep on X11. |
-| Hyprland / Wayland | Compositor binding, target-window checks, and an opt-in `wl-paste --watch` helper | The helper accepts events only when `CLIPBOARD_TYPE` is set to plain text. The documented `wl-paste` 2.2/2.3 watch path does not reliably provide that variable, so automatic capture is currently a known blocker. Verify against the actual Hyprland/`wl-clipboard` versions before claiming capture works. |
-| Other Wayland compositors | Capability-gated fallback | Generic Wayland does not grant unrestricted global shortcuts, clipboard monitoring, focus stealing, or synthetic paste. Keep the explicit copy fallback; do not promise automatic capture/paste. |
-| macOS | AppKit bridge source for focus restoration and Accessibility-gated paste | Generate runner and bindings; build/sign and verify permission grant/denial, previous-app focus, paste, and lifecycle on macOS. |
-| Windows | Native bridge source for window revalidation and paste input | Generate runner and bindings; build with MSVC and verify window focus, UIPI/elevated-window behavior, clipboard capture, and shortcut conflicts on Windows. |
-| Android | Share Target, text IME, and encrypted handoff source | Rust `SystemSecretStore` intentionally errors on Android; identity and DB key are not backed by Android Keystore. Mesh initialization is blocked until secure storage is wired. Runner/channel registration and physical-device checks are also outstanding. |
-| iPhone / iPad | Share Extension, custom text keyboard, App Group store, and host method channel source | No generated runner or signed build. `scripts/setup-ios.rb` calls an `xcodeproj` copy-phase API with an unverified/incompatible argument list; fix and validate the installer before relying on it. Verify signing, entitlements, share queue recovery, keyboard insertion, and pairing on devices. |
+| Linux / Hyprland | MIME capture, Lua/legacy runtime shortcut, target identity/focus, Enter paste, tray/startup | Local release builds and earlier native checks; full GUI paste acceptance incomplete; latest Lua fix not live-tested |
+| Linux / X11 | GTK clipboard, keybinder shortcut, X11 focus/paste helper | Source/native compilation; target-session acceptance needed |
+| Other Wayland | Automatic capture where the compositor supports data-control (KDE, Sway, …; needs wl-clipboard), picker via `clipboard --overlay` bound to a system shortcut, copy fallback | No in-app global shortcut or cross-app paste; GNOME lacks data-control, so no background capture |
+| iPhone/iPad | Share extension, text clipboard keyboard, App Group handoff, Bonjour, Keychain core | Xcode/real-device acceptance needed; unsigned IPA workflow supplied |
+| Android | Share target, text IME, image copy/export provider, Keystore identities | APK cross-build checked; real-device acceptance needed |
+| Windows | Clipboard formats, global shortcut, native focus/paste, tray and login startup | Windows build/device acceptance needed |
+| macOS | Pasteboard, shortcut, focus/paste, menu bar and SMAppService | macOS build/device acceptance needed |
 
-The desktop picker intentionally places a selected item into the OS clipboard before triggering paste. It does not attempt timed restoration of the old clipboard because applications may read asynchronously. A failed paste should leave the selected value available for the copy fallback. Receiving remote clips never changes the active OS clipboard.
+## Desktop
 
-Mobile keyboards are clipboard browsers, not replacements for system typing keyboards. Secure fields and applications that prohibit third-party keyboards retain system behavior. Universal image insertion is not promised. iOS sharing queues locally and requires the host app to synchronize; it is not background delivery. Android's protected handoff key is separate from the unimplemented Rust identity store.
+Remote receipt never changes the active clipboard. Explicit copy/paste does. The selected content stays on the clipboard after paste because blind timed restoration can break applications that consume clipboard data asynchronously.
 
-See [desktop integration](desktop-integration.md), [mobile integration](mobile-integration.md), and [toolchain blocker](verification/toolchain-blocker.md) for details.
+Hyprland bindings are installed for the current session and removed by the app. No generated temporary path is written to compositor configuration. Automatic paste requires a still-valid remembered target; failed focus/paste exposes copy fallback.
+
+Background mode needs a working tray/menu host. If no host is available, the app disables hide-to-background behavior to keep the window reachable.
+
+## iOS
+
+The main app cannot promise continuous background networking. A share is saved with iOS Data Protection, then imported/synchronized when the app resumes. Open the app to refresh keyboard history.
+
+The keyboard is a secondary text clipboard browser, not a replacement typing keyboard. It reads shared cached text, normally without Full Access (offered only as a fallback if iOS denies shared-storage reads), offers internal search keys/pins and the standard globe switch. Secure fields and apps that disallow third-party keyboards use system behavior. Image insertion is not universal; copy/share are available in the main app.
+
+The main app and both extensions must be signed with a matching valid App Group entitlement. A signer that strips capabilities may install the UI but cannot provide shared extension storage.
+
+## Payloads and hosting
+
+Text is bounded to 32 KiB; clips to 16 MiB aggregate/32 representations. Folder transfer, unlimited files and byte-offset resume are not implemented. The client retains bounded encrypted history; the relay forwards only between live connected devices.
+
+Different-network synchronization needs a reachable WSS relay. A domain alone does not run the service. See relay-deployment.md.

@@ -1,0 +1,84 @@
+name: Build iPhone IPA
+
+# Builds an unsigned IPA (app + Share and Keyboard extensions) for you to
+# sign and install yourself. Run it from Actions → Build iPhone IPA.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: iphone-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unsigned-iphone:
+    runs-on: macos-15
+    timeout-minutes: 90
+    env:
+      RUSTUP_TOOLCHAIN: '1.98.1'
+      ARCADE_BUILD_NUMBER: ${{ github.run_number }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+
+      - name: Select the newest stable Xcode
+        run: |
+          xcode="$(ls -d /Applications/Xcode_[0-9]*.app | grep -vi -e beta -e rc | sort -V | tail -1)"
+          [[ -n "$xcode" ]] || { echo 'No Xcode installation found on this runner.' >&2; exit 1; }
+          sudo xcode-select --switch "$xcode/Contents/Developer"
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version: '3.47.2'
+          channel: stable
+          cache: true
+
+      - name: Install the iPhone Rust toolchain
+        run: |
+          rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal
+          rustup target add aarch64-apple-ios --toolchain "$RUSTUP_TOOLCHAIN"
+          cargo --version
+
+      - name: Install Xcode project tooling
+        run: |
+          gem install --user-install xcodeproj --version 1.28.1 --no-document
+          ruby -e "require 'xcodeproj'; puts Xcodeproj::VERSION"
+
+      - name: Build Rust core, app and both extensions
+        run: bash scripts/build-ios-unsigned.sh
+
+      - name: Summarize the build
+        run: |
+          app=apps/flutter_app/build/ios/iphoneos/Runner.app
+          {
+            echo '### Unsigned iPhone IPA'
+            echo
+            echo '| Bundle | Identifier | Version |'
+            echo '| --- | --- | --- |'
+            for bundle in "$app" "$app/PlugIns/ArcadeShareExtension.appex" "$app/PlugIns/ArcadeKeyboardExtension.appex"; do
+              id=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$bundle/Info.plist")
+              version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$bundle/Info.plist")
+              build=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$bundle/Info.plist")
+              echo "| $(basename "$bundle") | \`$id\` | $version ($build) |"
+            done
+            echo
+            echo 'All three targets need the App Group `group.dev.arcade.clipboard` when signing.'
+            echo
+            echo "SHA-256: \`$(cut -d' ' -f1 dist/Arcade-Clipboard-iOS-unsigned.ipa.sha256)\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload unsigned IPA and installation notes
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: Arcade-Clipboard-iPhone-unsigned
+          path: |
+            dist/Arcade-Clipboard-iOS-unsigned.ipa
+            dist/Arcade-Clipboard-iOS-unsigned.ipa.sha256
+            dist/iPhone-installation.md
+          if-no-files-found: error
+          retention-days: 14

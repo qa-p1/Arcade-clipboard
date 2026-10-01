@@ -1,0 +1,8 @@
+.git
+.tools
+.verification
+target
+dist
+apps
+deploy/relay/.env
+**/*.arcade-ios.bak

@@ -1,23 +1,33 @@
-# Protocol v1 — text development slice
+# Protocol v1
 
-The implemented codec uses bounded JSON over a four-byte big-endian length-prefixed stream. Noise ciphertext frames are at most 65,535 bytes, including the authentication tag. Serialized JSON size is checked because UTF-8 text can expand when escaped. Unknown message variants fail the connection; unknown JSON fields are ignored. Current items support text and URLs only. Rich payloads and capability negotiation are not implemented.
+Messages are bounded JSON over a four-byte big-endian length-prefixed byte stream. Noise ciphertext frames are limited to 65,535 bytes including the authentication tag. TCP and relay WebSockets share the authenticated session codec.
 
-## Trust and topology
+## Trust
 
-The device that creates a mesh is its authority. It signs Ed25519 member certificates and revocation records. Each device generates its own Curve25519 Noise identity and encrypted-local-database key. The current runtime uses an authority-centered topology: members connect to the authority; the authority forwards accepted clips to active members. Members can retain local work while the authority is unavailable. There is no implemented mDNS discovery or client relay fallback.
+Pairing uses Noise_XXpsk3_25519_ChaChaPoly_BLAKE2s with a random short-lived authorization token. Paired sessions use Noise_XX_25519_ChaChaPoly_BLAKE2s and validate the Noise static identity against an owner-signed certificate. Both pairing participants compare a six-digit transcript-bound verification code and approve before commit. Tokens expire after 120 seconds and are consumed.
 
-An invitation carries versioned, short-lived pairing authorization, mesh/session identifiers, public identity information, and the authority endpoint; it does not carry a long-term private identity key. Pairing uses `Noise_XXpsk3_25519_ChaChaPoly_BLAKE2s`; later sessions use `Noise_XX_25519_ChaChaPoly_BLAKE2s` and validate the peer identity against stored membership. The joining device pins the authority public key from the invitation. A six-digit verification code is derived from the handshake transcript, and both sides must confirm before pairing commits.
+Certificates bind mesh/device ID, static public key, item-signing public key, name, platform and capabilities. The creator signs membership and revocations with Ed25519. Signed origin provenance covers the canonical item, including representations and file names. A trusted peer may forward another member's retained item without impersonating its origin.
 
-The initial bootstrap identifies an invitation before Noise begins; it is routing information, not authentication. Expiry, single-use handling, key pinning, protocol version, and user confirmation are trust boundaries implemented by the clients. See [security review](security-review.md) for remaining review risks.
+## Items
 
-## Items and convergence
+Items carry protocol version, UUID, origin device, sender sequence, timestamps, expiry, type, text, representations, content hash and origin signature. A representation contains MIME type, base64 data and an optional safe file name. Plain text is limited to 32 KiB; aggregate decoded content to 16 MiB and 32 representations.
 
-A v1 item contains a protocol version, UUID, origin device, sender sequence, source name, creation and expiry times, text, kind, and content hash. IDs and origin remain stable across hops. The content hash is BLAKE3 over the exact UTF-8 text and travels only inside the encrypted session. At rest, the stored hash is keyed to reduce guessed-content lookup.
+Supported types are text, URL, rich text, image, file and files. HTML/RTF and compatible plain text can coexist. PNG/JPEG dimension and encoded-data bounds are checked. Files are transferred as content, not remote paths.
 
-SQLite stores encrypted payloads, deduplication records, and deletion tombstones. Item lifetime is capped at 30 days and future timestamp skew at five minutes. The store has bounded history, seen-item, deletion, and revocation records. Receiving an item adds it to mesh history; it does not write to the operating system clipboard.
+Payloads beyond one frame use 24 KiB chunks. Reconnect restarts a retained item's transfer; byte-offset resumption is not implemented. IDs and hashes stay stable across forwarding, resend and catch-up. Replays with different content under one ID fail.
 
-## Not implemented or not verified
+## Convergence and storage
 
-This protocol slice has no client relay path, mDNS discovery, image/file transfer, pin synchronization, or content capability negotiation. The standalone relay forwards opaque WebSocket frames but is not part of this client's sync path. The implementation and test sources are not equivalent to a successful build or acceptance run; see [development](development.md) and [acceptance](acceptance.md).
+SQLite stores encrypted payloads and encrypted history previews with XChaCha20-Poly1305. Authenticated associated data binds item headers; stored content lookup tags are keyed. Schema migrations are transactional. Device/routing/timestamp metadata is not all encrypted.
 
-References: [Noise Protocol Framework](https://noiseprotocol.org/noise.html), [snow TransportState](https://docs.rs/snow/0.10.0/snow/struct.TransportState.html), [Ed25519 verification](https://docs.rs/ed25519-dalek/2.2.0/ed25519_dalek/struct.VerifyingKey.html).
+Signed pin preferences use a Lamport revision and actor-ID tie break. Deleted-item tombstones and seen IDs prevent synchronization loops and deleted-history resurrection. Retention defaults to 24 hours and 500 items; settings bound history to 10,000. Pinned content survives time expiry until unpinned, but remains subject to the count limit.
+
+Membership/revocation information and pin preferences precede history catch-up. Connection checks and heartbeat timeouts support reconnect without re-pairing. Unknown JSON fields are ignored; unknown message variants and unsupported protocol versions fail the connection.
+
+## Relay
+
+The relay receives opaque frames only. Pair routes and bearer tickets derive separately from a contributory pairwise X25519 secret and context. Public device identifiers do not reveal a usable route. Noise still authenticates the peer after routing.
+
+The relay has bounded connections, frames and queues, short rendezvous windows and an evictable idle route cache. It retains no offline clipboard archive. Trusted devices retain encrypted history for delivery on reconnect.
+
+References: [Noise](https://noiseprotocol.org/noise.html), [snow](https://docs.rs/snow/0.10.0/snow/), [Ed25519](https://docs.rs/ed25519-dalek/2.2.0/ed25519_dalek/).

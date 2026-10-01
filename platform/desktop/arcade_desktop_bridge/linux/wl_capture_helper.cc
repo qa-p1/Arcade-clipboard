@@ -4,10 +4,12 @@
 #include <cstring>
 #include <stdlib.h>
 
+#include <fcntl.h>
 #include <poll.h>
 #include <signal.h>
 #include <strings.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -97,21 +99,108 @@ bool ParsePositivePid(const char* value, pid_t* pid) {
   return true;
 }
 
-int WatcherMain(const char* wl_paste, const char* helper_path) {
+int EventWorkerMain() {
+  const char* state = getenv("CLIPBOARD_STATE");
+  // Never inspect a sensitive selection (password managers can mark it).
+  if (state == nullptr || std::strcmp(state, "data") != 0) return 0;
+  // wl-paste writes the selection to this child's stdin. Drain it without
+  // retaining payload data so closing early cannot kill the watcher with
+  // SIGPIPE. Reject over-limit or stalled selections before notifying Dart.
+  timespec start{};
+  if (clock_gettime(CLOCK_MONOTONIC, &start) != 0) return 0;
+  std::size_t total = 0;
+  std::uint8_t discarded[65536];
+  for (;;) {
+    timespec now{};
+    if (clock_gettime(CLOCK_MONOTONIC, &now) != 0) return 0;
+    const long elapsed = (now.tv_sec - start.tv_sec) * 1000 +
+        (now.tv_nsec - start.tv_nsec) / 1000000;
+    const long remaining = kReadTimeoutMilliseconds - elapsed;
+    if (remaining <= 0) return 0;
+    pollfd input{STDIN_FILENO, POLLIN | POLLHUP, 0};
+    const int ready = poll(&input, 1, static_cast<int>(remaining));
+    if (ready < 0 && errno == EINTR) continue;
+    if (ready <= 0 || (input.revents & (POLLERR | POLLNVAL)) != 0) return 0;
+    const ssize_t count = read(STDIN_FILENO, discarded, sizeof(discarded));
+    if (count < 0 && errno == EINTR) continue;
+    if (count < 0) return 0;
+    if (count == 0) break;
+    total += static_cast<std::size_t>(count);
+    if (total > 32 * 1024 * 1024) return 0;
+  }
+  const std::uint8_t event[] = {0, 0, 0, 1, '1'};
+  return WriteAll(STDOUT_FILENO, event, sizeof(event)) ? 0 : 1;
+}
+
+int g_child_exit_pipe[2] = {-1, -1};
+
+void ChildExited(int) {
+  const int saved = errno;
+  const char byte = 'x';
+  // Async-signal-safe wakeup for the supervising poll loop.
+  if (write(g_child_exit_pipe[1], &byte, 1) < 0) {}
+  errno = saved;
+}
+
+int WatcherMain(const char* wl_paste, const char* helper_path, bool events) {
   if (wl_paste == nullptr || helper_path == nullptr) return 2;
 
   // Make the watcher and every --watch child a private process group so the
   // Flutter adapter can stop the entire tree on disable or shutdown.
   if (setsid() < 0 && !(errno == EPERM && getpgrp() == getpid())) return 2;
-  char* const arguments[] = {
-      const_cast<char*>(wl_paste),
-      const_cast<char*>("--watch"),
-      const_cast<char*>(helper_path),
-      const_cast<char*>("--worker"),
-      nullptr,
-  };
-  execv(wl_paste, arguments);
-  return 127;
+  if (pipe2(g_child_exit_pipe, O_CLOEXEC | O_NONBLOCK) != 0) return 2;
+  struct sigaction action {};
+  action.sa_handler = ChildExited;
+  sigemptyset(&action.sa_mask);
+  action.sa_flags = SA_RESTART | SA_NOCLDSTOP;
+  if (sigaction(SIGCHLD, &action, nullptr) != 0) return 2;
+
+  const pid_t child = fork();
+  if (child < 0) return 2;
+  if (child == 0) {
+    // stdin stays private to this supervisor: the app holds its write end and
+    // closing it (including when the app is killed) is the shutdown signal.
+    const int null_input = open("/dev/null", O_RDONLY | O_CLOEXEC);
+    if (null_input >= 0) dup2(null_input, STDIN_FILENO);
+    char* const arguments[] = {
+        const_cast<char*>(wl_paste),
+        const_cast<char*>("--watch"),
+        const_cast<char*>(helper_path),
+        const_cast<char*>(events ? "--event-worker" : "--worker"),
+        nullptr,
+    };
+    execv(wl_paste, arguments);
+    _exit(127);
+  }
+
+  for (;;) {
+    pollfd watched[2] = {{STDIN_FILENO, POLLIN, 0}, {g_child_exit_pipe[0], POLLIN, 0}};
+    const int ready = poll(watched, 2, -1);
+    if (ready < 0 && errno == EINTR) continue;
+    if (ready < 0) break;
+    if (watched[1].revents != 0) {
+      int status = 0;
+      const pid_t done = waitpid(child, &status, WNOHANG);
+      if (done == child) {
+        // wl-paste ended; stop any remaining workers and report the exit.
+        signal(SIGTERM, SIG_IGN);
+        kill(-getpid(), SIGTERM);
+        return WIFEXITED(status) ? WEXITSTATUS(status) : 1;
+      }
+      char drained[64];
+      while (read(g_child_exit_pipe[0], drained, sizeof(drained)) > 0) {}
+    }
+    if (watched[0].revents != 0) {
+      char discarded[256];
+      const ssize_t count = read(STDIN_FILENO, discarded, sizeof(discarded));
+      if (count > 0 || (count < 0 && errno == EINTR)) continue;
+      break;  // EOF/HUP: the app exited or closed its end.
+    }
+  }
+  signal(SIGTERM, SIG_IGN);
+  kill(-getpid(), SIGTERM);
+  waitpid(child, nullptr, 0);
+  return 0;
 }
 
 int SignalGroupMain(const char* signal_text, const char* pid_text) {
@@ -135,8 +224,12 @@ int SignalGroupMain(const char* signal_text, const char* pid_text) {
 
 int main(int argc, char** argv) {
   if (argc == 2 && std::strcmp(argv[1], "--worker") == 0) return WorkerMain();
+  if (argc == 2 && std::strcmp(argv[1], "--event-worker") == 0) return EventWorkerMain();
   if (argc == 4 && std::strcmp(argv[1], "--watcher") == 0) {
-    return WatcherMain(argv[2], argv[3]);
+    return WatcherMain(argv[2], argv[3], false);
+  }
+  if (argc == 4 && std::strcmp(argv[1], "--watcher-events") == 0) {
+    return WatcherMain(argv[2], argv[3], true);
   }
   if (argc == 4 && std::strcmp(argv[1], "--signal-group") == 0) {
     return SignalGroupMain(argv[2], argv[3]);

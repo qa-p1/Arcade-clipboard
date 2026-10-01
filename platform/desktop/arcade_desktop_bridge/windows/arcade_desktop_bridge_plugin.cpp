@@ -1,4 +1,5 @@
 #include "include/arcade_desktop_bridge/arcade_desktop_bridge_plugin.h"
+#include "windows_support.h"
 
 #include <flutter/method_channel.h>
 #include <flutter/plugin_registrar_windows.h>
@@ -21,6 +22,7 @@ class ArcadeDesktopBridgePlugin : public flutter::Plugin {
     channel_ = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
         registrar_->messenger(), "arcade_clipboard/desktop_bridge",
         &flutter::StandardMethodCodec::GetInstance());
+    support_ = std::make_unique<WindowsSupport>(registrar_, channel_.get());
     channel_->SetMethodCallHandler(
         [this](const auto& call, auto result) { HandleMethodCall(call, std::move(result)); });
   }
@@ -31,6 +33,7 @@ class ArcadeDesktopBridgePlugin : public flutter::Plugin {
   void HandleMethodCall(
       const flutter::MethodCall<flutter::EncodableValue>& call,
       std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
+    if (support_->Handle(call, result)) return;
     if (call.method_name() == "capabilities") {
       flutter::EncodableMap values;
       values[flutter::EncodableValue("paste")] = flutter::EncodableValue(true);
@@ -158,6 +161,7 @@ class ArcadeDesktopBridgePlugin : public flutter::Plugin {
 
   flutter::PluginRegistrarWindows* registrar_;
   std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> channel_;
+  std::unique_ptr<WindowsSupport> support_;
   HWND target_ = nullptr;
   DWORD target_process_id_ = 0;
   FILETIME target_creation_time_ = {};

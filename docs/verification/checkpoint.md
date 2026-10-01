@@ -1,23 +1,27 @@
-# Verification checkpoint — 2026-09-30
+# Verification checkpoint
 
-This document records the evidence level of the source checkpoint, not a release approval.
+Updated 2026-10-02. Results are from executed checks in this Linux workspace, not inferred from previous documentation.
 
-## Current evidence
+- Rust core: 44 tests pass.
+- Relay: 6 unit tests and 4 real WebSocket tests pass.
+- Rust strict Clippy: passes.
+- Flutter: 20 controller/widget/visual tests pass; analysis clean.
+- Linux release bundle and relocatable archive: built.
+- Android debug APK: previously built; runtime share/IME acceptance not completed.
+- iOS: extension metadata/wiring updated and setup script applied; unsigned
+  macOS/Xcode build is supplied through GitHub Actions. No completed iOS build
+  or device acceptance is claimed by this local checkpoint.
+- Windows/macOS: native source integration present; target build/runtime acceptance not performed here.
 
-| Area | Evidence in this checkout | Status |
-| --- | --- | --- |
-| Rust core, protocol, encrypted local storage | Source and unit/integration test files are present | Not executed for this checkpoint |
-| Relay | Standalone source and WebSocket test files are present | Not executed for this checkpoint; no client fallback is wired |
-| Flutter UI and Rust bridge | Dart source and state-test files are present; generated bindings are absent | Not built or analyzed; Flutter toolchain block is recorded in [toolchain-blocker.md](toolchain-blocker.md) |
-| Desktop adapters | Native source exists for Windows, macOS, X11, and Hyprland paths | No native build or live desktop acceptance performed |
-| iOS / Android | Share, keyboard, and handoff source exists | No native build, emulator, or physical-device acceptance performed |
+The separate Hyprland GUI acceptance run did not complete successfully. The
+running app exposed an obsolete keyword command in a Lua configuration session.
+Shortcut registration/cleanup and focus/paste now select the active provider,
+using the current Lua API where required. The release bundle was rebuilt after
+that fix. Further live tests were stopped at the user's request. Full picker
+paste acceptance remains unverified after this change.
 
-No automated, native, or emulator tests were run while preparing this publishing checkpoint, per the user's instruction. Test source files and a CI workflow are not execution evidence.
+Docker/Caddy relay deployment code and startup instructions are included. No
+public relay was deployed. The GitHub workflow validates iPhone executables,
+embedded extension metadata and the Rust bridge before publishing its artifact.
 
-## Readiness gates
-
-Before asking the user to test this on Hyprland, generate and build the Linux Flutter runner and bridge on a trusted Flutter installation, fix and verify the `wl-paste` MIME detection path, then complete the Linux steps in [acceptance.md](../acceptance.md). The current checkout is not yet a working Hyprland test build.
-
-Before asking the user to test on iPhone/iPad, generate the iOS runner and bridge, correct and validate the Xcode project installer, build and sign all targets with the registered App Group, and complete physical-device share, keyboard, pairing, and sync checks. The current checkout is not yet a working iOS test build. Android mesh startup remains blocked by missing Rust secure identity storage.
-
-Any release-readiness record must name the exact candidate commit and list successful build, test, and device checks separately. A source review or passing core tests alone does not establish desktop/mobile acceptance or security sign-off.
+Local ignored verification logs/screenshots are under .verification/. Source-only UI screenshot fixtures are isolated to tests. No fake devices/clips are shipped in the app.

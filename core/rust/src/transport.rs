@@ -3,10 +3,6 @@ use snow::{HandshakeState, TransportState};
 use std::{sync::Arc, time::Duration};
 use tokio::{
     io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt},
-    net::{
-        tcp::{OwnedReadHalf, OwnedWriteHalf},
-        TcpStream,
-    },
     sync::{mpsc, watch, Mutex},
 };
 
@@ -140,40 +136,60 @@ pub type Outbound = mpsc::Sender<WireMessage>;
 /// handler, initial catch-up, or explicit revocation tears down the whole socket.
 /// Replacement sessions have separate generations so an old close cannot erase
 /// a newer online connection.
-pub async fn start_peer(
+pub async fn start_peer<S: AsyncRead + AsyncWrite + Send + Unpin + 'static>(
     core: Arc<crate::Core>,
     peer_id: String,
-    stream: TcpStream,
+    stream: S,
     state: TransportState,
+    route: &'static str,
+    session: Vec<u8>,
 ) {
-    let (reader, writer) = stream.into_split();
+    let (reader, writer) = tokio::io::split(stream);
     let state = Arc::new(Mutex::new(state));
     let (incoming_tx, mut incoming_rx) = mpsc::channel::<Result<WireMessage, String>>(32);
     let (outgoing_tx, mut outgoing_rx) = mpsc::channel::<WireMessage>(32);
     let (cancel_tx, mut cancelled) = watch::channel(false);
-    let Ok(generation) = core.register_connection(peer_id.clone(), outgoing_tx, cancel_tx).await else {
+    let heartbeat_outbound = outgoing_tx.clone();
+    let Ok(generation) = core
+        .register_connection(peer_id.clone(), outgoing_tx, cancel_tx, route, session)
+        .await
+    else {
         return;
     };
 
-    let reader_state = state.clone();
-    let mut reader_task = tokio::spawn(async move {
-        reader_loop(reader, reader_state, incoming_tx).await;
-    });
-    let mut writer_task = tokio::spawn(async move {
-        writer_loop(writer, state, &mut outgoing_rx).await;
-    });
-    let sync_core = core.clone();
-    let sync_peer = peer_id.clone();
-    let mut catchup_task =
-        tokio::spawn(async move { sync_core.sync_peer(&sync_peer, generation).await });
-    let handler_core = core.clone();
-    let handler_peer = peer_id.clone();
-    let mut handler_task = tokio::spawn(async move {
+    // These futures are owned by this session. Cancelling the session drops
+    // both socket halves and every worker; no detached task retains the profile.
+    let reader = reader_loop(reader, state.clone(), incoming_tx);
+    let writer = writer_loop(writer, state, &mut outgoing_rx);
+    let catchup = core.sync_peer(&peer_id, generation);
+    let handler = async {
         while let Some(event) = incoming_rx.recv().await {
-            handler_core.handle_wire(&handler_peer, event?).await?;
+            core.handle_wire(&peer_id, event?).await?;
         }
         Ok::<(), String>(())
-    });
+    };
+    let heartbeat = async {
+        let mut interval = tokio::time::interval(Duration::from_secs(15));
+        interval.tick().await;
+        loop {
+            interval.tick().await;
+            if !matches!(
+                tokio::time::timeout(
+                    Duration::from_secs(15),
+                    heartbeat_outbound.send(WireMessage::Ping {
+                        sent_at: crate::store::now_ms()
+                    })
+                )
+                .await,
+                Ok(Ok(()))
+            ) {
+                return Err::<(), String>("Device heartbeat could not be sent".into());
+            }
+        }
+        #[allow(unreachable_code)]
+        Ok::<(), String>(())
+    };
+    tokio::pin!(reader, writer, catchup, handler, heartbeat);
     let mut catchup_finished = false;
     loop {
         if *cancelled.borrow() {
@@ -181,48 +197,37 @@ pub async fn start_peer(
         }
         tokio::select! {
             _ = cancelled.changed() => break,
-            _ = &mut reader_task => break,
-            _ = &mut writer_task => break,
-            _ = &mut handler_task => break,
-            result = &mut catchup_task, if !catchup_finished => {
+            _ = &mut reader => break,
+            _ = &mut writer => break,
+            _ = &mut handler => break,
+            _ = &mut heartbeat => break,
+            result = &mut catchup, if !catchup_finished => {
                 catchup_finished = true;
-                if !matches!(result, Ok(Ok(()))) { break; }
+                if result.is_err() { break; }
             }
         }
-    }
-    reader_task.abort();
-    writer_task.abort();
-    handler_task.abort();
-    catchup_task.abort();
-    // Await aborted tasks to drop socket halves before announcing offline.
-    if !reader_task.is_finished() {
-        let _ = reader_task.await;
-    }
-    if !writer_task.is_finished() {
-        let _ = writer_task.await;
-    }
-    if !handler_task.is_finished() {
-        let _ = handler_task.await;
-    }
-    if !catchup_task.is_finished() {
-        let _ = catchup_task.await;
     }
     core.unregister_connection(&peer_id, generation);
 }
 
-async fn reader_loop(
-    mut reader: OwnedReadHalf,
+async fn reader_loop<R: AsyncRead + Unpin>(
+    mut reader: R,
     state: Arc<Mutex<TransportState>>,
     incoming: mpsc::Sender<Result<WireMessage, String>>,
 ) {
     loop {
-        let frame = match read_frame(&mut reader).await {
-            Ok(frame) => frame,
-            Err(e) => {
-                let _ = incoming.send(Err(e)).await;
-                break;
-            }
-        };
+        let frame =
+            match tokio::time::timeout(Duration::from_secs(45), read_frame(&mut reader)).await {
+                Ok(Ok(frame)) => frame,
+                error => {
+                    let e = match error {
+                        Ok(Err(error)) => error,
+                        _ => "Device connection stopped responding".to_string(),
+                    };
+                    let _ = incoming.send(Err(e)).await;
+                    break;
+                }
+            };
         let message = {
             let mut state = state.lock().await;
             decrypt(&mut state, &frame)
@@ -233,8 +238,8 @@ async fn reader_loop(
     }
 }
 
-async fn writer_loop(
-    mut writer: OwnedWriteHalf,
+async fn writer_loop<W: AsyncWrite + Unpin>(
+    mut writer: W,
     state: Arc<Mutex<TransportState>>,
     outgoing: &mut mpsc::Receiver<WireMessage>,
 ) {
@@ -289,6 +294,9 @@ mod tests {
             device_id: "synthetic-device".into(),
             device_name: "distinctive fake secret string".into(),
             static_public: "public".into(),
+            item_signing_public: String::new(),
+            platform: String::new(),
+            capabilities: Vec::new(),
             endpoint: "127.0.0.1:1".into(),
         };
         let encrypted = encrypt(&mut a, &message).unwrap();
@@ -357,6 +365,9 @@ mod tests {
             device_id: "d".into(),
             device_name: "\u{0000}".repeat(32 * 1024),
             static_public: "p".into(),
+            item_signing_public: String::new(),
+            platform: String::new(),
+            capabilities: Vec::new(),
             endpoint: "e".into(),
         };
         assert!(encrypt(&mut a, &message).is_err());

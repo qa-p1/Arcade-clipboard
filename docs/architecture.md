@@ -1,37 +1,29 @@
 # Architecture
 
-Arcade Clipboard keeps shared clipboard history separate from the operating system clipboard. A remote item is stored in the mesh history; only a user choosing it may copy or paste it into the local application.
+Flutter owns onboarding, history, devices, settings, pairing and the compact picker. Rust owns device identity, membership, cryptography, synchronization, discovery and durable history. Native adapters implement clipboard formats, focus/paste, tray/startup and mobile extensions.
 
-## Module boundaries
-
-| Module | Responsibility in this checkout |
+| Path | Responsibility |
 | --- | --- |
-| `apps/flutter_app` | Shared onboarding, history, device management, settings, pairing UI, and desktop picker source |
-| `core/rust` | Device and mesh identity, membership, pairing, direct transport, encrypted local history, deduplication, and sync state |
-| `platform/desktop/arcade_desktop_bridge` | Small native clipboard, shortcut, window-target, and paste capability adapters |
-| `platform/android` | Android share/IME and encrypted local handoff source |
-| `platform/ios` | iOS share extension, clipboard keyboard, and App Group handoff source |
-| `services/relay` | Standalone, bounded opaque WebSocket transport; not connected as a client fallback |
-| `tests/driver` and `tests` | JSON-lines Rust driver and automated/manual test source |
+| apps/flutter_app | Shared UI/controller and generated Flutter Rust Bridge bindings |
+| core/rust | Noise sessions, certificates, origin signatures, LAN/relay transport, encrypted SQLite history |
+| platform/desktop | Small Windows/macOS/Linux adapters and bounded Linux helpers |
+| platform/ios | Share and Keyboard extensions, App Group handoff, system Bonjour |
+| platform/android | Share activity, IME, encrypted handoff, Keystore identity provider |
+| services/relay | Bounded opaque WebSocket rendezvous and forwarding |
+| tests | Real process driver, core integration tests and native paste target |
 
-Flutter owns consumer presentation and interaction. Rust owns the shared protocol, trust checks, storage, and synchronization. Native code is limited to operating-system integration. Flutter/Rust binding generation and platform runners are build prerequisites and are absent from the checked-in app directory.
+## Mesh and data flow
 
-## Current topology and trust
+The creator signs membership and revocation records. Every device has its own X25519 identity and item-signing key. All trusted devices listen and may connect directly; synchronization does not depend on the creator remaining online.
 
-The mesh creator is its authority. Devices generate their own identities; a join invitation carries short-lived bootstrap authorization and public information, not the creator's private keys. The source implements a Noise-based authenticated pairing flow with matching human confirmation and signed membership. After pairing, members connect directly to the authority over TCP; the authority forwards accepted clips to other active members. Discovery, automatic remote relay fallback, and a fully connected peer topology are not implemented.
+Desktop capture is on by default (Private mode pauses it). On Wayland a bundled supervisor runs `wl-paste --watch` and only signals changes; Dart reads the selection with `wl-paste` and writes with `wl-copy`, because the Dart VM reaps child processes and GLib's GSubprocess cannot be used alongside it. The supervisor exits when the app's stdin pipe closes, so a killed app never leaves watchers behind. Re-capturing existing content moves it to the top (old copies are deleted mesh-wide); the watcher's initial event at startup only adds content that is not already in history. Both devices of a pair dial each other (the hello carries the listening port); simultaneous dials converge on the connection dialed by the smaller device ID; unreachable peers are retried with 2–60 s backoff. Explicit app additions and mobile handoff submit compatible representations to Rust. Rust validates and signs the item, encrypts local storage, and sends it over authenticated Noise. Receivers validate origin membership/signature and stable item identity before storing. Remote receipt has no OS clipboard write path.
 
-The relay is a separate transport service and is outside the clipboard trust boundary. It forwards opaque frames for paired routes, but the current Flutter/Rust client does not connect to it. Consequently this checkout does not provide reliable synchronization across CGNAT or when a direct owner connection cannot be made.
+mDNS supplies candidate addresses, never authorization. iOS uses system Bonjour; other targets use mdns-sd. Pairwise relay routes derive from a secret shared capability and carry the same Noise protocol over WebSockets. LAN is preferred and retried after relay takeover.
 
-## Data flow
+History catch-up snapshots IDs and loads one payload at a time. Large items use bounded chunks and backpressure. Search/display read a small encrypted preview rather than decrypting all file contents. Deletion tombstones prevent reappearance; signed Lamport pin updates converge after disconnection.
 
-1. Desktop capture or an explicit mobile share submits text to the Rust boundary.
-2. Rust validates the item, assigns stable identity and provenance, and stores its payload encrypted locally.
-3. Authorized devices exchange protocol messages over an authenticated encrypted direct session.
-4. The receiver validates membership and deduplicates before adding the item to its history.
-5. Flutter refreshes history; native integrations expose an explicit copy/paste or keyboard-insertion action.
+## Platform boundary
 
-The implemented wire format is versioned and text/URL-focused. Images, arbitrary files, rich clipboard representations, and negotiated content capabilities are future work. See [protocol](protocol.md).
+The desktop picker remembers the target, hides before selection paste, restores focus and invokes the platform paste mechanism. Unsupported desktop sessions expose a copy fallback.
 
-## Readiness
-
-This document describes source boundaries, not verified product behavior. The Flutter bridge and runners have not been generated in this checkout; desktop and mobile integrations have not passed real-device acceptance. See [development](development.md), [platform limitations](platform-limitations.md), [security review](security-review.md), and the [acceptance checklist](acceptance.md). The current security review is not a release sign-off.
+Mobile share/keyboard storage is a protected handoff/cache, not a second synchronization implementation. iOS can suspend the main app; pending shares are imported on resume and the keyboard uses already-cached text. See platform-limitations.md.

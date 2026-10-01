@@ -1,7 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart' show ExternalLibrary;
+import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart'
+    show ExternalLibrary;
 import '../src/rust/api.dart' as rust_api;
 import '../src/rust/frb_generated.dart';
 
@@ -28,16 +29,37 @@ class RustCoreApi implements CoreApi {
     try {
       await initialization;
     } finally {
-      if (identical(_bridgeInitialization, initialization)) _bridgeInitialization = null;
+      if (identical(_bridgeInitialization, initialization)) {
+        _bridgeInitialization = null;
+      }
     }
   }
 
   Future<void> _initializeBridge() async {
     final runtimeLibrary = Platform.environment['ARCADE_CORE_LIBRARY']?.trim();
-    final buildLibrary = const String.fromEnvironment('ARCADE_CORE_LIBRARY').trim();
-    final libraryPath = runtimeLibrary?.isNotEmpty == true ? runtimeLibrary! : buildLibrary;
+    final buildLibrary =
+        const String.fromEnvironment('ARCADE_CORE_LIBRARY').trim();
+    var libraryPath =
+        runtimeLibrary?.isNotEmpty == true ? runtimeLibrary! : buildLibrary;
+    if (libraryPath.isEmpty &&
+        (Platform.isLinux || Platform.isWindows || Platform.isMacOS)) {
+      final executable = File(Platform.resolvedExecutable).parent;
+      final bundled = Platform.isLinux
+          ? File('${executable.path}/lib/libarcade_core.so')
+          : Platform.isWindows
+              ? File('${executable.path}/arcade_core.dll')
+              : File(
+                  '${executable.parent.path}/Frameworks/libarcade_core.dylib');
+      if (await bundled.exists()) libraryPath = bundled.path;
+    }
     await RustLib.init(
-      externalLibrary: libraryPath.isEmpty ? null : ExternalLibrary.open(libraryPath),
+      externalLibrary: libraryPath.isNotEmpty
+          ? ExternalLibrary.open(libraryPath)
+          // The iOS Rust core is a static archive force-loaded into the
+          // Runner executable, so its symbols resolve from the process.
+          : Platform.isIOS
+              ? ExternalLibrary.process(iKnowHowToUseIt: true)
+              : null,
     );
     _bridgeReady = true;
   }
@@ -53,6 +75,7 @@ class RustCoreApi implements CoreApi {
     final decoded = jsonDecode(response);
     if (decoded is Map<String, dynamic>) return decoded;
     if (decoded is List<dynamic>) return {'items': decoded};
-    throw const FormatException('The clipboard service returned an invalid response.');
+    throw const FormatException(
+        'The clipboard service returned an invalid response.');
   }
 }

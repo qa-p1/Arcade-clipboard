@@ -1,0 +1,3 @@
+dependency_overrides:
+  hotkey_manager_linux:
+    path: ../../platform/desktop/vendor/hotkey_manager_linux

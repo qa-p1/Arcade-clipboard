@@ -4,8 +4,10 @@ import 'dart:io';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import 'clipboard_widgets.dart';
 import 'models.dart';
 import 'services/app_controller.dart';
 import 'services/invite_qr_decoder.dart';
@@ -61,17 +63,20 @@ ThemeData _lightTheme() {
   );
   return ThemeData(
     useMaterial3: true,
+    fontFamily: 'Inter',
     colorScheme: colors,
     scaffoldBackgroundColor: _canvas,
     dividerColor: const Color(0xFFE5E9E5),
     textTheme: ThemeData.light().textTheme.apply(
           bodyColor: _ink,
           displayColor: _ink,
+          fontFamily: 'Inter',
         ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: const Color(0xFFEEF1EE),
-      hintStyle: TextStyle(color: colors.onSurfaceVariant.withValues(alpha: 0.82)),
+      hintStyle:
+          TextStyle(color: colors.onSurfaceVariant.withValues(alpha: 0.82)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(13),
@@ -97,10 +102,11 @@ ThemeData _darkTheme() {
   );
   return ThemeData(
     useMaterial3: true,
+    fontFamily: 'Inter',
     colorScheme: colors,
     scaffoldBackgroundColor: _night,
     dividerColor: const Color(0xFF303A34),
-    textTheme: ThemeData.dark().textTheme,
+    textTheme: ThemeData.dark().textTheme.apply(fontFamily: 'Inter'),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: const Color(0xFF202823),
@@ -144,7 +150,9 @@ class _AppHomeState extends State<_AppHome> {
     return LayoutBuilder(builder: (context, constraints) {
       final wide = constraints.maxWidth >= 840;
       final body = _section == _Section.clipboard
-          ? _ClipboardPage(controller: controller, onGoToDevices: () => _select(_Section.devices))
+          ? _ClipboardPage(
+              controller: controller,
+              onGoToDevices: () => _select(_Section.devices))
           : _section == _Section.devices
               ? _DevicesPage(controller: controller)
               : _SettingsPage(controller: controller);
@@ -165,7 +173,7 @@ class _AppHomeState extends State<_AppHome> {
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 1060),
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(42, 32, 42, 28),
+                        padding: const EdgeInsets.fromLTRB(34, 30, 34, 24),
                         child: body,
                       ),
                     ),
@@ -196,7 +204,8 @@ class _AppHomeState extends State<_AppHome> {
           selectedIndex: _section.index,
           onDestinationSelected: (index) => _select(_Section.values[index]),
           destinations: [
-            const NavigationDestination(icon: Icon(Icons.content_paste_rounded), label: 'Clipboard'),
+            const NavigationDestination(
+                icon: Icon(Icons.content_paste_rounded), label: 'Clipboard'),
             NavigationDestination(
               icon: controller.pairings.isEmpty
                   ? const Icon(Icons.devices_rounded)
@@ -206,7 +215,8 @@ class _AppHomeState extends State<_AppHome> {
                     ),
               label: 'Devices',
             ),
-            const NavigationDestination(icon: Icon(Icons.tune_rounded), label: 'Settings'),
+            const NavigationDestination(
+                icon: Icon(Icons.tune_rounded), label: 'Settings'),
           ],
         ),
       );
@@ -232,7 +242,7 @@ class _SideRail extends StatelessWidget {
     final theme = Theme.of(context);
     return SafeArea(
       child: SizedBox(
-        width: 236,
+        width: 212,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 27, 14, 22),
           child: Column(
@@ -265,18 +275,22 @@ class _SideRail extends StatelessWidget {
               ),
               const Spacer(),
               if (controller.status?.paused == true)
-                const _StatusPill(label: 'Private mode', icon: Icons.pause_rounded, private: true)
+                const _StatusPill(
+                    label: 'Private mode',
+                    icon: Icons.pause_rounded,
+                    private: true)
               else
                 _StatusPill(
-                  label: _connectionLabel(controller.status?.connection ?? 'offline'),
-                  icon: _connectionIcon(controller.status?.connection ?? 'offline'),
+                  label: _meshConnectionLabel(controller),
+                  icon: _meshConnectionIcon(controller),
                 ),
               const SizedBox(height: 13),
               Text(
                 controller.status?.deviceName ?? 'This device',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                style: theme.textTheme.labelMedium
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               ),
             ],
           ),
@@ -299,10 +313,10 @@ class _MobileHeader extends StatelessWidget {
           _StatusPill(
             label: controller.status?.paused == true
                 ? 'Private mode'
-                : _connectionLabel(controller.status?.connection ?? 'offline'),
+                : _meshConnectionLabel(controller),
             icon: controller.status?.paused == true
                 ? Icons.pause_rounded
-                : _connectionIcon(controller.status?.connection ?? 'offline'),
+                : _meshConnectionIcon(controller),
             private: controller.status?.paused == true,
           ),
         ],
@@ -327,11 +341,14 @@ class _BrandLockup extends StatelessWidget {
             color: theme.colorScheme.primary,
             borderRadius: BorderRadius.circular(11),
           ),
-          child: Icon(Icons.copy_all_rounded, size: 19, color: theme.colorScheme.onPrimary),
+          child: Icon(Icons.copy_all_rounded,
+              size: 19, color: theme.colorScheme.onPrimary),
         ),
         if (!compact) ...[
           const SizedBox(width: 11),
-          Text('Arcade', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+          Text('Arcade',
+              style: theme.textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w700)),
         ],
       ],
     );
@@ -356,11 +373,15 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final color = selected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant;
+    final color = selected
+        ? theme.colorScheme.primary
+        : theme.colorScheme.onSurfaceVariant;
     return Padding(
       padding: const EdgeInsets.only(bottom: 5),
       child: Material(
-        color: selected ? theme.colorScheme.primary.withValues(alpha: 0.09) : Colors.transparent,
+        color: selected
+            ? theme.colorScheme.primary.withValues(alpha: 0.09)
+            : Colors.transparent,
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           onTap: onTap,
@@ -378,12 +399,15 @@ class _NavItem extends StatelessWidget {
                       title,
                       style: theme.textTheme.labelLarge?.copyWith(
                         color: selected ? theme.colorScheme.onSurface : color,
-                        fontWeight: selected ? FontWeight.w650 : FontWeight.w500,
+                        fontWeight:
+                            selected ? FontWeight.w600 : FontWeight.w500,
                       ),
                     ),
                   ),
                   if (trailing != null)
-                    Text(trailing!, style: theme.textTheme.labelSmall?.copyWith(color: color)),
+                    Text(trailing!,
+                        style:
+                            theme.textTheme.labelSmall?.copyWith(color: color)),
                 ],
               ),
             ),
@@ -395,7 +419,8 @@ class _NavItem extends StatelessWidget {
 }
 
 class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.label, required this.icon, this.private = false});
+  const _StatusPill(
+      {required this.label, required this.icon, this.private = false});
 
   final String label;
   final IconData icon;
@@ -407,13 +432,15 @@ class _StatusPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: (private ? colors.tertiary : colors.primary).withValues(alpha: 0.09),
+        color: (private ? colors.tertiary : colors.primary)
+            .withValues(alpha: 0.09),
         borderRadius: BorderRadius.circular(30),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: private ? colors.tertiary : colors.primary),
+          Icon(icon,
+              size: 14, color: private ? colors.tertiary : colors.primary),
           const SizedBox(width: 6),
           Text(label, style: Theme.of(context).textTheme.labelSmall),
         ],
@@ -437,6 +464,14 @@ class _WelcomeViewState extends State<_WelcomeView> {
   final _qrDecoder = InviteQrDecoder();
   bool _joining = false;
   bool _importingQr = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _deviceName.text =
+        widget.controller.status?.deviceName ?? Platform.localHostname;
+  }
+
   String? _qrImportError;
 
   @override
@@ -448,8 +483,6 @@ class _WelcomeViewState extends State<_WelcomeView> {
 
   @override
   Widget build(BuildContext context) {
-    final controller = widget.controller;
-    final theme = Theme.of(context);
     final wide = MediaQuery.sizeOf(context).width > 780;
     return Scaffold(
       body: SafeArea(
@@ -490,18 +523,18 @@ class _WelcomeViewState extends State<_WelcomeView> {
         const _BrandLockup(compact: true),
         const SizedBox(height: 42),
         Text(
-          'Your clipboard,\nwhere you need it.',
+          'Set up Arcade Clipboard',
           style: theme.textTheme.displaySmall?.copyWith(
             height: 1.08,
             letterSpacing: -1.2,
-            fontWeight: FontWeight.w650,
+            fontWeight: FontWeight.w600,
           ),
         ),
         const SizedBox(height: 16),
         ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 420),
           child: Text(
-            'Pair your own devices once. Clips you choose to share stay in your private mesh, ready when you need them.',
+            'Share text, images, and files between your own devices. Pair a device once, then use the shared history to copy or paste a clip.',
             style: theme.textTheme.bodyLarge?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
               height: 1.55,
@@ -518,47 +551,76 @@ class _WelcomeViewState extends State<_WelcomeView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Get started', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w650)),
+        Text('Get started',
+            style: theme.textTheme.titleLarge
+                ?.copyWith(fontWeight: FontWeight.w600)),
         const SizedBox(height: 7),
         Text(
           'No account needed. This name helps you recognize the device.',
-          style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          style: theme.textTheme.bodyMedium
+              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
         ),
         const SizedBox(height: 20),
         TextField(
           controller: _deviceName,
           textInputAction: TextInputAction.next,
-          decoration: const InputDecoration(labelText: 'Device name', hintText: 'e.g. Studio Mac'),
+          decoration: const InputDecoration(
+              labelText: 'Device name', hintText: 'e.g. Studio Mac'),
         ),
         if (controller.desktopAvailable) ...[
           const SizedBox(height: 16),
           _SettingLine(
             icon: Icons.content_paste_search_rounded,
             title: 'Automatically add desktop copies',
-            description: 'Arcade reads copied text and cannot identify passwords or other sensitive clips. Use Private mode before copying anything you do not want shared.',
+            description:
+                'Adds copied text, images, and files. Use Private mode for anything you do not want shared.',
             trailing: Switch.adaptive(
               value: controller.automaticDesktopCapture,
-              onChanged: controller.working ? null : controller.setAutomaticDesktopCapture,
+              onChanged: controller.working
+                  ? null
+                  : controller.setAutomaticDesktopCapture,
             ),
           ),
         ],
         const SizedBox(height: 13),
         if (!_joining)
           FilledButton.icon(
-            onPressed: controller.working ? null : () => controller.createMesh(_deviceName.text),
+            onPressed: controller.working
+                ? null
+                : () => controller.createMesh(_deviceName.text),
             icon: const Icon(Icons.add_link_rounded, size: 19),
-            label: const Text('Create a device mesh'),
+            label: const Text('Create mesh'),
           )
         else ...[
           Align(
             alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: _importingQr ? null : _importQrImage,
-              icon: _importingQr
-                  ? const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Icon(Icons.qr_code_2_rounded, size: 18),
-              label: Text(_importingQr ? 'Reading QR image…' : 'Import QR image'),
-            ),
+            child: Wrap(spacing: 6, children: [
+              if (Platform.isAndroid || Platform.isIOS || Platform.isMacOS)
+                TextButton.icon(
+                  onPressed: controller.working
+                      ? null
+                      : () async {
+                          final value = await Navigator.of(context)
+                              .push<String>(MaterialPageRoute(
+                                  builder: (_) => const _PairingScanner()));
+                          if (value != null && mounted) {
+                            setState(() => _invite.text = value);
+                          }
+                        },
+                  icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
+                  label: const Text('Scan QR code'),
+                ),
+              TextButton.icon(
+                onPressed: _importingQr ? null : _importQrImage,
+                icon: _importingQr
+                    ? const SizedBox.square(
+                        dimension: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.qr_code_2_rounded, size: 18),
+                label: Text(
+                    _importingQr ? 'Reading QR image…' : 'Import QR image'),
+              ),
+            ]),
           ),
           TextField(
             controller: _invite,
@@ -575,7 +637,8 @@ class _WelcomeViewState extends State<_WelcomeView> {
           FilledButton.icon(
             onPressed: controller.working
                 ? null
-                : () => controller.joinMesh(invite: _invite.text, deviceName: _deviceName.text),
+                : () => controller.joinMesh(
+                    invite: _invite.text, deviceName: _deviceName.text),
             icon: const Icon(Icons.qr_code_scanner_rounded, size: 19),
             label: const Text('Join this mesh'),
           ),
@@ -590,7 +653,12 @@ class _WelcomeViewState extends State<_WelcomeView> {
         ],
         const SizedBox(height: 8),
         TextButton(
-          onPressed: controller.working ? null : () => setState(() => _joining = !_joining),
+          onPressed: controller.working
+              ? null
+              : () {
+                  setState(() => _joining = !_joining);
+                  if (_joining) unawaited(controller.prepareToJoin());
+                },
           child: Text(_joining ? 'Back' : 'Join an existing mesh'),
         ),
         if (controller.working) ...[
@@ -633,7 +701,7 @@ class _WelcomeViewState extends State<_WelcomeView> {
         ],
       );
       if (file == null) return;
-      if (file.size > InviteQrDecoder.maxFileBytes) {
+      if (await file.length() > InviteQrDecoder.maxFileBytes) {
         throw const FormatException('Choose an image under 5 MB.');
       }
       final invite = _qrDecoder.decode(await file.readAsBytes());
@@ -654,7 +722,8 @@ class _WelcomeViewState extends State<_WelcomeView> {
 }
 
 class _JoinVerificationCard extends StatelessWidget {
-  const _JoinVerificationCard({required this.controller, required this.pairing});
+  const _JoinVerificationCard(
+      {required this.controller, required this.pairing});
 
   final AppController controller;
   final PairingRequest pairing;
@@ -680,7 +749,8 @@ class _JoinVerificationCard extends StatelessWidget {
                 : approved
                     ? 'Waiting for the other device'
                     : 'Pairing request ended',
-            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+            style: theme.textTheme.titleSmall
+                ?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 4),
           Text(
@@ -699,7 +769,7 @@ class _JoinVerificationCard extends StatelessWidget {
             Text(
               pairing.verificationCode,
               style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w650,
+                fontWeight: FontWeight.w600,
                 letterSpacing: 1.4,
                 fontFeatures: const [FontFeature.tabularFigures()],
               ),
@@ -709,7 +779,8 @@ class _JoinVerificationCard extends StatelessWidget {
             const SizedBox(height: 5),
             Text(
               'Expires ${_relativeExpiry(expiresAt)}',
-              style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              style: theme.textTheme.labelSmall
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
           ],
           if (awaitingConfirmation) ...[
@@ -720,13 +791,15 @@ class _JoinVerificationCard extends StatelessWidget {
                 FilledButton.tonal(
                   onPressed: controller.working
                       ? null
-                      : () => controller.confirmPairing(pairing.sessionId, accept: true),
+                      : () => controller.confirmPairing(pairing.sessionId,
+                          accept: true),
                   child: const Text('Approve'),
                 ),
                 TextButton(
                   onPressed: controller.working
                       ? null
-                      : () => controller.confirmPairing(pairing.sessionId, accept: false),
+                      : () => controller.confirmPairing(pairing.sessionId,
+                          accept: false),
                   child: const Text('Cancel'),
                 ),
               ],
@@ -747,9 +820,13 @@ class _LoadingView extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2)),
+              const SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2)),
               const SizedBox(height: 17),
-              Text('Opening your private mesh', style: Theme.of(context).textTheme.bodyMedium),
+              Text('Opening Arcade Clipboard…',
+                  style: Theme.of(context).textTheme.bodyMedium),
             ],
           ),
         ),
@@ -768,9 +845,20 @@ class _ClipboardPage extends StatefulWidget {
 
 class _ClipboardPageState extends State<_ClipboardPage> {
   final _search = TextEditingController();
+  Timer? _searchTimer;
+  String _kind = '';
+  String _source = '';
+  bool _pinnedOnly = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _search.text = widget.controller.query ?? '';
+  }
 
   @override
   void dispose() {
+    _searchTimer?.cancel();
     _search.dispose();
     super.dispose();
   }
@@ -779,222 +867,381 @@ class _ClipboardPageState extends State<_ClipboardPage> {
   Widget build(BuildContext context) {
     final controller = widget.controller;
     final theme = Theme.of(context);
-    final items = controller.items;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _PageTitle(
-          eyebrow: 'YOUR MESH',
-          title: 'Clipboard',
-          trailing: controller.desktopCapabilities?.globalShortcut == true
-              ? _KeyboardHint(shortcut: controller.shortcut)
-              : null,
-        ),
-        const SizedBox(height: 24),
-        TextField(
-          controller: _search,
-          onChanged: _onSearch,
-          decoration: InputDecoration(
-            hintText: 'Search your clips',
-            prefixIcon: const Icon(Icons.search_rounded, size: 20),
-            suffixIcon: _search.text.isNotEmpty
-                ? IconButton(
-                    tooltip: 'Clear search',
-                    onPressed: () {
-                      _search.clear();
-                      _onSearch('');
-                    },
-                    icon: const Icon(Icons.close_rounded, size: 19),
-                  )
-                : null,
-          ),
-        ),
-        const SizedBox(height: 14),
-        if (controller.error != null) _InlineMessage(text: controller.error!, error: true),
-        if (controller.notice != null) ...[
-          const SizedBox(height: 8),
-          _InlineMessage(text: controller.notice!),
-        ],
-        if (controller.status?.paused == true) ...[
-          const SizedBox(height: 10),
-          _NoticeStrip(
-            icon: Icons.pause_circle_outline_rounded,
-            text: 'Private mode is on. New clips are staying off your mesh.',
-            actionLabel: 'Resume',
-            onAction: () => controller.setPrivatePause(false),
-          ),
-        ],
-        if (controller.status?.connection == 'offline' && !controller.devices.isEmpty) ...[
-          const SizedBox(height: 10),
-          _NoticeStrip(
-            icon: Icons.cloud_off_rounded,
-            text: 'Offline. New clips will sync when a connection returns.',
-            actionLabel: 'Details',
-            onAction: widget.onGoToDevices,
-          ),
-        ],
-        const SizedBox(height: 20),
-        if (controller.historyLoading && items.isEmpty)
-          const Expanded(child: Center(child: CircularProgressIndicator(strokeWidth: 2)))
-        else if (items.isEmpty)
-          Expanded(child: _ClipboardEmptyState(hasQuery: _search.text.trim().isNotEmpty))
-        else
-          Expanded(
-            child: ListView.separated(
-              padding: EdgeInsets.zero,
-              itemCount: items.length,
-              separatorBuilder: (_, __) => Divider(height: 1, color: theme.dividerColor),
-              itemBuilder: (context, index) => _ClipboardRow(
-                item: items[index],
-                onTap: () => controller.copyLocally(items[index]),
-                onPin: () => controller.setPinned(items[index], !items[index].pinned),
-                onDelete: () => controller.deleteItem(items[index]),
+    final allItems = controller.items;
+    final items = allItems
+        .where((item) =>
+            (_kind.isEmpty || item.kind == _kind) &&
+            (_source.isEmpty || item.originDevice == _source) &&
+            (!_pinnedOnly || item.pinned))
+        .toList();
+    final filtered = _search.text.trim().isNotEmpty ||
+        _kind.isNotEmpty ||
+        _source.isNotEmpty ||
+        _pinnedOnly;
+    final sources = <String, String>{
+      if (controller.status?.deviceId != null)
+        controller.status!.deviceId!: 'This device',
+      for (final device in controller.devices) device.id: device.name,
+      for (final item in allItems) item.originDevice: item.sourceName
+    };
+    return CustomScrollView(
+      slivers: [
+        SliverToBoxAdapter(
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+              _PageTitle(
+                eyebrow: '',
+                title: 'Clipboard',
+                trailing: FilledButton.icon(
+                  onPressed:
+                      controller.working || controller.status?.paused == true
+                          ? null
+                          : () => showAddClip(context, controller),
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: const Text('Add clip'),
+                ),
               ),
+              const SizedBox(height: 8),
+              Text('Clips shared between your devices.',
+                  style: theme.textTheme.bodyMedium
+                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+              const SizedBox(height: 22),
+              TextField(
+                controller: _search,
+                onChanged: _onSearch,
+                decoration: InputDecoration(
+                  hintText: 'Search clips',
+                  prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                  suffixIcon: _search.text.isNotEmpty
+                      ? IconButton(
+                          tooltip: 'Clear search',
+                          onPressed: () {
+                            _search.clear();
+                            _onSearch('');
+                          },
+                          icon: const Icon(Icons.close_rounded, size: 19))
+                      : null,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  FilterChip(
+                      label: const Text('Pinned'),
+                      selected: _pinnedOnly,
+                      onSelected: (value) =>
+                          setState(() => _pinnedOnly = value),
+                      avatar: const Icon(Icons.push_pin_outlined, size: 15)),
+                  PopupMenuButton<String>(
+                    tooltip: 'Filter by content type',
+                    onSelected: (value) => setState(() => _kind = value),
+                    itemBuilder: (_) => [
+                      for (final kind in const [
+                        '',
+                        'text',
+                        'url',
+                        'rich_text',
+                        'image',
+                        'file',
+                        'files'
+                      ])
+                        PopupMenuItem(
+                            value: kind,
+                            child: Text(kind.isEmpty
+                                ? 'All types'
+                                : clipKindLabel(kind)))
+                    ],
+                    child: _FilterControl(
+                        label:
+                            _kind.isEmpty ? 'All types' : clipKindLabel(_kind)),
+                  ),
+                  PopupMenuButton<String>(
+                    tooltip: 'Filter by source device',
+                    onSelected: (value) => setState(() => _source = value),
+                    itemBuilder: (_) => [
+                      const PopupMenuItem(
+                          value: '', child: Text('All devices')),
+                      for (final source in sources.entries)
+                        PopupMenuItem(
+                            value: source.key, child: Text(source.value))
+                    ],
+                    child: _FilterControl(
+                        label: _source.isEmpty
+                            ? 'All devices'
+                            : sources[_source] ?? 'Device'),
+                  ),
+                ],
+              ),
+              if (controller.error != null)
+                Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child:
+                        _InlineMessage(text: controller.error!, error: true)),
+              if (controller.notice != null)
+                Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: _InlineMessage(
+                        text: controller.notice!,
+                        onDismiss: controller.dismissNotice)),
+              if (controller.status?.paused == true)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: _NoticeStrip(
+                      icon: Icons.pause_circle_outline_rounded,
+                      text:
+                          'Sharing is paused. Existing clips are still available.',
+                      actionLabel: 'Resume',
+                      onAction: () => controller.setPrivatePause(false)),
+                ),
+              if (controller.status?.connection == 'offline' &&
+                  controller.devices.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: _NoticeStrip(
+                      icon: Icons.cloud_off_rounded,
+                      text:
+                          'Offline. Clips will sync when your devices reconnect.',
+                      actionLabel: 'Devices',
+                      onAction: widget.onGoToDevices),
+                ),
+              const SizedBox(height: 16),
+              if (controller.historyLoading)
+                const LinearProgressIndicator(minHeight: 2),
+            ])),
+        if (items.isEmpty)
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: _ClipboardEmptyState(
+              hasQuery: filtered,
+              controller: controller,
+              onAdd: () => showAddClip(context, controller),
+              onClear: () {
+                _search.clear();
+                _onSearch('');
+                setState(() {
+                  _kind = '';
+                  _source = '';
+                  _pinnedOnly = false;
+                });
+              },
             ),
-          ),
+          )
+        else
+          SliverList(
+              delegate: SliverChildBuilderDelegate((context, position) {
+            if (position.isOdd) {
+              return Divider(height: 1, color: theme.dividerColor);
+            }
+            final item = items[position ~/ 2];
+            return _ClipboardRow(
+              controller: controller,
+              item: item,
+              onTap: () => showClipDetail(context, controller, item),
+              onCopy: () => controller.copyLocally(item),
+              onPin: () => controller.setPinned(item, !item.pinned),
+              onDelete: () => controller.deleteItem(item),
+              onResend: () => controller.resendItem(item),
+            );
+          }, childCount: items.length * 2 - 1)),
+        if (controller.hasMoreHistory)
+          SliverToBoxAdapter(
+              child: Center(
+                  child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: TextButton(
+                onPressed: controller.historyLoading
+                    ? null
+                    : controller.loadMoreHistory,
+                child: const Text('Load more clips')),
+          ))),
+        SliverToBoxAdapter(
+            child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Row(children: [
+            Text('${items.length} ${items.length == 1 ? 'clip' : 'clips'}',
+                style: theme.textTheme.labelSmall
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+            const Spacer(),
+            if (controller.desktopCapabilities?.globalShortcut == true &&
+                MediaQuery.sizeOf(context).width >= 1000)
+              InkWell(
+                  onTap: controller.openOverlay,
+                  child: _KeyboardHint(shortcut: controller.shortcut)),
+          ]),
+        )),
       ],
     );
   }
 
   void _onSearch(String value) {
     setState(() {});
-    unawaited(widget.controller.refreshHistory(query: value));
+    _searchTimer?.cancel();
+    _searchTimer = Timer(const Duration(milliseconds: 160),
+        () => widget.controller.refreshHistory(query: value));
   }
 }
 
-class _ClipboardRow extends StatelessWidget {
-  const _ClipboardRow({
-    required this.item,
-    required this.onTap,
-    required this.onPin,
-    required this.onDelete,
-  });
+class _FilterControl extends StatelessWidget {
+  const _FilterControl({required this.label});
+  final String label;
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+            border: Border.all(color: Theme.of(context).dividerColor),
+            borderRadius: BorderRadius.circular(8)),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Text(label, style: Theme.of(context).textTheme.labelMedium),
+          const SizedBox(width: 8),
+          const Icon(Icons.keyboard_arrow_down_rounded, size: 16)
+        ]),
+      );
+}
 
+class _ClipboardRow extends StatelessWidget {
+  const _ClipboardRow(
+      {required this.controller,
+      required this.item,
+      required this.onTap,
+      required this.onCopy,
+      required this.onPin,
+      required this.onDelete,
+      required this.onResend});
+  final AppController controller;
   final ClipboardItem item;
-  final VoidCallback onTap;
-  final VoidCallback onPin;
-  final VoidCallback onDelete;
+  final VoidCallback onTap, onCopy, onPin, onDelete, onResend;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isUrl = item.kind == 'url';
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(10),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 15),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 35,
-              height: 35,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 17),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Container(
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.72),
-                borderRadius: BorderRadius.circular(11),
-              ),
-              child: Icon(
-                item.pinned ? Icons.push_pin_rounded : (isUrl ? Icons.link_rounded : Icons.notes_rounded),
-                size: 17,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(width: 13),
-            Expanded(
+                  color: theme.colorScheme.surfaceContainerHighest
+                      .withValues(alpha: .65),
+                  borderRadius: BorderRadius.circular(9)),
+              child: item.kind == 'image'
+                  ? ClipThumbnail(controller: controller, item: item)
+                  : Icon(clipIcon(item.kind),
+                      size: 19, color: theme.colorScheme.onSurfaceVariant)),
+          const SizedBox(width: 14),
+          Expanded(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.preview.isEmpty ? 'Empty clip' : item.preview,
-                    maxLines: 3,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                Text(item.preview.isEmpty ? 'Empty clip' : item.preview,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium?.copyWith(height: 1.4),
-                  ),
-                  const SizedBox(height: 7),
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          item.sourceName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 7),
-                        child: Text('·', style: TextStyle(color: theme.colorScheme.onSurfaceVariant)),
-                      ),
-                      Text(
-                        _relativeTime(item.createdAt),
-                        style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            PopupMenuButton<String>(
+                    style: theme.textTheme.bodyMedium?.copyWith(height: 1.45)),
+                const SizedBox(height: 7),
+                Text(
+                    '${item.sourceName} · ${_relativeTime(item.createdAt)}${item.size > 0 && item.hasBinaryContent ? ' · ${formatBytes(item.size)}' : ''}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall
+                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+              ])),
+          if (item.pinned)
+            Padding(
+                padding: const EdgeInsets.fromLTRB(8, 6, 0, 0),
+                child: Icon(Icons.push_pin_rounded,
+                    size: 15, color: theme.colorScheme.primary)),
+          IconButton(
+              tooltip: 'Copy to this device',
+              onPressed: onCopy,
+              icon: const Icon(Icons.copy_rounded, size: 17),
+              visualDensity: VisualDensity.compact),
+          PopupMenuButton<String>(
               tooltip: 'Clip actions',
-              icon: const Icon(Icons.more_horiz_rounded, size: 20),
+              icon: const Icon(Icons.more_horiz_rounded, size: 19),
               onSelected: (action) {
+                if (action == 'inspect') onTap();
                 if (action == 'pin') onPin();
                 if (action == 'delete') onDelete();
-                if (action == 'copy') onTap();
+                if (action == 'resend') onResend();
               },
               itemBuilder: (_) => [
-                const PopupMenuItem(value: 'copy', child: Text('Copy to this device')),
-                PopupMenuItem(value: 'pin', child: Text(item.pinned ? 'Unpin clip' : 'Pin clip')),
-                const PopupMenuItem(value: 'delete', child: Text('Delete clip')),
-              ],
-            ),
-          ],
-        ),
+                    const PopupMenuItem(
+                        value: 'inspect', child: Text('Inspect clip')),
+                    PopupMenuItem(
+                        value: 'pin',
+                        child: Text(item.pinned ? 'Unpin clip' : 'Pin clip')),
+                    const PopupMenuItem(
+                        value: 'resend', child: Text('Share again')),
+                    const PopupMenuItem(
+                        value: 'delete', child: Text('Delete clip')),
+                  ]),
+        ]),
       ),
     );
   }
 }
 
 class _ClipboardEmptyState extends StatelessWidget {
-  const _ClipboardEmptyState({required this.hasQuery});
-
+  const _ClipboardEmptyState(
+      {required this.hasQuery,
+      required this.controller,
+      required this.onAdd,
+      required this.onClear});
   final bool hasQuery;
+  final AppController controller;
+  final VoidCallback onAdd, onClear;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            hasQuery ? Icons.search_off_rounded : Icons.content_paste_rounded,
-            size: 27,
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            hasQuery ? 'No matching clips' : 'Your shared clipboard is empty',
-            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 7),
-          SizedBox(
-            width: 300,
-            child: Text(
+        child: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+      Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest
+                  .withValues(alpha: .45),
+              borderRadius: BorderRadius.circular(16)),
+          child: Icon(
+              hasQuery ? Icons.search_off_rounded : Icons.content_paste_rounded,
+              size: 24,
+              color: theme.colorScheme.onSurfaceVariant)),
+      const SizedBox(height: 18),
+      Text(hasQuery ? 'No matching clips' : 'Your clipboard is empty',
+          style: theme.textTheme.titleMedium
+              ?.copyWith(fontWeight: FontWeight.w600)),
+      const SizedBox(height: 8),
+      ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 340),
+          child: Text(
               hasQuery
-                  ? 'Try another word or source device.'
-                  : 'Copy something on a desktop, or share text to Arcade Clipboard from your phone.',
+                  ? 'Try another search or clear the filters.'
+                  : controller.automaticDesktopCapture
+                      ? 'Copy text, an image, or a file to add it here.'
+                      : 'Add a clip here, or share one to Arcade Clipboard from your phone.',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                height: 1.45,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+                  color: theme.colorScheme.onSurfaceVariant, height: 1.5))),
+      const SizedBox(height: 17),
+      TextButton.icon(
+          onPressed: hasQuery
+              ? onClear
+              : controller.status?.paused == true
+                  ? null
+                  : onAdd,
+          icon: Icon(
+              hasQuery ? Icons.filter_alt_off_outlined : Icons.add_rounded,
+              size: 18),
+          label: Text(hasQuery ? 'Clear filters' : 'Add your first clip')),
+    ])));
   }
 }
 
@@ -1006,23 +1253,24 @@ class _DevicesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return ListView(
+      padding: EdgeInsets.zero,
       children: [
         _PageTitle(
-          eyebrow: 'YOUR MESH',
+          eyebrow: '',
           title: 'Devices',
           trailing: controller.canManageDevices || controller.devicesLoading
               ? FilledButton.tonalIcon(
                   onPressed: controller.working || !controller.canManageDevices
                       ? null
                       : () => _addDevice(context),
-                  icon: controller.devicesLoading && !controller.canManageDevices
-                      ? const SizedBox.square(
-                          dimension: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.add_rounded, size: 18),
+                  icon:
+                      controller.devicesLoading && !controller.canManageDevices
+                          ? const SizedBox.square(
+                              dimension: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.add_rounded, size: 18),
                   label: const Text('Add device'),
                 )
               : null,
@@ -1041,7 +1289,9 @@ class _DevicesPage extends StatelessWidget {
           children: [
             Text('PAIRED DEVICES', style: _eyebrowStyle(context)),
             const SizedBox(width: 8),
-            Text('${controller.devices.length}', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+            Text('${controller.devices.length}',
+                style: theme.textTheme.labelSmall
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
           ],
         ),
         const SizedBox(height: 9),
@@ -1051,28 +1301,26 @@ class _DevicesPage extends StatelessWidget {
             const SizedBox(height: 8),
           ],
         ],
-        Expanded(
-          child: controller.devicesLoading && controller.devices.isEmpty
-              ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
-              : controller.devices.isEmpty
-                  ? _DevicesEmptyState(
-                      onAdd: controller.canManageDevices ? () => _addDevice(context) : null,
-                    )
-              : ListView.separated(
-                  padding: EdgeInsets.zero,
-                  itemCount: controller.devices.length,
-                  separatorBuilder: (_, __) => Divider(height: 1, color: theme.dividerColor),
-                  itemBuilder: (context, index) {
-                    final device = controller.devices[index];
-                    return _TrustedDeviceRow(
-                      device: device,
-                      onRemove: controller.canManageDevices && !device.isOwner
-                          ? () => _confirmRemove(context, device)
-                          : null,
-                    );
-                  },
-                ),
-        ),
+        if (controller.devicesLoading && controller.devices.isEmpty)
+          const Padding(
+              padding: EdgeInsets.all(48),
+              child: Center(child: CircularProgressIndicator(strokeWidth: 2)))
+        else if (controller.devices.isEmpty)
+          Padding(
+              padding: const EdgeInsets.symmetric(vertical: 64),
+              child: _DevicesEmptyState(
+                  onAdd: controller.canManageDevices
+                      ? () => _addDevice(context)
+                      : null))
+        else
+          for (final device in controller.devices) ...[
+            _TrustedDeviceRow(
+                device: device,
+                onRemove: controller.canManageDevices && !device.isOwner
+                    ? () => _confirmRemove(context, device)
+                    : null),
+            Divider(height: 1, color: theme.dividerColor),
+          ],
         if (controller.error != null) ...[
           const SizedBox(height: 10),
           _InlineMessage(text: controller.error!, error: true),
@@ -1088,7 +1336,8 @@ class _DevicesPage extends StatelessWidget {
     if (invite == null) return;
     await showDialog<void>(
       context: context,
-      builder: (context) => _InviteDialog(invite: invite),
+      builder: (context) =>
+          _InviteDialog(invite: invite, controller: controller),
     );
   }
 
@@ -1097,10 +1346,15 @@ class _DevicesPage extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Remove ${device.name}?'),
-        content: const Text('This device will lose access to future clips from your mesh.'),
+        content: const Text(
+            'This device will lose access to future clips from your mesh.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          FilledButton.tonal(onPressed: () => Navigator.pop(context, true), child: const Text('Remove device')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel')),
+          FilledButton.tonal(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Remove device')),
         ],
       ),
     );
@@ -1121,12 +1375,15 @@ class _DevicesEmptyState extends StatelessWidget {
             Text(
               onAdd == null
                   ? 'No other devices are listed yet.'
-                  : 'Your mesh is ready for another device.',
+                  : 'No paired devices yet.',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             if (onAdd != null) ...[
               const SizedBox(height: 11),
-              TextButton.icon(onPressed: onAdd, icon: const Icon(Icons.add_rounded), label: const Text('Add a device')),
+              TextButton.icon(
+                  onPressed: onAdd,
+                  icon: const Icon(Icons.add_rounded),
+                  label: const Text('Add a device')),
             ],
           ],
         ),
@@ -1163,7 +1420,8 @@ class _PairingRequestTile extends StatelessWidget {
                 : approved
                     ? 'Waiting for the other device'
                     : 'Pairing request ended',
-            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+            style: theme.textTheme.titleSmall
+                ?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 3),
           Text(
@@ -1174,14 +1432,15 @@ class _PairingRequestTile extends StatelessWidget {
                 : approved
                     ? 'You approved this device. Pairing completes after the other device approves too.'
                     : 'Ask the mesh owner for a new invite to try again.',
-            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant, height: 1.35),
+            style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant, height: 1.35),
           ),
           if (pairing.verificationCode.isNotEmpty) ...[
             const SizedBox(height: 11),
             Text(
               pairing.verificationCode,
               style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w650,
+                fontWeight: FontWeight.w600,
                 letterSpacing: 1.4,
                 fontFeatures: const [FontFeature.tabularFigures()],
               ),
@@ -1191,7 +1450,8 @@ class _PairingRequestTile extends StatelessWidget {
             const SizedBox(height: 5),
             Text(
               'Expires ${_relativeExpiry(expiresAt)}',
-              style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              style: theme.textTheme.labelSmall
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
           ],
           if (inbound && awaitingConfirmation) ...[
@@ -1201,14 +1461,16 @@ class _PairingRequestTile extends StatelessWidget {
                 FilledButton.tonal(
                   onPressed: controller.working
                       ? null
-                      : () => controller.confirmPairing(pairing.sessionId, accept: true),
+                      : () => controller.confirmPairing(pairing.sessionId,
+                          accept: true),
                   child: const Text('Approve'),
                 ),
                 const SizedBox(width: 7),
                 TextButton(
                   onPressed: controller.working
                       ? null
-                      : () => controller.confirmPairing(pairing.sessionId, accept: false),
+                      : () => controller.confirmPairing(pairing.sessionId,
+                          accept: false),
                   child: const Text('Decline'),
                 ),
               ],
@@ -1221,7 +1483,11 @@ class _PairingRequestTile extends StatelessWidget {
 }
 
 class _DeviceRow extends StatelessWidget {
-  const _DeviceRow({required this.name, required this.platform, required this.state, this.current = false});
+  const _DeviceRow(
+      {required this.name,
+      required this.platform,
+      required this.state,
+      this.current = false});
 
   final String name;
   final String platform;
@@ -1241,9 +1507,13 @@ class _DeviceRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                Text(name,
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 3),
-                Text(platform, style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                Text(platform,
+                    style: theme.textTheme.labelSmall
+                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
               ],
             ),
           ),
@@ -1273,11 +1543,14 @@ class _TrustedDeviceRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(device.name, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                Text(device.name,
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 3),
                 Text(
                   '${device.platform}${device.lastSeen == null ? '' : ' · seen ${_relativeTime(device.lastSeen!)}'}',
-                  style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  style: theme.textTheme.labelSmall
+                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                 ),
               ],
             ),
@@ -1287,7 +1560,9 @@ class _TrustedDeviceRow extends StatelessWidget {
             PopupMenuButton<String>(
               tooltip: 'Device actions',
               onSelected: (_) => onRemove!(),
-              itemBuilder: (_) => const [PopupMenuItem(value: 'remove', child: Text('Remove device'))],
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: 'remove', child: Text('Remove device'))
+              ],
             ),
         ],
       ),
@@ -1303,25 +1578,30 @@ class _PlatformGlyph extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = platform.toLowerCase();
-    final icon = name.contains('ios') || name.contains('iphone') || name.contains('ipad')
-        ? Icons.phone_iphone_rounded
-        : name.contains('android')
-            ? Icons.phone_android_rounded
-            : name.contains('mac')
-                ? Icons.laptop_mac_rounded
-                : name.contains('linux')
-                    ? Icons.computer_rounded
-                    : name.contains('windows') || name.contains('pc')
-                        ? Icons.desktop_windows_rounded
-                        : Icons.devices_rounded;
+    final icon =
+        name.contains('ios') || name.contains('iphone') || name.contains('ipad')
+            ? Icons.phone_iphone_rounded
+            : name.contains('android')
+                ? Icons.phone_android_rounded
+                : name.contains('mac')
+                    ? Icons.laptop_mac_rounded
+                    : name.contains('linux')
+                        ? Icons.computer_rounded
+                        : name.contains('windows') || name.contains('pc')
+                            ? Icons.desktop_windows_rounded
+                            : Icons.devices_rounded;
     return Container(
       width: 38,
       height: 38,
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.72),
+        color: Theme.of(context)
+            .colorScheme
+            .surfaceContainerHighest
+            .withValues(alpha: 0.72),
         borderRadius: BorderRadius.circular(11),
       ),
-      child: Icon(icon, size: 18, color: Theme.of(context).colorScheme.onSurfaceVariant),
+      child: Icon(icon,
+          size: 18, color: Theme.of(context).colorScheme.onSurfaceVariant),
     );
   }
 }
@@ -1335,15 +1615,25 @@ class _PresenceLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final online = current || state.toLowerCase() == 'online' || state.toLowerCase() == 'connected';
+    final online = current ||
+        state.toLowerCase() == 'online' ||
+        state.toLowerCase() == 'connected';
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.circle, size: 7, color: online ? colors.primary : colors.outline),
+        Icon(Icons.circle,
+            size: 7, color: online ? colors.primary : colors.outline),
         const SizedBox(width: 6),
         Text(
-          current ? 'This device' : online ? 'Online' : 'Offline',
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
+          current
+              ? 'This device'
+              : online
+                  ? 'Online'
+                  : 'Offline',
+          style: Theme.of(context)
+              .textTheme
+              .labelSmall
+              ?.copyWith(color: colors.onSurfaceVariant),
         ),
       ],
     );
@@ -1377,7 +1667,7 @@ class _SettingsPageState extends State<_SettingsPage> {
     return ListView(
       padding: EdgeInsets.zero,
       children: [
-        const _PageTitle(eyebrow: 'PREFERENCES', title: 'Settings'),
+        const _PageTitle(eyebrow: '', title: 'Settings'),
         const SizedBox(height: 28),
         Text('PRIVACY', style: _eyebrowStyle(context)),
         const SizedBox(height: 8),
@@ -1394,7 +1684,8 @@ class _SettingsPageState extends State<_SettingsPage> {
         _SettingLine(
           icon: Icons.schedule_rounded,
           title: 'Keep history',
-          description: 'Clips expire from this mesh after the selected time.',
+          description:
+              'Unpinned clips expire after this time. Pinned clips stay until you unpin or delete them.',
           trailing: DropdownButtonHideUnderline(
             child: DropdownButton<int>(
               value: _retentionValue(controller.retentionHours),
@@ -1404,57 +1695,141 @@ class _SettingsPageState extends State<_SettingsPage> {
                 DropdownMenuItem(value: 168, child: Text('7 days')),
                 DropdownMenuItem(value: 720, child: Text('30 days')),
               ],
-              onChanged: controller.working ? null : (value) {
-                if (value != null) controller.setRetentionHours(value);
-              },
+              onChanged: controller.working
+                  ? null
+                  : (value) {
+                      if (value != null) controller.setRetentionHours(value);
+                    },
             ),
           ),
         ),
-        const SizedBox(height: 26),
-        Text('DESKTOP', style: _eyebrowStyle(context)),
-        const SizedBox(height: 8),
-        if (controller.desktopAvailable)
-          _SettingLine(
-            icon: Icons.content_paste_search_rounded,
-            title: 'Automatically add desktop copies',
-            description: 'Arcade reads copied text and cannot identify passwords or other sensitive clips. Use Private mode before copying anything you do not want shared.',
-            trailing: Switch.adaptive(
-              value: controller.automaticDesktopCapture,
-              onChanged: controller.working ? null : controller.setAutomaticDesktopCapture,
-            ),
-          ),
-        if (controller.desktopCapabilities?.globalShortcut == true)
-          _SettingLine(
-            icon: Icons.keyboard_command_key_rounded,
-            title: 'Mesh Clipboard Shortcut',
-            description: 'Open the clip picker over your current app.',
-            trailing: TextButton(
-              onPressed: controller.working ? null : _beginShortcutCapture,
-              child: Text(_recording ? 'Listening…' : (_shortcutDraft ?? controller.shortcut)),
-            ),
-          )
-        else
-          _SettingLine(
-            icon: Icons.keyboard_command_key_rounded,
-            title: 'Mesh Clipboard Shortcut',
-            description: controller.desktopAvailable
-                ? 'A global shortcut is not available on this desktop.'
-                : 'Available on desktop versions of Arcade Clipboard.',
-            trailing: const Icon(Icons.info_outline_rounded, size: 20),
-          ),
-        if (_recording)
-          Focus(
-            focusNode: _shortcutFocus,
-            onKeyEvent: _captureShortcut,
-            child: Padding(
-              padding: const EdgeInsets.only(left: 49, bottom: 10),
-              child: Text(
-                'Press your preferred key combination. Esc cancels.',
-                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        const Divider(height: 1),
+        _SettingLine(
+          icon: Icons.inventory_2_outlined,
+          title: 'History limit',
+          description:
+              'Older clips are removed when the limit is reached. Pinned clips are kept first.',
+          trailing: DropdownButtonHideUnderline(
+              child: DropdownButton<int>(
+            value: const {500, 1000, 5000}.contains(controller.maxItems)
+                ? controller.maxItems
+                : 500,
+            items: const [
+              DropdownMenuItem(value: 500, child: Text('500 clips')),
+              DropdownMenuItem(value: 1000, child: Text('1,000 clips')),
+              DropdownMenuItem(value: 5000, child: Text('5,000 clips'))
+            ],
+            onChanged: controller.working
+                ? null
+                : (value) {
+                    if (value != null) controller.setMaxItems(value);
+                  },
+          )),
+        ),
+        if (controller.desktopAvailable) ...[
+          const SizedBox(height: 26),
+          Text('DESKTOP', style: _eyebrowStyle(context)),
+          const SizedBox(height: 8),
+          if (controller.desktopAvailable)
+            _SettingLine(
+              icon: Icons.content_paste_search_rounded,
+              title: 'Automatically add desktop copies',
+              description:
+                  'Adds copied text, images, and files. Use Private mode for anything you do not want shared.',
+              trailing: Switch.adaptive(
+                value: controller.automaticDesktopCapture,
+                onChanged: controller.working
+                    ? null
+                    : controller.setAutomaticDesktopCapture,
               ),
             ),
+          if (controller.desktopCapabilities?.globalShortcut == true)
+            _SettingLine(
+              icon: Icons.keyboard_command_key_rounded,
+              title: 'Mesh Clipboard Shortcut',
+              description: 'Open the clip picker over your current app.',
+              trailing: TextButton(
+                onPressed: controller.working ? null : _beginShortcutCapture,
+                child: Text(_recording
+                    ? 'Listening…'
+                    : (_shortcutDraft ?? controller.shortcut)),
+              ),
+            )
+          else
+            _SettingLine(
+              icon: Icons.keyboard_command_key_rounded,
+              title: 'Mesh Clipboard Shortcut',
+              description: controller.desktopAvailable
+                  ? 'A global shortcut is not available on this desktop.'
+                  : 'Available on desktop versions of Arcade Clipboard.',
+              trailing: const Icon(Icons.info_outline_rounded, size: 20),
+            ),
+          if (_recording)
+            Focus(
+              focusNode: _shortcutFocus,
+              onKeyEvent: _captureShortcut,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 49, bottom: 10),
+                child: Text(
+                  'Press your preferred key combination. Esc cancels.',
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                ),
+              ),
+            ),
+          const Divider(height: 1),
+        ],
+        if (controller.desktopAvailable) ...[
+          _SettingLine(
+            icon: Icons.layers_outlined,
+            title: 'Keep running in the background',
+            description:
+                'Closing the window keeps your mesh connected. Reopen Arcade from the tray.',
+            trailing: Switch.adaptive(
+                value: controller.backgroundEnabled,
+                onChanged: controller.working
+                    ? null
+                    : controller.setBackgroundEnabled),
           ),
-        const Divider(height: 1),
+          _SettingLine(
+            icon: Icons.power_settings_new_rounded,
+            title: 'Launch at login',
+            description: 'Start Arcade when you sign in to this device.',
+            trailing: Switch.adaptive(
+                value: controller.launchAtLogin,
+                onChanged:
+                    controller.working ? null : controller.setLaunchAtLogin),
+          ),
+          if (Platform.isMacOS &&
+              controller.desktopCapabilities?.paste == false)
+            _SettingLine(
+                icon: Icons.accessibility_new_rounded,
+                title: 'Allow automatic paste',
+                description:
+                    'macOS needs Accessibility access to paste into the app you were using.',
+                trailing: TextButton(
+                    onPressed: controller.requestPasteAccess,
+                    child: const Text('Allow access'))),
+        ],
+        if (!controller.desktopAvailable) ...[
+          const SizedBox(height: 26),
+          Text('KEYBOARD & SHARING', style: _eyebrowStyle(context)),
+          _SettingLine(
+              icon: Icons.keyboard_outlined,
+              title: 'Clipboard keyboard',
+              description: Platform.isIOS
+                  ? 'Enable Arcade Clipboard in Settings → General → Keyboard → Keyboards. Switch to it with the globe key to insert shared text.'
+                  : 'Enable Arcade Clipboard in your system keyboard settings. Switch to it when you want to insert shared text.',
+              trailing: TextButton(
+                  onPressed: controller.openKeyboardSettings,
+                  child: const Text('Keyboard settings'))),
+          const _SettingLine(
+              icon: Icons.ios_share_outlined,
+              title: 'Share to your mesh',
+              description:
+                  'Select text, a link, or an image in another app. Open Share and choose Arcade Clipboard. Open Arcade to sync items waiting in your inbox.',
+              trailing: SizedBox.shrink()),
+        ],
         const SizedBox(height: 26),
         Text('APPEARANCE', style: _eyebrowStyle(context)),
         const SizedBox(height: 8),
@@ -1477,8 +1852,8 @@ class _SettingsPageState extends State<_SettingsPage> {
         Text('STATUS', style: _eyebrowStyle(context)),
         const SizedBox(height: 8),
         _SettingLine(
-          icon: _connectionIcon(controller.status?.connection ?? 'offline'),
-          title: _connectionLabel(controller.status?.connection ?? 'offline'),
+          icon: _meshConnectionIcon(controller),
+          title: _meshConnectionLabel(controller),
           description: controller.status?.diagnostic.isNotEmpty == true
               ? controller.status!.diagnostic
               : 'Your clips are encrypted on this device before synchronization.',
@@ -1488,6 +1863,43 @@ class _SettingsPageState extends State<_SettingsPage> {
             icon: const Icon(Icons.refresh_rounded),
           ),
         ),
+        const SizedBox(height: 18),
+        ExpansionTile(
+          tilePadding: EdgeInsets.zero,
+          childrenPadding: const EdgeInsets.only(bottom: 16),
+          title: Text('Remote relay',
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(fontWeight: FontWeight.w600)),
+          subtitle: Text(
+              controller.relayUrl.isEmpty
+                  ? 'Local network only'
+                  : 'Relay configured',
+              style: theme.textTheme.bodySmall),
+          children: [
+            const Text(
+                'A relay connects devices on different networks. Clipboard content stays encrypted. Use the address supplied with your deployment.'),
+            const SizedBox(height: 12),
+            Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                    onPressed: () => _editRelay(context),
+                    icon: const Icon(Icons.edit_outlined, size: 17),
+                    label: Text(controller.relayUrl.isEmpty
+                        ? 'Configure relay'
+                        : 'Edit relay'))),
+          ],
+        ),
+        const SizedBox(height: 18),
+        _SettingLine(
+            icon: Icons.delete_outline_rounded,
+            title: 'Clear history',
+            description:
+                'Remove unpinned clips from this device and your mesh.',
+            trailing: TextButton(
+                onPressed:
+                    controller.working ? null : () => _clearHistory(context),
+                child: Text('Clear',
+                    style: TextStyle(color: theme.colorScheme.error)))),
         if (controller.error != null) ...[
           const SizedBox(height: 12),
           _InlineMessage(text: controller.error!, error: true),
@@ -1500,14 +1912,67 @@ class _SettingsPageState extends State<_SettingsPage> {
     );
   }
 
-  int _retentionValue(int hours) => const {1, 24, 168, 720}.contains(hours) ? hours : 24;
+  Future<void> _editRelay(BuildContext context) async {
+    final field = TextEditingController(text: widget.controller.relayUrl);
+    final value = await showDialog<String>(
+        context: context,
+        builder: (context) => AlertDialog(
+              title: const Text('Remote relay'),
+              content: SizedBox(
+                  width: 420,
+                  child: TextField(
+                      controller: field,
+                      autofocus: true,
+                      keyboardType: TextInputType.url,
+                      decoration: const InputDecoration(
+                          labelText: 'Relay address',
+                          hintText: 'wss://relay.example.com',
+                          helperText:
+                              'Leave empty to use only your local network.'))),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel')),
+                FilledButton(
+                    onPressed: () => Navigator.pop(context, field.text),
+                    child: const Text('Save'))
+              ],
+            ));
+    // Let the dialog finish disposing its TextField before its controller.
+    await Future<void>.delayed(const Duration(milliseconds: 250));
+    field.dispose();
+    if (value != null) await widget.controller.setRelayUrl(value);
+  }
+
+  Future<void> _clearHistory(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+              title: const Text('Clear unpinned history?'),
+              content: const Text(
+                  'Pinned clips stay. Deleted clips are removed from your paired devices when they reconnect.'),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('Cancel')),
+                FilledButton.tonal(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('Clear history'))
+              ],
+            ));
+    if (confirm == true) await widget.controller.clearHistory();
+  }
+
+  int _retentionValue(int hours) =>
+      const {1, 24, 168, 720}.contains(hours) ? hours : 24;
 
   void _beginShortcutCapture() {
     setState(() {
       _recording = true;
       _shortcutDraft = null;
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) => _shortcutFocus.requestFocus());
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _shortcutFocus.requestFocus());
   }
 
   KeyEventResult _captureShortcut(FocusNode node, KeyEvent event) {
@@ -1559,7 +2024,9 @@ class _SettingsPageState extends State<_SettingsPage> {
     if (key == LogicalKeyboardKey.tab) return 'TAB';
     if (key == LogicalKeyboardKey.backspace) return 'BACKSPACE';
     final label = key.keyLabel.toUpperCase();
-    if (label.length == 1 || RegExp(r'^F\d{1,2}$').hasMatch(label)) return label;
+    if (label.length == 1 || RegExp(r'^F\d{1,2}$').hasMatch(label)) {
+      return label;
+    }
     return '';
   }
 }
@@ -1580,34 +2047,43 @@ class _SettingLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 14),
-      child: Row(
-        children: [
-          SizedBox(width: 32, child: Icon(icon, size: 19, color: theme.colorScheme.onSurfaceVariant)),
-          const SizedBox(width: 13),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
-                const SizedBox(height: 4),
-                Text(description, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant, height: 1.4)),
-              ],
-            ),
-          ),
-          const SizedBox(width: 14),
-          trailing,
-        ],
-      ),
-    );
+    return LayoutBuilder(builder: (context, constraints) {
+      final narrow = constraints.maxWidth < 600;
+      final content =
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        SizedBox(
+            width: 28,
+            child: Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Icon(icon,
+                    size: 19, color: theme.colorScheme.onSurfaceVariant))),
+        const SizedBox(width: 13),
+        Expanded(
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(title,
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 4),
+          Text(description,
+              style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant, height: 1.5)),
+          if (narrow)
+            Padding(padding: const EdgeInsets.only(top: 9), child: trailing),
+        ])),
+        if (!narrow) ...[const SizedBox(width: 24), trailing],
+      ]);
+      return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 17), child: content);
+    });
   }
 }
 
 class _InviteDialog extends StatefulWidget {
-  const _InviteDialog({required this.invite});
+  const _InviteDialog({required this.invite, required this.controller});
 
   final PairingInvite invite;
+  final AppController controller;
 
   @override
   State<_InviteDialog> createState() => _InviteDialogState();
@@ -1619,26 +2095,29 @@ class _InviteDialogState extends State<_InviteDialog> {
   @override
   void initState() {
     super.initState();
-    final expiresAt = widget.invite.expiresAt;
-    if (expiresAt != null && expiresAt.isAfter(DateTime.now())) {
-      _expiryTimer = Timer(expiresAt.difference(DateTime.now()), () {
-        if (mounted) setState(() {});
-      });
-    }
+    widget.controller.addListener(_changed);
+    _expiryTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  void _changed() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
     _expiryTimer?.cancel();
+    widget.controller.removeListener(_changed);
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final invite = widget.invite;
-    final code = invite.displayCode;
-    final expired = invite.expiresAt case final expiresAt? ? !expiresAt.isAfter(DateTime.now()) : false;
+    final invite = widget.controller.invite ?? widget.invite;
+    final expired =
+        invite.expiresAt != null && !invite.expiresAt!.isAfter(DateTime.now());
     return AlertDialog(
       scrollable: true,
       title: const Text('Add a device'),
@@ -1649,13 +2128,14 @@ class _InviteDialogState extends State<_InviteDialog> {
           children: [
             Text(expired
                 ? 'This invite has expired. Close this code and create a new invite.'
-                : 'On your other device, choose Join mesh and scan this code or paste the invite.'),
+                : 'On your other device, choose Join an existing mesh. Scan this code or paste the invite.'),
             const SizedBox(height: 19),
             Container(
               width: 224,
               height: 224,
               padding: const EdgeInsets.all(13),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18)),
+              decoration: BoxDecoration(
+                  color: Colors.white, borderRadius: BorderRadius.circular(18)),
               child: QrImageView(
                 data: invite.invite,
                 version: QrVersions.auto,
@@ -1665,25 +2145,45 @@ class _InviteDialogState extends State<_InviteDialog> {
             ),
             const SizedBox(height: 13),
             Text(
-              invite.expiresAt == null ? 'This invite expires soon.' : 'Expires ${_relativeExpiry(invite.expiresAt!)}',
-              style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              invite.expiresAt == null
+                  ? 'This invite expires soon.'
+                  : 'Expires ${_relativeExpiry(invite.expiresAt!)}',
+              style: theme.textTheme.labelMedium
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
             const SizedBox(height: 13),
-            SelectableText(
-              code,
-              maxLines: 3,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall?.copyWith(fontFamily: 'monospace'),
-            ),
+            if (expired)
+              TextButton.icon(
+                  onPressed: widget.controller.working
+                      ? null
+                      : widget.controller.createInvite,
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  label: const Text('Create new invite')),
+            for (final pairing in widget.controller.pairings
+                .where((value) => value.direction == 'inbound'))
+              Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: _PairingRequestTile(
+                      controller: widget.controller, pairing: pairing)),
           ],
         ),
       ),
       actions: [
         TextButton(
-          onPressed: expired ? null : () => Clipboard.setData(ClipboardData(text: invite.invite)),
+          onPressed: expired
+              ? null
+              : () async {
+                  await Clipboard.setData(ClipboardData(text: invite.invite));
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('Invite copied.'),
+                        duration: Duration(seconds: 2)));
+                  }
+                },
           child: const Text('Copy invite'),
         ),
-        FilledButton(onPressed: () => Navigator.pop(context), child: const Text('Done')),
+        FilledButton(
+            onPressed: () => Navigator.pop(context), child: const Text('Done')),
       ],
     );
   }
@@ -1733,7 +2233,9 @@ class _MeshOverlayState extends State<MeshOverlay> {
       if (target != null) {
         unawaited(_scroll.animateTo(
           target.clamp(0.0, _scroll.position.maxScrollExtent).toDouble(),
-          duration: const Duration(milliseconds: 110),
+          duration: MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : const Duration(milliseconds: 140),
           curve: Curves.easeOut,
         ));
       }
@@ -1773,7 +2275,9 @@ class _MeshOverlayState extends State<MeshOverlay> {
                 Row(
                   children: [
                     Expanded(
-                      child: Text('Mesh Clipboard', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w650)),
+                      child: Text('Mesh Clipboard',
+                          style: theme.textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w600)),
                     ),
                     IconButton(
                       tooltip: 'Close',
@@ -1783,23 +2287,35 @@ class _MeshOverlayState extends State<MeshOverlay> {
                   ],
                 ),
                 const SizedBox(height: 11),
-                TextField(
-                  controller: _search,
-                  focusNode: _focus,
-                  onSubmitted: (_) => _selectCurrent(_visible),
-                  onChanged: (value) {
-                    setState(() => _selectedItemId = null);
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (mounted && _scroll.hasClients) _scroll.jumpTo(0);
-                    });
-                    unawaited(widget.controller.searchOverlay(value));
-                  },
-                  decoration: const InputDecoration(
-                    isDense: true,
-                    hintText: 'Search clips',
-                    prefixIcon: Icon(Icons.search_rounded, size: 19),
-                  ),
-                ),
+                CallbackShortcuts(
+                    bindings: {
+                      for (final key in const [
+                        LogicalKeyboardKey.arrowUp,
+                        LogicalKeyboardKey.arrowDown,
+                        LogicalKeyboardKey.home,
+                        LogicalKeyboardKey.end,
+                        LogicalKeyboardKey.escape,
+                        LogicalKeyboardKey.enter
+                      ])
+                        SingleActivator(key): () => _navigate(key)
+                    },
+                    child: TextField(
+                      controller: _search,
+                      focusNode: _focus,
+                      onSubmitted: (_) => _selectCurrent(_visible),
+                      onChanged: (value) {
+                        setState(() => _selectedItemId = null);
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (mounted && _scroll.hasClients) _scroll.jumpTo(0);
+                        });
+                        unawaited(widget.controller.searchOverlay(value));
+                      },
+                      decoration: const InputDecoration(
+                        isDense: true,
+                        hintText: 'Search clips',
+                        prefixIcon: Icon(Icons.search_rounded, size: 19),
+                      ),
+                    )),
                 if (widget.controller.overlaySearchLoading)
                   const LinearProgressIndicator(minHeight: 2),
                 const SizedBox(height: 10),
@@ -1807,8 +2323,11 @@ class _MeshOverlayState extends State<MeshOverlay> {
                   child: items.isEmpty
                       ? Center(
                           child: Text(
-                            _search.text.isEmpty ? 'Your shared clipboard is empty.' : 'No matching clips.',
-                            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                            _search.text.isEmpty
+                                ? 'Your shared clipboard is empty.'
+                                : 'No matching clips.',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant),
                           ),
                         )
                       : ListView.builder(
@@ -1818,8 +2337,10 @@ class _MeshOverlayState extends State<MeshOverlay> {
                           itemBuilder: (context, index) => _OverlayClipRow(
                             item: items[index],
                             selected: index == selectedIndex,
-                            onTap: () => widget.controller.selectOverlayItem(items[index]),
-                            onHover: (_) => setState(() => _selectedItemId = items[index].id),
+                            onTap: () => widget.controller
+                                .selectOverlayItem(items[index]),
+                            onHover: (_) => setState(
+                                () => _selectedItemId = items[index].id),
                           ),
                         ),
                 ),
@@ -1831,15 +2352,24 @@ class _MeshOverlayState extends State<MeshOverlay> {
                     const SizedBox(width: 4),
                     const _KeyCap('↓'),
                     const SizedBox(width: 8),
-                    Text('Navigate', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                    Text('Select',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant)),
                     const Spacer(),
                     const _KeyCap('Enter'),
                     const SizedBox(width: 6),
-                    Text('Paste', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-                    const SizedBox(width: 13),
+                    Text(
+                        widget.controller.desktopCapabilities?.paste == true
+                            ? 'Paste'
+                            : 'Copy',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant)),
+                    const SizedBox(width: 8),
                     const _KeyCap('Esc'),
                     const SizedBox(width: 6),
-                    Text('Close', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                    Text('Close',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant)),
                   ],
                 ),
               ],
@@ -1850,26 +2380,40 @@ class _MeshOverlayState extends State<MeshOverlay> {
     );
   }
 
+  void _navigate(LogicalKeyboardKey key) => _handleKey(key);
+
   KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    return _handleKey(event.logicalKey);
+  }
+
+  KeyEventResult _handleKey(LogicalKeyboardKey key) {
     final items = _visible;
-    if (event.logicalKey == LogicalKeyboardKey.escape) {
+    if (key == LogicalKeyboardKey.escape) {
       widget.controller.dismissOverlay();
       return KeyEventResult.handled;
     }
-    if (event.logicalKey == LogicalKeyboardKey.arrowDown && items.isNotEmpty) {
+    if (key == LogicalKeyboardKey.arrowDown && items.isNotEmpty) {
       final next = (_selectedIndex(items) + 1) % items.length;
       setState(() => _selectedItemId = items[next].id);
       _revealSelection(next);
       return KeyEventResult.handled;
     }
-    if (event.logicalKey == LogicalKeyboardKey.arrowUp && items.isNotEmpty) {
-      final previous = (_selectedIndex(items) - 1 + items.length) % items.length;
+    if (key == LogicalKeyboardKey.arrowUp && items.isNotEmpty) {
+      final previous =
+          (_selectedIndex(items) - 1 + items.length) % items.length;
       setState(() => _selectedItemId = items[previous].id);
       _revealSelection(previous);
       return KeyEventResult.handled;
     }
-    if (event.logicalKey == LogicalKeyboardKey.enter && items.isNotEmpty) {
+    if ((key == LogicalKeyboardKey.home || key == LogicalKeyboardKey.end) &&
+        items.isNotEmpty) {
+      final index = key == LogicalKeyboardKey.home ? 0 : items.length - 1;
+      setState(() => _selectedItemId = items[index].id);
+      _revealSelection(index);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.enter && items.isNotEmpty) {
       _selectCurrent(items);
       return KeyEventResult.handled;
     }
@@ -1898,7 +2442,9 @@ class _OverlayClipRow extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.only(bottom: 5),
         child: Material(
-          color: selected ? theme.colorScheme.primary.withValues(alpha: 0.10) : Colors.transparent,
+          color: selected
+              ? theme.colorScheme.primary.withValues(alpha: 0.10)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           child: InkWell(
             onTap: onTap,
@@ -1909,22 +2455,29 @@ class _OverlayClipRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Icon(
-                    item.kind == 'url' ? Icons.link_rounded : Icons.notes_rounded,
+                    clipIcon(item.kind),
                     size: 18,
-                    color: selected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+                    color: selected
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.onSurfaceVariant,
                   ),
                   const SizedBox(width: 11),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(item.preview, maxLines: 2, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodySmall?.copyWith(height: 1.35)),
+                        Text(item.preview,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodySmall
+                                ?.copyWith(height: 1.35)),
                         const SizedBox(height: 5),
                         Text(
                           '${item.sourceName}  ·  ${_relativeTime(item.createdAt)}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                          style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant),
                         ),
                       ],
                     ),
@@ -1956,9 +2509,13 @@ class _PageTitle extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(eyebrow, style: _eyebrowStyle(context)),
-              const SizedBox(height: 5),
-              Text(title, style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w650, letterSpacing: -0.5)),
+              if (eyebrow.isNotEmpty) ...[
+                Text(eyebrow, style: _eyebrowStyle(context)),
+                const SizedBox(height: 5)
+              ],
+              Text(title,
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w600, letterSpacing: -0.5)),
             ],
           ),
         ),
@@ -1979,7 +2536,9 @@ class _KeyboardHint extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('Open mesh clipboard', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+        Text('Open mesh clipboard',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant)),
         const SizedBox(width: 9),
         for (final part in parts) ...[
           _KeyCap(part),
@@ -2005,16 +2564,19 @@ class _KeyCap extends StatelessWidget {
         borderRadius: BorderRadius.circular(5),
         border: Border.all(color: theme.dividerColor),
       ),
-      child: Text(label, style: theme.textTheme.labelSmall?.copyWith(fontSize: 10)),
+      child: Text(label,
+          style: theme.textTheme.labelSmall?.copyWith(fontSize: 10)),
     );
   }
 }
 
 class _InlineMessage extends StatelessWidget {
-  const _InlineMessage({required this.text, this.error = false});
+  const _InlineMessage(
+      {required this.text, this.error = false, this.onDismiss});
 
   final String text;
   final bool error;
+  final VoidCallback? onDismiss;
 
   @override
   Widget build(BuildContext context) {
@@ -2028,10 +2590,25 @@ class _InlineMessage extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(error ? Icons.error_outline_rounded : Icons.check_circle_outline_rounded,
-              size: 17, color: error ? colors.error : colors.primary),
+          Icon(
+              error
+                  ? Icons.error_outline_rounded
+                  : Icons.check_circle_outline_rounded,
+              size: 17,
+              color: error ? colors.error : colors.primary),
           const SizedBox(width: 8),
-          Expanded(child: Text(text, style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.4))),
+          Expanded(
+              child: Text(text,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(height: 1.4))),
+          if (onDismiss != null)
+            IconButton(
+                onPressed: onDismiss,
+                tooltip: 'Dismiss',
+                icon: const Icon(Icons.close_rounded, size: 16),
+                visualDensity: VisualDensity.compact),
         ],
       ),
     );
@@ -2039,7 +2616,11 @@ class _InlineMessage extends StatelessWidget {
 }
 
 class _NoticeStrip extends StatelessWidget {
-  const _NoticeStrip({required this.icon, required this.text, required this.actionLabel, required this.onAction});
+  const _NoticeStrip(
+      {required this.icon,
+      required this.text,
+      required this.actionLabel,
+      required this.onAction});
 
   final IconData icon;
   final String text;
@@ -2067,11 +2648,12 @@ class _NoticeStrip extends StatelessWidget {
   }
 }
 
-TextStyle? _eyebrowStyle(BuildContext context) => Theme.of(context).textTheme.labelSmall?.copyWith(
-      letterSpacing: 1.05,
-      fontWeight: FontWeight.w700,
-      color: Theme.of(context).colorScheme.onSurfaceVariant,
-    );
+TextStyle? _eyebrowStyle(BuildContext context) =>
+    Theme.of(context).textTheme.labelSmall?.copyWith(
+          letterSpacing: 1.05,
+          fontWeight: FontWeight.w700,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        );
 
 String _relativeTime(DateTime time) {
   final difference = DateTime.now().difference(time);
@@ -2093,16 +2675,40 @@ String _relativeExpiry(DateTime time) {
   return 'in ${remaining.inDays} days';
 }
 
+String _meshConnectionLabel(AppController controller) {
+  if (controller.hasMesh && controller.devices.isEmpty) return 'Ready';
+  if (controller.status?.connection == 'online') {
+    if (controller.status?.transport == 'lan') return 'Local network';
+    if (controller.status?.transport == 'relay') return 'Relay connected';
+  }
+  return _connectionLabel(controller.status?.connection ?? 'offline');
+}
+
+IconData _meshConnectionIcon(AppController controller) =>
+    controller.hasMesh && controller.devices.isEmpty
+        ? Icons.check_circle_outline_rounded
+        : _connectionIcon(controller.status?.connection ?? 'offline');
+
 IconData _connectionIcon(String value) {
   final normalized = value.toLowerCase();
-  if (normalized.contains('online') || normalized.contains('connected')) return Icons.cloud_done_rounded;
+  if (normalized == 'online' ||
+      normalized == 'connected' ||
+      normalized == 'lan' ||
+      normalized == 'relay') {
+    return Icons.cloud_done_rounded;
+  }
   if (normalized.contains('connect')) return Icons.sync_rounded;
   return Icons.cloud_off_rounded;
 }
 
 String _connectionLabel(String value) {
   final normalized = value.toLowerCase();
-  if (normalized.contains('online') || normalized.contains('connected')) return 'Connected';
+  if (normalized == 'online' ||
+      normalized == 'connected' ||
+      normalized == 'lan' ||
+      normalized == 'relay') {
+    return 'Connected';
+  }
   if (normalized.contains('connect')) return 'Connecting';
   return 'Offline';
 }
@@ -2115,3 +2721,59 @@ String _platformLabel() => switch (Platform.operatingSystem) {
       'android' => 'Android',
       _ => 'This device',
     };
+
+class _PairingScanner extends StatefulWidget {
+  const _PairingScanner();
+  @override
+  State<_PairingScanner> createState() => _PairingScannerState();
+}
+
+class _PairingScannerState extends State<_PairingScanner> {
+  final _camera = MobileScannerController(
+      formats: const [BarcodeFormat.qrCode],
+      detectionSpeed: DetectionSpeed.noDuplicates);
+  bool _scanned = false;
+
+  @override
+  void dispose() {
+    unawaited(_camera.dispose());
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: const Text('Scan pairing code')),
+        body: Column(children: [
+          Padding(
+              padding: const EdgeInsets.all(20),
+              child: Text(
+                  'Open Add device on your other device, then point the camera at its QR code.',
+                  style: Theme.of(context).textTheme.bodyMedium)),
+          Expanded(
+              child: MobileScanner(
+            controller: _camera,
+            errorBuilder: (_, error) => Center(
+                child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Text(
+                        error.errorCode ==
+                                MobileScannerErrorCode.permissionDenied
+                            ? 'Camera access is off. Allow camera access in system settings, or go back and import a QR image.'
+                            : 'The camera could not start. Go back and import a QR image instead.',
+                        textAlign: TextAlign.center))),
+            onDetect: (capture) {
+              if (_scanned) return;
+              for (final barcode in capture.barcodes) {
+                final value = barcode.rawValue?.trim();
+                if (value != null && value.isNotEmpty) {
+                  _scanned = true;
+                  Navigator.of(context).pop(value);
+                  break;
+                }
+              }
+            },
+          )),
+          const SizedBox(height: 20),
+        ]),
+      );
+}

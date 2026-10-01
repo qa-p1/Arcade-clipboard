@@ -13,7 +13,9 @@ APP_DELEGATE = IOS_ROOT.join('Runner/AppDelegate.swift')
 APP_INFO_PLIST = IOS_ROOT.join('Runner/Info.plist')
 DEFAULT_BUNDLE_ID = 'dev.arcade.clipboard'
 DEFAULT_APP_GROUP = 'group.dev.arcade.clipboard'
-IOS_DEVICE_ARCHIVE = '$(PROJECT_DIR)/../../../target/aarch64-apple-ios/release/libarcade_core.a'
+# Flutter's Swift packages (including integration_test) require iOS 15.
+MINIMUM_IOS = '15.0'
+IOS_DEVICE_ARCHIVE = '$(PROJECT_DIR)/../../../target/$(ARCADE_RUST_IOS_TARGET)/release/libarcade_core.a'
 
 def abort_setup(message)
   warn "iOS setup: #{message}"
@@ -70,7 +72,7 @@ def add_embed_extension(host, extension)
   host.add_dependency(extension) unless already_depends
 
   phase = host.copy_files_build_phases.find { |item| item.name == 'Embed App Extensions' }
-  phase ||= host.new_copy_files_build_phase('Embed App Extensions', :plug_ins)
+  phase ||= host.new_copy_files_build_phase('Embed App Extensions')
   phase.dst_subfolder_spec = '13' # PlugIns
   phase.add_file_reference(extension.product_reference, true)
   build_file = phase.files.find { |item| item.file_ref == extension.product_reference }
@@ -89,7 +91,13 @@ def find_or_create_extension(project, name, deployment_target)
 end
 
 def patch_app_delegate(source)
-  registration = 'MobileMethodChannel.register(with: flutterController.binaryMessenger)'
+  registration = 'MobileMethodChannel.register('
+  return source if source.include?(registration)
+  if source.include?('didInitializeImplicitFlutterEngine')
+    return source.sub('GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)',
+      "GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)\n    MobileMethodChannel.register(with: engineBridge.applicationRegistrar.messenger())")
+  end
+
   return source if source.include?(registration)
 
   unless source.match?(/^[ \t]*GeneratedPluginRegistrant\.register\(with: self\)[ \t]*$/)
@@ -150,8 +158,12 @@ abort_setup('Runner.xcodeproj has no application target named Runner') unless ru
 deployment_targets = runner.build_configurations.map do |configuration|
   configuration.build_settings['IPHONEOS_DEPLOYMENT_TARGET']
 end.compact.reject(&:empty?)
-deployment_target = deployment_targets.max_by { |version| version.split('.').map(&:to_i) } || '14.0'
-deployment_target = [deployment_target, '14.0'].max_by { |version| version.split('.').map(&:to_i) }
+deployment_target = deployment_targets.max_by { |version| version.split('.').map(&:to_i) } || MINIMUM_IOS
+deployment_target = [deployment_target, MINIMUM_IOS].max_by { |version| version.split('.').map(&:to_i) }
+# The app, its extensions and every Swift package must agree on one floor.
+(project.build_configurations + runner.build_configurations).each do |configuration|
+  configuration.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = deployment_target
+end
 
 ios_group = find_or_create_group(project.main_group, 'Arcade iOS Integration', '../../../platform/ios')
 runner_group = find_or_create_group(ios_group, 'Runner', 'Runner')
@@ -180,20 +192,37 @@ add_sources(share, [store_ref, share_ref])
 add_sources(keyboard, [store_ref, keyboard_ref])
 
 set_configurations(runner, {
+  # FFI resolves exported Rust symbols at runtime, outside the linker's call graph.
+  'DEAD_CODE_STRIPPING' => 'NO',
+  'STRIP_INSTALLED_PRODUCT' => 'NO',
+  'STRIP_STYLE' => 'non-global',
   'PRODUCT_BUNDLE_IDENTIFIER' => bundle_id,
   'CODE_SIGN_ENTITLEMENTS' => '../../../platform/ios/Configuration/Runner.entitlements',
 })
 enable_app_groups_capability(project, runner)
-runner.build_configurations.each { |configuration| add_force_load(configuration.build_settings) }
+runner.build_configurations.each do |configuration|
+  settings = configuration.build_settings
+  settings['ARCADE_RUST_IOS_TARGET[sdk=iphoneos*]'] = 'aarch64-apple-ios'
+  settings['ARCADE_RUST_IOS_TARGET[sdk=iphonesimulator*][arch=arm64]'] = 'aarch64-apple-ios-sim'
+  settings['ARCADE_RUST_IOS_TARGET[sdk=iphonesimulator*][arch=x86_64]'] = 'x86_64-apple-ios'
+  add_force_load(settings)
+end
 
 [
   [share, share_name, 'ShareExtension', 'ShareExtension.entitlements'],
   [keyboard, keyboard_name, 'KeyboardExtension', 'KeyboardExtension.entitlements'],
 ].each do |target, target_name, plist_name, entitlements_name|
+  # Extension versions must match the containing app, including CLI overrides.
+  target.build_configurations.each do |configuration|
+    runner_configuration = runner.build_configurations.find { |item| item.name == configuration.name }
+    configuration.base_configuration_reference = runner_configuration.base_configuration_reference if runner_configuration
+  end
   set_configurations(target, {
     'APPLICATION_EXTENSION_API_ONLY' => 'YES',
     'CODE_SIGN_ENTITLEMENTS' => "../../../platform/ios/Configuration/#{entitlements_name}",
     'CODE_SIGN_STYLE' => 'Automatic',
+    'CURRENT_PROJECT_VERSION' => '$(FLUTTER_BUILD_NUMBER)',
+    'MARKETING_VERSION' => '$(FLUTTER_BUILD_NAME)',
     'GENERATE_INFOPLIST_FILE' => 'NO',
     'INFOPLIST_FILE' => "../../../platform/ios/#{plist_name}/Info.plist",
     'IPHONEOS_DEPLOYMENT_TARGET' => deployment_target,
@@ -201,7 +230,7 @@ runner.build_configurations.each { |configuration| add_force_load(configuration.
     'PRODUCT_BUNDLE_IDENTIFIER' => "#{bundle_id}.#{target_name == share_name ? 'share' : 'keyboard'}",
     'PRODUCT_NAME' => '$(TARGET_NAME)',
     'SKIP_INSTALL' => 'YES',
-    'SUPPORTED_PLATFORMS' => 'iphoneos',
+    'SUPPORTED_PLATFORMS' => 'iphoneos iphonesimulator',
     'SWIFT_VERSION' => '5.0',
     'TARGETED_DEVICE_FAMILY' => '1,2',
   })
@@ -233,4 +262,4 @@ puts "Project backup: #{project_backup}"
 puts "AppDelegate backup: #{APP_DELEGATE}.arcade-ios.bak" if app_delegate_updated != app_delegate_original
 puts "Runner Info.plist backup: #{APP_INFO_PLIST}.arcade-ios.bak" if app_info_updated != app_info_original
 puts 'Select the same signing team for all targets and register the App Group for that team.'
-puts 'No Bonjour service is registered; the current iOS transport uses direct TCP connections.'
+puts 'The host uses authenticated direct connections and local mesh discovery.'

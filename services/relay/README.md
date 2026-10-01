@@ -44,14 +44,16 @@ invalidate an unused, client-generated ticket. The client must locally expire
 and consume an invite, and the devices must complete Noise verification and
 explicit pairing consent before trusting one another.
 
-After successful pairing, clients may establish a separate paired route over
-their Noise session. Slots `a` and `b` are the mesh owner and joiner. Paired route
-credentials should be generated only after mutual consent, persisted securely
-on clients, and transmitted only inside the encrypted session. The service
+After successful pairing, any two trusted members may establish a separate
+paired route. Slots `a` and `b` are assigned by device-ID ordering, including
+member-to-member synchronization while the creator is offline. Route IDs and
+tickets are independently derived from the two devices' contributory X25519
+secret, so a public route ID does not reveal its ticket. The service
 allows one live socket per slot, drops both sides when either disconnects, and
 allows the two holders to reconnect using the same route ID and token. An
 unpaired reconnect attempt expires after 120 seconds. Paired-route hashes live
-in memory and expire after 30 days of inactivity; after a service restart both
+in memory and expire after 10 minutes of inactivity; idle records can also be
+evicted when the bounded route table fills. After a service restart both
 clients can establish a fresh rendezvous using their retained route credentials.
 
 Each binary WebSocket message is forwarded as one opaque message without
@@ -65,12 +67,15 @@ sync/history storage after reconnect; the relay does not claim delivery.
 ## Limits and deployment notes
 
 The initial in-memory limits are 512 active connections, 16 active connections
-per observed IP, 120 upgrade attempts per observed IP per minute, 512 pending
+per observed IP by default, 120 upgrade attempts per observed IP per minute, 512 pending
 invite rendezvous entries, and 4,096 paired-route records. The service reads
 the peer address with Axum `ConnectInfo`; it deliberately ignores
 `X-Forwarded-For` so untrusted clients cannot spoof it. Behind a reverse proxy,
 the application sees the proxy address. Enforce per-client rate limits at that
-trusted proxy, and do not trust arbitrary forwarded headers.
+trusted proxy, and do not trust arbitrary forwarded headers. Set
+ARCADE_RELAY_MAX_CONNECTIONS_PER_IP to a number from 1 to 512 to configure the
+connection cap for the actual topology. The supplied Compose deployment uses
+512 because Caddy is its only observed peer; the upgrade limit stays aggregate.
 
 The bearer token is in the query string to match the v1 client contract. Reverse
 proxies, load balancers, and observability tools must redact query strings from
@@ -78,6 +83,7 @@ access logs. The relay does not emit request/access logs by default. Protect the
 WebSocket connection with TLS (`wss://`) outside loopback development. The
 `/healthz` route reports service readiness and is intentionally unauthenticated.
 
-The service is deliberately a small single process with in-memory rendezvous
-state. It provides no durable queue, horizontal coordination, registered invite
-issuer, or production deployment defaults yet.
+The service is a single process with in-memory rendezvous state. It provides no
+durable queue, horizontal coordination or registered invite issuer. A non-root
+Docker image, internal-only Rust service and Caddy HTTPS Compose deployment are
+included. Follow [domain and Cloudflare setup](../../docs/relay-deployment.md).

@@ -6,6 +6,8 @@ final class MeshKeyboardViewController: UIInputViewController, UITextFieldDelega
     private let switchButton = UIButton(type: .system)
     private let stateLabel = UILabel()
     private let tableView = UITableView(frame: .zero, style: .plain)
+    private let searchKeys = UIStackView()
+    private let modeControl = UISegmentedControl(items: ["Recent", "Pinned"])
     private var items: [MobileSharedStore.KeyboardItem] = []
     private var filteredItems: [MobileSharedStore.KeyboardItem] = []
     private var activeStore: MobileSharedStore?
@@ -21,6 +23,13 @@ final class MeshKeyboardViewController: UIInputViewController, UITextFieldDelega
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         refreshClips()
+    }
+
+    override func viewWillLayoutSubviews() {
+        super.viewWillLayoutSubviews()
+        // Only reliable once the keyboard is in a window: devices with a
+        // system globe key below the keyboard must not show a second one.
+        switchButton.isHidden = !needsInputModeSwitchKey
     }
 
     private func buildView() {
@@ -41,7 +50,6 @@ final class MeshKeyboardViewController: UIInputViewController, UITextFieldDelega
         switchButton.accessibilityLabel = "Switch keyboard"
         switchButton.titleLabel?.font = .systemFont(ofSize: 22)
         switchButton.addTarget(self, action: #selector(handleInputModeListAction(_:with:)), for: .allTouchEvents)
-        switchButton.isHidden = !needsInputModeSwitchKey
 
         searchField.placeholder = "Search shared clips"
         searchField.borderStyle = .roundedRect
@@ -54,6 +62,28 @@ final class MeshKeyboardViewController: UIInputViewController, UITextFieldDelega
         searchField.delegate = self
         searchField.addTarget(self, action: #selector(searchChanged), for: .editingChanged)
         searchField.accessibilityLabel = "Search shared clips"
+        searchField.inputView = UIView() // Search is edited by our own keys.
+
+        modeControl.selectedSegmentIndex = 0
+        modeControl.addTarget(self, action: #selector(searchChanged), for: .valueChanged)
+        searchKeys.axis = .vertical
+        searchKeys.spacing = 5
+        searchKeys.isHidden = true
+        for letters in [Array("qwertyuiop"), Array("asdfghjkl"), Array("zxcvbnm")] {
+            let row = UIStackView()
+            row.axis = .horizontal
+            row.spacing = 3
+            row.distribution = .fillEqually
+            for letter in letters { row.addArrangedSubview(searchKey(String(letter))) }
+            row.heightAnchor.constraint(equalToConstant: 31).isActive = true
+            searchKeys.addArrangedSubview(row)
+        }
+        let controls = UIStackView(arrangedSubviews: [searchKey("Space"), searchKey("⌫"), searchKey("Clear"), searchKey("Done")])
+        controls.axis = .horizontal
+        controls.spacing = 4
+        controls.distribution = .fillEqually
+        controls.heightAnchor.constraint(equalToConstant: 32).isActive = true
+        searchKeys.addArrangedSubview(controls)
 
         stateLabel.font = .preferredFont(forTextStyle: .footnote)
         stateLabel.textColor = .secondaryLabel
@@ -71,7 +101,7 @@ final class MeshKeyboardViewController: UIInputViewController, UITextFieldDelega
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "clip")
         tableView.keyboardDismissMode = .onDrag
 
-        let stack = UIStackView(arrangedSubviews: [header, searchField, stateLabel, tableView])
+        let stack = UIStackView(arrangedSubviews: [header, searchField, modeControl, stateLabel, tableView, searchKeys])
         stack.axis = .vertical
         stack.spacing = 8
         stack.translatesAutoresizingMaskIntoConstraints = false
@@ -91,21 +121,31 @@ final class MeshKeyboardViewController: UIInputViewController, UITextFieldDelega
 
     private func refreshClips() {
         do {
-            let store = try MobileSharedStore()
+            let store = try MobileSharedStore(readOnly: true)
             activeStore = store
             let snapshot = try store.readKeyboardHistory()
             items = snapshot.paused ? [] : snapshot.items
             filterItems()
             if snapshot.paused {
                 showState("Mesh is paused.")
+            } else if snapshot.needsRefresh {
+                showState(hasFullAccess
+                    ? "Open Arcade Clipboard to refresh shared clips."
+                    : "Open Arcade Clipboard to refresh shared clips. If they still don’t appear, turn on Allow Full Access for this keyboard in Settings.")
             } else if items.isEmpty {
                 showState("No shared clips yet.")
             }
         } catch {
             activeStore = nil
             items = []
-            showState("Shared clips aren’t available. Open Arcade Clipboard and try again.")
+            showState(unavailableMessage)
         }
+    }
+
+    private var unavailableMessage: String {
+        hasFullAccess
+            ? "Shared clips aren’t available. Open Arcade Clipboard and try again."
+            : "Shared clips aren’t available. Turn on Allow Full Access for this keyboard in Settings › General › Keyboard › Keyboards, then try again."
     }
 
     @objc private func searchChanged() {
@@ -115,8 +155,9 @@ final class MeshKeyboardViewController: UIInputViewController, UITextFieldDelega
     private func filterItems() {
         let query = searchField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         filteredItems = items.filter { item in
-            query.isEmpty || item.text.localizedCaseInsensitiveContains(query) ||
-                item.sourceName.localizedCaseInsensitiveContains(query)
+            (modeControl.selectedSegmentIndex != 1 || item.pinned) &&
+                (query.isEmpty || item.text.localizedCaseInsensitiveContains(query) ||
+                item.sourceName.localizedCaseInsensitiveContains(query))
         }
         tableView.reloadData()
         if filteredItems.isEmpty, !items.isEmpty {
@@ -142,6 +183,42 @@ final class MeshKeyboardViewController: UIInputViewController, UITextFieldDelega
         return true
     }
 
+    func textFieldShouldBeginEditing(_ textField: UITextField) -> Bool {
+        searchKeys.isHidden = false
+        tableView.isHidden = true
+        modeControl.isHidden = true
+        stateLabel.isHidden = true
+        return false // Keep the host field as the textDocumentProxy target.
+    }
+
+    private func searchKey(_ title: String) -> UIButton {
+        let button = UIButton(type: .system)
+        button.setTitle(title, for: .normal)
+        button.titleLabel?.font = .systemFont(ofSize: 16)
+        button.backgroundColor = .systemBackground
+        button.layer.cornerRadius = 5
+        button.accessibilityLabel = title == "⌫" ? "Delete search character" : title
+        button.addTarget(self, action: #selector(searchKeyPressed(_:)), for: .touchUpInside)
+        return button
+    }
+
+    @objc private func searchKeyPressed(_ button: UIButton) {
+        let key = button.title(for: .normal) ?? ""
+        var query = searchField.text ?? ""
+        switch key {
+        case "Done":
+            searchKeys.isHidden = true
+            tableView.isHidden = false
+            modeControl.isHidden = false
+        case "Clear": query = ""
+        case "⌫": if !query.isEmpty { query.removeLast() }
+        case "Space": if query.count < 100 { query += " " }
+        default: if query.count < 100 { query += key }
+        }
+        searchField.text = query
+        filterItems()
+    }
+
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         filteredItems.count
     }
@@ -159,7 +236,8 @@ final class MeshKeyboardViewController: UIInputViewController, UITextFieldDelega
         content.textProperties.color = .label
         cell.contentConfiguration = content
         cell.backgroundColor = .clear
-        cell.accessoryType = item.pinned ? .bookmark : .none
+        cell.accessoryType = .none
+        if item.pinned { content.secondaryText = "Pinned · " + subtitle(for: item); cell.contentConfiguration = content }
         cell.accessibilityLabel = "\(subtitle(for: item)), \(item.text.prefix(120)). Tap to insert."
         return cell
     }
@@ -177,13 +255,15 @@ final class MeshKeyboardViewController: UIInputViewController, UITextFieldDelega
             // Never read before/after-cursor text or send typed input to the app. Insert only the selected clip.
             textDocumentProxy.insertText(latest.text)
         } catch {
-            showState("Shared clips aren’t available. Open Arcade Clipboard and try again.")
+            showState(unavailableMessage)
         }
     }
 
+    private let relativeFormatter = RelativeDateTimeFormatter()
+
     private func subtitle(for item: MobileSharedStore.KeyboardItem) -> String {
         let date = Date(timeIntervalSince1970: Double(item.createdAt) / 1000)
-        let relative = RelativeDateTimeFormatter().localizedString(for: date, relativeTo: Date())
+        let relative = relativeFormatter.localizedString(for: date, relativeTo: Date())
         return [item.sourceName, relative].filter { !$0.isEmpty }.joined(separator: " · ")
     }
 }

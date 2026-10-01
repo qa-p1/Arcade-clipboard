@@ -3,6 +3,12 @@ include: package:flutter_lints/flutter.yaml
 analyzer:
   exclude:
     - lib/src/rust/**
+    - build/**
+    - android/**
+    - ios/**
+    - windows/**
+    - macos/**
+    - linux/**
   language:
     strict-casts: true
     strict-inference: true

@@ -1,4 +1,6 @@
 #include "include/arcade_desktop_bridge/arcade_desktop_bridge_plugin.h"
+#include "clipboard_bridge.h"
+#include "lifecycle_bridge.h"
 
 #include <gtk/gtk.h>
 
@@ -14,6 +16,11 @@ struct PluginState {
   gatomicrefcount references;
   FlMethodChannel* channel = nullptr;
   std::string target_window;
+  LinuxLifecycle* lifecycle = nullptr;
+  GtkClipboard* clipboard = nullptr;
+  gulong clipboard_listener = 0;
+  gint64 clipboard_revision = 0;
+  bool capture_enabled = false;
 };
 
 PluginState* RefState(PluginState* state) {
@@ -23,6 +30,10 @@ PluginState* RefState(PluginState* state) {
 
 void UnrefState(PluginState* state) {
   if (g_atomic_ref_count_dec(&state->references)) {
+    if (state->clipboard != nullptr && state->clipboard_listener != 0) {
+      g_signal_handler_disconnect(state->clipboard, state->clipboard_listener);
+    }
+    DestroyLinuxLifecycle(state->lifecycle);
     g_clear_object(&state->channel);
     delete state;
   }
@@ -199,6 +210,21 @@ void PasteIfStillFocusedAsync(
 void HandleMethodCall(FlMethodChannel*, FlMethodCall* call, gpointer user_data) {
   auto* state = static_cast<PluginState*>(user_data);
   const gchar* method = fl_method_call_get_name(call);
+  if (g_strcmp0(method, "clipboardRevision") == 0) {
+    g_autoptr(FlValue) value = fl_value_new_int(state->clipboard_revision);
+    g_autoptr(FlMethodResponse) response = FL_METHOD_RESPONSE(fl_method_success_response_new(value));
+    fl_method_call_respond(call, response, nullptr);
+    return;
+  }
+  if (g_strcmp0(method, "setClipboardCaptureEnabled") == 0) {
+    FlValue* arguments = fl_method_call_get_args(call);
+    FlValue* enabled = arguments == nullptr || fl_value_get_type(arguments) != FL_VALUE_TYPE_MAP
+        ? nullptr : fl_value_lookup_string(arguments, "enabled");
+    state->capture_enabled = enabled != nullptr && fl_value_get_type(enabled) == FL_VALUE_TYPE_BOOL && fl_value_get_bool(enabled);
+    ReturnSuccess(call);
+    return;
+  }
+  if (HandleClipboardMethod(call) || HandleLifecycleMethod(state->lifecycle, call)) return;
   if (g_strcmp0(method, "capabilities") == 0) {
     const bool wayland = IsWayland();
     const bool x11 = !wayland && g_getenv("DISPLAY") != nullptr;
@@ -289,6 +315,13 @@ void DestroyPlugin(gpointer user_data) {
   UnrefState(state);
 }
 
+void ClipboardChanged(GtkClipboard*, GdkEventOwnerChange*, gpointer user_data) {
+  auto* state = static_cast<PluginState*>(user_data);
+  ++state->clipboard_revision;
+  if (!state->capture_enabled) return;
+  fl_method_channel_invoke_method(state->channel, "clipboardChanged", nullptr, nullptr, nullptr, nullptr);
+}
+
 }  // namespace
 
 void arcade_desktop_bridge_plugin_register_with_registrar(FlPluginRegistrar* registrar) {
@@ -299,6 +332,9 @@ void arcade_desktop_bridge_plugin_register_with_registrar(FlPluginRegistrar* reg
       fl_plugin_registrar_get_messenger(registrar),
       "arcade_clipboard/desktop_bridge",
       FL_METHOD_CODEC(codec));
+  state->lifecycle = CreateLinuxLifecycle(registrar, state->channel);
+  state->clipboard = gtk_clipboard_get(GDK_SELECTION_CLIPBOARD);
+  state->clipboard_listener = g_signal_connect(state->clipboard, "owner-change", G_CALLBACK(ClipboardChanged), state);
   fl_method_channel_set_method_call_handler(
       state->channel, HandleMethodCall, state, DestroyPlugin);
 }

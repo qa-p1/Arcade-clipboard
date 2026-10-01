@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Run only in a trusted native development environment after resolving the
-# Flutter execution blocker recorded in docs/verification/toolchain-blocker.md.
+# Restore a missing platform runner without overwriting customized runners.
 set -euo pipefail
 arcade_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 command -v flutter >/dev/null || { echo 'Flutter is required.' >&2; exit 1; }

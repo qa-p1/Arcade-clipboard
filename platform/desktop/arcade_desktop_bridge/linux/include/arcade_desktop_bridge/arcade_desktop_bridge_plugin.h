@@ -5,7 +5,8 @@
 
 G_BEGIN_DECLS
 
-void arcade_desktop_bridge_plugin_register_with_registrar(FlPluginRegistrar* registrar);
+__attribute__((visibility("default"))) void
+arcade_desktop_bridge_plugin_register_with_registrar(FlPluginRegistrar* registrar);
 
 G_END_DECLS
 

@@ -130,7 +130,9 @@ async fn paired_routes_reconnect_only_with_matching_token_and_distinct_slots() {
         .await
         .unwrap();
     let payload = b"reconnected".to_vec();
-    a2.send(Message::Binary(payload.clone().into())).await.unwrap();
+    a2.send(Message::Binary(payload.clone().into()))
+        .await
+        .unwrap();
     let received = timeout(Duration::from_secs(2), b2.next())
         .await
         .unwrap()

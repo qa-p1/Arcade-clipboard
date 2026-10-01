@@ -14,10 +14,15 @@ class InviteQrDecoder {
     }
     final dimensions = _dimensions(bytes);
     if (dimensions == null) {
-      throw const FormatException('Choose a PNG or JPEG image containing a pairing QR code.');
+      throw const FormatException(
+          'Choose a PNG or JPEG image containing a pairing QR code.');
     }
     final (width, height) = dimensions;
-    if (width <= 0 || height <= 0 || width > maxDimension || height > maxDimension || width * height > maxPixels) {
+    if (width <= 0 ||
+        height <= 0 ||
+        width > maxDimension ||
+        height > maxDimension ||
+        width * height > maxPixels) {
       throw const FormatException('This image is too large to scan safely.');
     }
 
@@ -27,15 +32,20 @@ class InviteQrDecoder {
     }
     // RGBLuminanceSource reads each 32-bit pixel as ARGB. BGRA byte order
     // produces that value when read through Dart's little-endian Int32List.
-    final pixelBytes = decoded.convert(numChannels: 4).getBytes(order: img.ChannelOrder.bgra);
+    final pixelBytes =
+        decoded.convert(numChannels: 4).getBytes(order: img.ChannelOrder.bgra);
     final luminance = RGBLuminanceSource(
       decoded.width,
       decoded.height,
-      pixelBytes.buffer.asInt32List(pixelBytes.offsetInBytes, pixelBytes.lengthInBytes ~/ 4),
+      pixelBytes.buffer
+          .asInt32List(pixelBytes.offsetInBytes, pixelBytes.lengthInBytes ~/ 4),
     );
     try {
-      final result = QRCodeReader().decode(BinaryBitmap(HybridBinarizer(luminance)));
-      if (result.text.trim().isEmpty) throw const FormatException('The QR code is empty.');
+      final result =
+          QRCodeReader().decode(BinaryBitmap(HybridBinarizer(luminance)));
+      if (result.text.trim().isEmpty) {
+        throw const FormatException('The QR code is empty.');
+      }
       return result.text.trim();
     } catch (exception) {
       if (exception is FormatException) rethrow;
@@ -84,7 +94,10 @@ class InviteQrDecoder {
   }
 
   int _u32be(Uint8List bytes, int offset) =>
-      (bytes[offset] << 24) | (bytes[offset + 1] << 16) | (bytes[offset + 2] << 8) | bytes[offset + 3];
+      (bytes[offset] << 24) |
+      (bytes[offset + 1] << 16) |
+      (bytes[offset + 2] << 8) |
+      bytes[offset + 3];
 
   bool _isStartOfFrame(int marker) => const {
         0xC0,

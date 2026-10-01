@@ -55,7 +55,7 @@ class MeshClipboardIme : InputMethodService() {
 
         search = EditText(this).apply {
             hint = "Search shared clips"
-            singleLine = true
+            setSingleLine(true)
             textSize = 15f
             setPadding(dp(12), 0, dp(12), 0)
             addTextChangedListener(SimpleTextWatcher { renderItems() })

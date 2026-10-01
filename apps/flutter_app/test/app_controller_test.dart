@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:arcade_clipboard/models.dart';
 import 'package:arcade_clipboard/platform/desktop_adapter.dart';
@@ -24,7 +25,8 @@ void main() {
 
     await fixture.controller.createMesh('   ');
     expect(fixture.controller.error, 'Add a name for this device.');
-    expect(fixture.core.calls.where((call) => call.operation == 'create_mesh'), isEmpty);
+    expect(fixture.core.calls.where((call) => call.operation == 'create_mesh'),
+        isEmpty);
 
     await fixture.controller.createMesh('Studio laptop');
     expect(fixture.controller.hasMesh, isTrue);
@@ -32,12 +34,15 @@ void main() {
     expect(fixture.controller.error, isNull);
   });
 
-  test('automatic desktop capture is opt-in on startup', () async {
+  test('desktop capture defaults on but stays idle without session support',
+      () async {
     final fixture = await _Fixture.create(hasMesh: true);
     addTearDown(fixture.dispose);
 
-    expect(fixture.controller.automaticDesktopCapture, isFalse);
-    expect(fixture.core.calls.where((call) => call.operation == 'capture'), isEmpty);
+    expect(fixture.controller.automaticDesktopCapture, isTrue);
+    expect(fixture.controller.error, isNull);
+    expect(fixture.core.calls.where((call) => call.operation == 'capture'),
+        isEmpty);
   });
 
   test('device models preserve the owner role from the core API', () {
@@ -60,7 +65,8 @@ void main() {
     expect(member.isOwner, isFalse);
   });
 
-  test('the local owner manages peers without being counted as a paired device', () async {
+  test('the local owner manages peers without being counted as a paired device',
+      () async {
     final fixture = await _Fixture.create(hasMesh: true);
     addTearDown(fixture.dispose);
 
@@ -68,7 +74,9 @@ void main() {
     expect(fixture.controller.devices, isEmpty);
   });
 
-  test('pairing requests arrive through revision changes and expired requests are hidden', () async {
+  test(
+      'pairing requests arrive through revision changes and expired requests are hidden',
+      () async {
     final fixture = await _Fixture.create(hasMesh: true);
     addTearDown(fixture.dispose);
 
@@ -94,14 +102,18 @@ void main() {
     fixture.core.signalChange(revision: 2);
     await Future<void>.delayed(Duration.zero);
 
-    expect(fixture.controller.pairings.map((pairing) => pairing.sessionId), ['active-session']);
+    expect(fixture.controller.pairings.map((pairing) => pairing.sessionId),
+        ['active-session']);
   });
 
-  test('outbound verification follows pending pairing status and clears when it ends', () async {
+  test(
+      'outbound verification follows pending pairing status and clears when it ends',
+      () async {
     final fixture = await _Fixture.create();
     addTearDown(fixture.dispose);
 
-    await fixture.controller.joinMesh(invite: 'test-invite', deviceName: 'Phone');
+    await fixture.controller
+        .joinMesh(invite: 'test-invite', deviceName: 'Phone');
     expect(fixture.controller.currentJoin?.sessionId, 'outbound-session');
 
     fixture.core.setPendingPairings([]);
@@ -111,7 +123,8 @@ void main() {
     expect(fixture.controller.notice, contains('request ended'));
   });
 
-  test('later history searches win when an older request completes last', () async {
+  test('later history searches win when an older request completes last',
+      () async {
     final fixture = await _Fixture.create(hasMesh: true);
     addTearDown(fixture.dispose);
     final slow = Completer<Map<String, dynamic>>();
@@ -121,9 +134,13 @@ void main() {
 
     final slowRequest = fixture.controller.refreshHistory(query: 'slow');
     final fastRequest = fixture.controller.refreshHistory(query: 'fast');
-    fast.complete({'items': [_historyItem('fast', 'fast result')]});
+    fast.complete({
+      'items': [_historyItem('fast', 'fast result')]
+    });
     await fastRequest;
-    slow.complete({'items': [_historyItem('slow', 'stale result')]});
+    slow.complete({
+      'items': [_historyItem('slow', 'stale result')]
+    });
     await slowRequest;
 
     expect(fixture.controller.query, 'fast');
@@ -131,13 +148,16 @@ void main() {
     expect(fixture.controller.historyLoading, isFalse);
   });
 
-  test('core failures stay visible and can be cleared by a successful action', () async {
+  test('core failures stay visible and can be cleared by a successful action',
+      () async {
     final fixture = await _Fixture.create();
     addTearDown(fixture.dispose);
-    fixture.core.failures['create_mesh'] = StateError('secure keyring is locked');
+    fixture.core.failures['create_mesh'] =
+        StateError('secure keyring is locked');
 
     await fixture.controller.createMesh('Laptop');
-    expect(fixture.controller.error, contains('secure key store is unavailable'));
+    expect(
+        fixture.controller.error, contains('secure key store is unavailable'));
     expect(fixture.controller.hasMesh, isFalse);
 
     fixture.core.failures.remove('create_mesh');
@@ -158,7 +178,11 @@ void main() {
 
     await fixture.controller.setRetentionHours(0);
     expect(fixture.controller.retentionHours, 168);
-    expect(fixture.controller.error, 'Choose a supported history retention period.');
+    expect(fixture.controller.error,
+        'Choose a supported history retention period.');
+
+    await fixture.controller.setMaxItems(1000);
+    expect(fixture.controller.maxItems, 1000);
 
     await fixture.controller.setThemeMode(ThemeMode.dark);
     expect(fixture.controller.themeMode, ThemeMode.dark);
@@ -178,9 +202,11 @@ void main() {
       'pinned': false,
     });
 
-    expect(item.expiresAt, DateTime.fromMillisecondsSinceEpoch(expiresAt.millisecondsSinceEpoch));
+    expect(item.expiresAt,
+        DateTime.fromMillisecondsSinceEpoch(expiresAt.millisecondsSinceEpoch));
     expect(item.isExpiredAt(now), isFalse);
-    expect(item.toKeyboardJson()['expires_at'], expiresAt.millisecondsSinceEpoch);
+    expect(
+        item.toKeyboardJson()['expires_at'], expiresAt.millisecondsSinceEpoch);
     expect(
       ClipboardItem.fromJson({
         'id': 'clip-2',
@@ -193,6 +219,81 @@ void main() {
       isTrue,
     );
   });
+
+  test('manual capture adds history and private mode blocks the next capture',
+      () async {
+    final fixture = await _Fixture.create(hasMesh: true);
+    addTearDown(fixture.dispose);
+
+    await fixture.controller.addText('A clip to share');
+    expect(fixture.controller.items.single.text, 'A clip to share');
+    await fixture.controller.setPrivatePause(true);
+    await fixture.controller.addText('Keep this private');
+
+    expect(fixture.controller.items, hasLength(1));
+    expect(fixture.controller.error, contains('Resume sharing'));
+    expect(fixture.core.calls.where((call) => call.operation == 'capture'),
+        hasLength(1));
+  });
+
+  test('image payloads survive history and payload loading without text',
+      () async {
+    final fixture = await _Fixture.create(hasMesh: true);
+    addTearDown(fixture.dispose);
+    final bytes = Uint8List.fromList([137, 80, 78, 71]);
+
+    await fixture.controller.addRepresentations(
+      representations: [
+        ClipRepresentation(
+            mimeType: 'image/png', name: 'Screenshot.png', bytes: bytes)
+      ],
+      kind: 'image',
+    );
+    final item = fixture.controller.items.single;
+    final payload = await fixture.controller.loadPayload(item);
+
+    expect(item.kind, 'image');
+    expect(item.canInsertText, isFalse);
+    expect(payload.representations.single.bytes, bytes);
+    expect(payload.representations.single.name, 'Screenshot.png');
+  });
+
+  test('the overlay opens with the newest clip ahead of an older pinned clip',
+      () async {
+    final fixture = await _Fixture.create(hasMesh: true);
+    addTearDown(fixture.dispose);
+    final now = DateTime.now().millisecondsSinceEpoch;
+    fixture.core.historyItems.addAll([
+      {
+        ..._historyItem('old', 'Old pinned'),
+        'created_at': now - 10000,
+        'pinned': true
+      },
+      {..._historyItem('new', 'Newest'), 'created_at': now},
+    ]);
+
+    await fixture.controller.refreshHistory();
+    expect(fixture.controller.items.first.id, 'old');
+    await fixture.controller.searchOverlay('');
+    expect(fixture.controller.overlayItems.first.id, 'new');
+  });
+
+  test('clearing history preserves pinned clips across an active search',
+      () async {
+    final fixture = await _Fixture.create(hasMesh: true);
+    addTearDown(fixture.dispose);
+    fixture.core.historyItems.addAll([
+      {..._historyItem('pin', 'Keep'), 'pinned': true},
+      _historyItem('delete-1', 'Current result'),
+      _historyItem('delete-2', 'Outside the search'),
+    ]);
+    await fixture.controller.refreshHistory(query: 'Current');
+
+    await fixture.controller.clearHistory();
+
+    expect(fixture.core.historyItems.map((item) => item['id']), ['pin']);
+    expect(fixture.controller.items, isEmpty);
+  });
 }
 
 Map<String, dynamic> _historyItem(String id, String text) => {
@@ -200,7 +301,8 @@ Map<String, dynamic> _historyItem(String id, String text) => {
       'origin_device': 'device-1',
       'source_name': 'Laptop',
       'created_at': DateTime.now().millisecondsSinceEpoch,
-      'expires_at': DateTime.now().add(const Duration(days: 1)).millisecondsSinceEpoch,
+      'expires_at':
+          DateTime.now().add(const Duration(days: 1)).millisecondsSinceEpoch,
       'text': text,
       'kind': 'text',
       'pinned': false,
@@ -214,7 +316,8 @@ class _Fixture {
   final Directory directory;
 
   static Future<_Fixture> create({bool hasMesh = false}) async {
-    final directory = await Directory.systemTemp.createTemp('arcade-controller-test-');
+    final directory =
+        await Directory.systemTemp.createTemp('arcade-controller-test-');
     final core = FakeCoreApi(hasMesh: hasMesh);
     final controller = AppController(
       core: core,

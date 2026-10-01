@@ -3,17 +3,14 @@
 # It intentionally does not edit shell startup files or the system PATH.
 
 _arcade_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-export RUSTUP_HOME="${_arcade_root}/.tools/rustup"
-export CARGO_HOME="${_arcade_root}/.tools/cargo"
-export FLUTTER_ROOT="${_arcade_root}/.tools/flutter"
-export RUSTUP_TOOLCHAIN="1.98.1"
-export PATH="${CARGO_HOME}/bin:${FLUTTER_ROOT}/bin:${PATH}"
-
-if [[ ! -x "${CARGO_HOME}/bin/cargo" ]]; then
-  echo "Rust is not installed. Run scripts/bootstrap-toolchains.sh first." >&2
-  return 1 2>/dev/null || exit 1
+if ! command -v cargo >/dev/null && [[ -x "${_arcade_root}/.tools/cargo/bin/cargo" ]]; then
+  export RUSTUP_HOME="${_arcade_root}/.tools/rustup"
+  export CARGO_HOME="${_arcade_root}/.tools/cargo"
+  export PATH="${CARGO_HOME}/bin:${PATH}"
 fi
-if [[ ! -x "${FLUTTER_ROOT}/bin/flutter" ]]; then
-  echo "Flutter is not installed. Run scripts/bootstrap-toolchains.sh first." >&2
-  return 1 2>/dev/null || exit 1
+if ! command -v flutter >/dev/null && [[ -x "${_arcade_root}/.tools/flutter/bin/flutter" ]]; then
+  export PATH="${_arcade_root}/.tools/flutter/bin:${PATH}"
+fi
+if [[ -x "${_arcade_root}/.tools/codegen/bin/flutter_rust_bridge_codegen" ]]; then
+  export PATH="${_arcade_root}/.tools/codegen/bin:${PATH}"
 fi

@@ -16,7 +16,10 @@ use std::{
 
 use axum::{
     Router,
-    extract::{ConnectInfo, Path, Query, State, WebSocketUpgrade, ws::{Message, WebSocket}},
+    extract::{
+        ConnectInfo, Path, Query, State, WebSocketUpgrade,
+        ws::{Message, WebSocket},
+    },
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::get,
@@ -42,7 +45,7 @@ const MAX_TRACKED_IPS: usize = 8_192;
 const UPGRADE_WINDOW: Duration = Duration::from_secs(60);
 const FORWARD_QUEUE_FRAMES: usize = 2;
 const MAX_PAIRED_ROUTES: usize = 4_096;
-const PAIRED_ROUTE_RETENTION: Duration = Duration::from_secs(30 * 24 * 60 * 60);
+const PAIRED_ROUTE_RETENTION: Duration = Duration::from_secs(10 * 60);
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Health {
@@ -60,6 +63,7 @@ struct Inner {
     broker: Mutex<Broker>,
     limits: Mutex<Limits>,
     next_generation: AtomicU64,
+    max_connections_per_ip: usize,
 }
 
 #[derive(Default)]
@@ -146,6 +150,8 @@ enum AttachError {
 #[derive(Debug, Deserialize)]
 struct TicketQuery {
     token: String,
+    #[serde(default)]
+    ready: Option<u8>,
 }
 
 #[derive(Debug, Serialize)]
@@ -155,7 +161,15 @@ struct ErrorBody {
 
 impl RelayState {
     pub fn new() -> Self {
-        Self {
+        Self::with_max_connections_per_ip(MAX_CONNECTIONS_PER_IP)
+            .expect("default connection limit is valid")
+    }
+
+    pub fn with_max_connections_per_ip(limit: usize) -> Result<Self, String> {
+        if !(1..=MAX_CONNECTIONS).contains(&limit) {
+            return Err("Relay per-IP connection limit must be between 1 and 512".into());
+        }
+        Ok(Self {
             inner: Arc::new(Inner {
                 broker: Mutex::new(Broker::default()),
                 limits: Mutex::new(Limits {
@@ -164,8 +178,9 @@ impl RelayState {
                     attempts: HashMap::new(),
                 }),
                 next_generation: AtomicU64::new(1),
+                max_connections_per_ip: limit,
             }),
-        }
+        })
     }
 
     fn next_generation(&self) -> u64 {
@@ -175,7 +190,9 @@ impl RelayState {
     async fn authorize_connection(&self, ip: IpAddr) -> Result<(), StatusCode> {
         let mut limits = self.inner.limits.lock().await;
         let now = Instant::now();
-        limits.attempts.retain(|_, value| now.duration_since(value.started) < UPGRADE_WINDOW);
+        limits
+            .attempts
+            .retain(|_, value| now.duration_since(value.started) < UPGRADE_WINDOW);
         if !limits.attempts.contains_key(&ip) && limits.attempts.len() >= MAX_TRACKED_IPS {
             return Err(StatusCode::TOO_MANY_REQUESTS);
         }
@@ -192,7 +209,7 @@ impl RelayState {
             return Err(StatusCode::TOO_MANY_REQUESTS);
         }
         if limits.active_total >= MAX_CONNECTIONS
-            || limits.per_ip.get(&ip).copied().unwrap_or(0) >= MAX_CONNECTIONS_PER_IP
+            || limits.per_ip.get(&ip).copied().unwrap_or(0) >= self.inner.max_connections_per_ip
         {
             return Err(StatusCode::TOO_MANY_REQUESTS);
         }
@@ -220,7 +237,9 @@ impl RelayState {
         validate_route_id(route_id)?;
         let mut broker = self.inner.broker.lock().await;
         let now = Instant::now();
-        broker.invites.retain(|_, entry| entry.paired || entry.deadline > now);
+        broker
+            .invites
+            .retain(|_, entry| entry.paired || entry.deadline > now);
         if let Some(entry) = broker.invites.get_mut(route_id) {
             if entry.ticket_hash != token_hash {
                 return Err(AttachError::Unauthorized);
@@ -292,7 +311,17 @@ impl RelayState {
 
         if !broker.paired.contains_key(route_id) {
             if broker.paired.len() >= MAX_PAIRED_ROUTES {
-                return Err(AttachError::Full);
+                let oldest_idle = broker
+                    .paired
+                    .iter()
+                    .filter(|(_, entry)| entry.active.is_none())
+                    .min_by_key(|(_, entry)| entry.last_used)
+                    .map(|(route, _)| route.clone());
+                if let Some(route) = oldest_idle {
+                    broker.paired.remove(&route);
+                } else {
+                    return Err(AttachError::Full);
+                }
             }
             broker.paired.insert(
                 route_id.to_owned(),
@@ -365,7 +394,11 @@ impl RelayState {
         let mut broker = self.inner.broker.lock().await;
         if paired_route {
             if let Some(entry) = broker.paired.get_mut(route) {
-                if entry.active.as_ref().is_some_and(|active| active.generation == generation) {
+                if entry
+                    .active
+                    .as_ref()
+                    .is_some_and(|active| active.generation == generation)
+                {
                     entry.active = None;
                     entry.last_used = Instant::now();
                 }
@@ -417,7 +450,16 @@ async fn invite_relay(
     Query(query): Query<TicketQuery>,
     ws: WebSocketUpgrade,
 ) -> Response {
-    relay_upgrade(state, remote.ip(), route_id, query.token, RelayKind::Invite, ws).await
+    relay_upgrade(
+        state,
+        remote.ip(),
+        route_id,
+        query.token,
+        RelayKind::Invite,
+        query.ready == Some(1),
+        ws,
+    )
+    .await
 }
 
 async fn paired_relay(
@@ -436,6 +478,7 @@ async fn paired_relay(
         route_id,
         query.token,
         RelayKind::Paired(slot),
+        query.ready == Some(1),
         ws,
     )
     .await
@@ -453,6 +496,7 @@ async fn relay_upgrade(
     route_id: String,
     token: String,
     kind: RelayKind,
+    notify_ready: bool,
     ws: WebSocketUpgrade,
 ) -> Response {
     if let Err(status) = state.authorize_connection(ip).await {
@@ -479,8 +523,13 @@ async fn relay_upgrade(
                 AttachError::InvalidRoute => error(StatusCode::BAD_REQUEST, "invalid relay route"),
                 AttachError::Full => error(StatusCode::TOO_MANY_REQUESTS, "relay is at capacity"),
                 AttachError::Expired => error(StatusCode::GONE, "relay invitation expired"),
-                AttachError::Unauthorized => error(StatusCode::UNAUTHORIZED, "invalid relay ticket"),
-                AttachError::DuplicateSlot => error(StatusCode::CONFLICT, "relay route slot is already connected"),
+                AttachError::Unauthorized => {
+                    error(StatusCode::UNAUTHORIZED, "invalid relay ticket")
+                }
+                AttachError::DuplicateSlot => error(
+                    StatusCode::CONFLICT,
+                    "relay route slot is already connected",
+                ),
             };
         }
     };
@@ -505,7 +554,16 @@ async fn relay_upgrade(
             });
         })
         .on_upgrade(move |socket| async move {
-            handle_attached(state, route_label, ip, attach, paired_route, socket).await;
+            handle_attached(
+                state,
+                route_label,
+                ip,
+                attach,
+                paired_route,
+                notify_ready,
+                socket,
+            )
+            .await;
         })
 }
 
@@ -515,6 +573,7 @@ async fn handle_attached(
     ip: IpAddr,
     attach: Attach,
     paired_route: bool,
+    notify_ready: bool,
     socket: WebSocket,
 ) {
     let (generation, link) = match attach {
@@ -523,11 +582,21 @@ async fn handle_attached(
             generation,
             mut receiver,
             deadline,
-        } => (generation, wait_for_peer(socket, &mut receiver, deadline).await),
+        } => (
+            generation,
+            wait_for_peer(socket, &mut receiver, deadline).await,
+        ),
     };
 
-    if let Some((socket, link)) = link {
-        forward_socket(socket, link).await;
+    if let Some((mut socket, link)) = link {
+        if !notify_ready
+            || socket
+                .send(Message::Text("arcade-ready-v1".into()))
+                .await
+                .is_ok()
+        {
+            forward_socket(socket, link).await;
+        }
     }
     state.detach(&route_id, generation, paired_route).await;
     state.release_connection(ip).await;
@@ -747,7 +816,9 @@ pub async fn cleanup_loop(state: RelayState) {
         interval.tick().await;
         let now = Instant::now();
         let mut broker = state.inner.broker.lock().await;
-        broker.invites.retain(|_, entry| entry.paired || entry.deadline > now);
+        broker
+            .invites
+            .retain(|_, entry| entry.paired || entry.deadline > now);
         broker.paired.retain(|_, entry| {
             entry.active.is_some() || now.duration_since(entry.last_used) < PAIRED_ROUTE_RETENTION
         });
@@ -758,7 +829,12 @@ pub async fn cleanup_loop(state: RelayState) {
 pub async fn run_from_env() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let bind = std::env::var("ARCADE_RELAY_BIND").unwrap_or_else(|_| "127.0.0.1:8787".to_owned());
     let listener = TcpListener::bind(&bind).await?;
-    let state = RelayState::new();
+    let max_per_ip = std::env::var("ARCADE_RELAY_MAX_CONNECTIONS_PER_IP")
+        .ok()
+        .map(|raw| raw.parse::<usize>())
+        .transpose()?
+        .unwrap_or(MAX_CONNECTIONS_PER_IP);
+    let state = RelayState::with_max_connections_per_ip(max_per_ip)?;
     let cleanup_state = state.clone();
     tokio::spawn(cleanup_loop(cleanup_state));
     info!(bind = %bind, "Arcade Clipboard relay listening; TLS must terminate at a trusted reverse proxy for public deployment");
@@ -795,9 +871,18 @@ mod tests {
         let digest: [u8; 32] = Sha256::digest(secret).into();
         let first = state.attach_invite(route, digest).await.unwrap();
         assert!(matches!(first, Attach::Waiting { .. }));
-        assert!(matches!(state.attach_invite(route, [0; 32]).await, Err(AttachError::Unauthorized)));
-        assert!(matches!(state.attach_invite(route, digest).await.unwrap(), Attach::Paired { .. }));
-        assert!(matches!(state.attach_invite(route, digest).await, Err(AttachError::Full)));
+        assert!(matches!(
+            state.attach_invite(route, [0; 32]).await,
+            Err(AttachError::Unauthorized)
+        ));
+        assert!(matches!(
+            state.attach_invite(route, digest).await.unwrap(),
+            Attach::Paired { .. }
+        ));
+        assert!(matches!(
+            state.attach_invite(route, digest).await,
+            Err(AttachError::Full)
+        ));
     }
 
     #[tokio::test]
@@ -807,17 +892,32 @@ mod tests {
         let digest = [22_u8; 32];
         let first = state.attach_paired(route, digest, Slot::A).await.unwrap();
         assert!(matches!(first, Attach::Waiting { .. }));
-        assert!(matches!(state.attach_paired(route, digest, Slot::A).await, Err(AttachError::DuplicateSlot)));
-        assert!(matches!(state.attach_paired(route, digest, Slot::B).await.unwrap(), Attach::Paired { .. }));
-        assert!(matches!(state.attach_paired(route, digest, Slot::B).await, Err(AttachError::DuplicateSlot)));
+        assert!(matches!(
+            state.attach_paired(route, digest, Slot::A).await,
+            Err(AttachError::DuplicateSlot)
+        ));
+        assert!(matches!(
+            state.attach_paired(route, digest, Slot::B).await.unwrap(),
+            Attach::Paired { .. }
+        ));
+        assert!(matches!(
+            state.attach_paired(route, digest, Slot::B).await,
+            Err(AttachError::DuplicateSlot)
+        ));
     }
 
     #[tokio::test]
     async fn bad_token_does_not_claim_paired_route() {
         let state = RelayState::new();
         let route = "fedcba9876543210";
-        assert!(matches!(state.attach_paired(route, [1; 32], Slot::A).await.unwrap(), Attach::Waiting { .. }));
-        assert!(matches!(state.attach_paired(route, [2; 32], Slot::B).await, Err(AttachError::Unauthorized)));
+        assert!(matches!(
+            state.attach_paired(route, [1; 32], Slot::A).await.unwrap(),
+            Attach::Waiting { .. }
+        ));
+        assert!(matches!(
+            state.attach_paired(route, [2; 32], Slot::B).await,
+            Err(AttachError::Unauthorized)
+        ));
     }
 
     #[tokio::test]

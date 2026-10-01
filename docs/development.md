@@ -1,56 +1,53 @@
 # Development
 
-## Current checkout status
+Run commands from the repository root. The verified local toolchain is Flutter 3.47.2 / Dart 3.13.2 and Rust 1.98.1. CI uses the official Rust 1.98.0 release. Flutter Rust Bridge runtime and generated bindings are both 2.13.0.
 
-This is a source checkpoint, not a runnable release bundle. The Flutter app directory contains product Dart source but no generated `linux/`, `windows/`, `macos/`, `ios/`, or `android/` runner. Flutter Rust Bridge generated bindings are also absent. The normal build path therefore cannot launch the client until a trusted development machine generates the bindings and platform runner. The automatic-review block that prevented Flutter CLI execution here is recorded in [toolchain-blocker.md](verification/toolchain-blocker.md).
+## Linux prerequisites
 
-No tests, native builds, or emulator checks were run for this publishing checkpoint. The commands below describe available developer actions; they are not results. Use synthetic clipboard text only until the [security and platform gates](security-review.md) are closed.
+Install Flutter stable, Rust, Python 3, clang, CMake, Ninja, pkg-config, GTK 3 development files, keybinder 3 development files and a working Secret Service implementation.
 
-## Toolchain
+Ubuntu/Debian native dependencies:
 
-The repository targets Rust stable 1.98.1, Flutter 3.47.5 / Dart 3.13.4, and `flutter_rust_bridge_codegen` 2.13.0. Keep the Dart and Rust bridge package versions aligned with the generator. Linux desktop development additionally needs a C/C++ compiler, CMake, Ninja, pkg-config, GTK 3 development files, libclang, and a running Secret Service. X11 paste requires `xdotool`. Hyprland-specific dependencies and limitations are listed in [desktop integration](desktop-integration.md).
+~~~bash
+sudo apt-get install clang cmake ninja-build pkg-config libgtk-3-dev libkeybinder-3.0-dev libdbus-1-dev libsecret-1-dev libstdc++-12-dev
+~~~
 
-`bash scripts/bootstrap-toolchains.sh` can install optional SDKs under `.tools`; it does not modify shell startup files. On a native workstation, standard system Rust and Flutter installations are also suitable. Commands are invoked through Bash and can be run from Fish without sourcing Bash configuration.
+On Arch-based systems use the corresponding clang, cmake, ninja, gtk3, keybinder3 and libsecret packages. Hyprland capture/paste uses wl-clipboard and hyprctl, with Lua and legacy configuration support. X11 focus/paste uses the bundled X11 helper. Generic Wayland has no global shortcut provider implemented here; bind a system shortcut to `clipboard --overlay` (the running instance opens the picker) and use copy fallback. Wayland capture needs wl-clipboard 2.2+. Set `ARCADE_DEBUG=1` for diagnostics on stderr. Setting `ARCADE_DATA_DIR` allows a second, independent local instance for pairing tests.
 
-## Rust core and relay
+## Commands
 
-From the repository root:
+| Command | Result |
+| --- | --- |
+| bash scripts/dev.sh desktop | Run Linux debug client |
+| bash scripts/dev.sh build-linux | Build release bundle and tar.gz |
+| bash scripts/install-linux.sh | Install built bundle under the user data directory |
+| bash scripts/dev.sh test | Rust workspace and Flutter tests |
+| bash scripts/dev.sh check | Rust format/Clippy and Flutter analysis |
+| bash scripts/dev.sh smoke | Two actual Rust API processes using system secure storage |
+| dbus-run-session -- bash tests/with-secret-service.sh | Isolated synthetic Secret Service/process acceptance |
+| bash scripts/dev.sh native-test | Hyprland native pairing/history/Enter-paste acceptance |
+| bash scripts/dev.sh relay | Local relay on 127.0.0.1:8787 |
+| bash scripts/dev.sh generate | Regenerate matching Flutter/Rust bindings |
+| bash scripts/dev.sh build-ios | On macOS, build and package unsigned iPhone IPA |
 
-```sh
-bash scripts/dev.sh test       # Rust workspace tests
-bash scripts/dev.sh check      # formatting and Clippy
-bash scripts/dev.sh relay      # local relay on 127.0.0.1:8787
-bash scripts/dev.sh smoke      # two-process core smoke test
-```
+Generated bindings and customized platform runners are included. Do not regenerate runners over them. scripts/prepare-runners.sh only fills missing runners.
 
-The Rust core uses the operating system's secure credential store and has no plaintext key fallback. Linux needs an unlocked Secret Service session. Android's Rust identity store is deliberately unconfigured and fails closed, so Android mesh startup is blocked. The local relay is not a deployed public service and is not currently used by the clients.
+scripts/dev-env.sh prefers installed tools and scopes optional local toolchains to the current process. No temporary toolchain paths belong in shell, compositor or systemd startup configuration.
 
-## Generate and run a Linux client
+## Isolated clients
 
-On a machine where Flutter can run normally:
+Set ARCADE_DATA_DIR to a different durable directory for each process. Each profile has its own secure identity and encrypted database. Do not open the same profile simultaneously. One process per profile is enforced.
 
-```sh
-cargo install flutter_rust_bridge_codegen --version 2.13.0 --locked
-bash scripts/prepare-runners.sh
-bash scripts/dev.sh generate
-bash scripts/dev.sh desktop
-```
+For two local GUI clients, use distinct profiles and change the second client's shortcut if it conflicts. Pair through Devices. For reproducible automated pairing, run the process smoke test; it does not replace the normal secure store with a test key file.
 
-`prepare-runners.sh` creates missing standard Flutter runners and preserves the existing product source and curated `pubspec.yaml`. The generator creates Rust/Dart bridge files; review and commit those generated files if the team decides to keep them in source control. The `desktop` command also builds the Rust core and then launches Flutter for Linux.
+ARCADE_CORE_LIBRARY is an optional runtime override for development. Release bundles locate their Rust library automatically. ARCADE_RELAY_URL supplies an optional deployment default; Settings can override it.
 
-For separate development profiles, use two terminals:
+## Other builds
 
-```sh
-env ARCADE_DATA_DIR=/tmp/arcade-dev-a bash scripts/dev.sh desktop
-env ARCADE_DATA_DIR=/tmp/arcade-dev-b bash scripts/dev.sh desktop
-```
+Android: install an Android SDK/NDK and the Rust Android targets, run python3 scripts/build-android-core.py, then flutter build apk in apps/flutter_app. The Kotlin share target, provider and IME are included in the runner.
 
-The checkout is not yet ready for the requested two-desktop acceptance flow: the bridge and runner must first be generated, and the platform issues in [platform limitations](platform-limitations.md) must be resolved and exercised. Use [acceptance](acceptance.md) as a manual checklist only after those prerequisites are met.
+iOS: use the unsigned IPA workflow or follow docs/ios-install.md. Xcode/macOS are required for native compilation. scripts/setup-ios.rb wires both extensions and the Rust archive.
 
-## iPhone and Android
+macOS: flutter build macos --release followed by bash scripts/build-macos-core.sh on a Mac. Windows: flutter build windows on Windows; its CMake build compiles and bundles the Rust DLL.
 
-The native source lives under `platform/ios` and `platform/android`. It still needs generated runners, correct target/channel registration, signing, and device validation. The iOS project installer currently needs compatibility work against the chosen `xcodeproj` API before it can be relied on. Android's Rust secure identity integration is a hard blocker. Follow [mobile integration](mobile-integration.md) for the actual gates; these instructions are not a claim that either mobile build works.
-
-## CI
-
-`.github/workflows/ci.yml` defines Rust, Flutter, and Linux build jobs. A workflow definition is not evidence of a successful run. For this checkpoint no tests were run locally, and its commit message uses GitHub's CI-skip directive to honor the user's instruction not to run tests.
+[Relay hosting](relay-deployment.md) describes the domain/server setup separately from app development.

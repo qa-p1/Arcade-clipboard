@@ -1,8 +1,9 @@
-use rand::{RngCore, rngs::OsRng};
+use rand::{rngs::OsRng, RngCore};
 use snow::Builder;
 use std::path::{Component, Path, PathBuf};
 use uuid::Uuid;
 
+#[cfg(not(target_os = "android"))]
 const SERVICE_NAME: &str = "arcade-clipboard";
 const SECRET_MAGIC: &[u8; 4] = b"ACV1";
 const SECRET_SIZE: usize = 4 + 32 + 32 + 32 + 16 + 1 + 32;
@@ -20,13 +21,16 @@ pub struct SystemSecretStore {
 impl SystemSecretStore {
     pub fn for_data_dir(path: &std::path::Path) -> Self {
         let data_dir = canonical_profile_path(path);
-        let profile = blake3::hash(&path_bytes(&data_dir)).to_hex().to_string();
+        let profile = blake3::hash(&path_bytes(&container_relative(&data_dir)))
+            .to_hex()
+            .to_string();
         Self {
             profile: format!("identity-v1-{profile}"),
             data_dir,
         }
     }
 
+    #[cfg(not(target_os = "android"))]
     fn entry(&self) -> Result<keyring::Entry, String> {
         keyring::Entry::new(SERVICE_NAME, &self.profile)
             .map_err(|e| format!("Could not access the system credential store: {e}"))
@@ -48,7 +52,10 @@ impl SecretStore for SystemSecretStore {
     fn load(&self) -> Result<Option<Vec<u8>>, String> {
         #[cfg(target_os = "android")]
         {
-            return Err("Secure key storage is not configured for this Android build".into());
+            match android::load(&self.profile)? {
+                Some(bytes) => Ok(Some(bytes)),
+                None => self.missing_secret_result(),
+            }
         }
         #[cfg(not(target_os = "android"))]
         {
@@ -64,8 +71,7 @@ impl SecretStore for SystemSecretStore {
     fn store(&self, secret: &[u8]) -> Result<(), String> {
         #[cfg(target_os = "android")]
         {
-            let _ = secret;
-            return Err("Secure key storage is not configured for this Android build".into());
+            android::store(&self.profile, secret)
         }
         #[cfg(not(target_os = "android"))]
         {
@@ -75,6 +81,136 @@ impl SecretStore for SystemSecretStore {
             })
         }
     }
+}
+
+// The Android runner installs its application context before the Flutter
+// bridge opens a profile. Only the Keystore-backed native provider persists
+// these bytes; Rust never writes a plaintext identity file.
+#[cfg(target_os = "android")]
+mod android {
+    use jni::{
+        objects::{GlobalRef, JByteArray, JClass, JObject, JValue},
+        sys::jboolean,
+        JNIEnv, JavaVM,
+    };
+    use std::sync::OnceLock;
+
+    struct Provider {
+        vm: JavaVM,
+        class: GlobalRef,
+        context: GlobalRef,
+    }
+
+    static PROVIDER: OnceLock<Provider> = OnceLock::new();
+
+    #[unsafe(no_mangle)]
+    pub extern "system" fn Java_dev_arcade_clipboard_mobile_CoreIdentityStore_nativeInitialize(
+        env: JNIEnv,
+        class: JClass,
+        context: JObject,
+    ) -> jboolean {
+        if PROVIDER.get().is_some() {
+            return 1;
+        }
+        let provider = (|| -> jni::errors::Result<Provider> {
+            Ok(Provider {
+                vm: env.get_java_vm()?,
+                class: env.new_global_ref(class)?,
+                context: env.new_global_ref(context)?,
+            })
+        })();
+        match provider {
+            Ok(provider) => {
+                let _ = PROVIDER.set(provider);
+                1
+            }
+            Err(_) => {
+                let _ = env.exception_clear();
+                0
+            }
+        }
+    }
+
+    pub(super) fn load(profile: &str) -> Result<Option<Vec<u8>>, String> {
+        let provider = PROVIDER
+            .get()
+            .ok_or("Android secure storage has not been initialized")?;
+        let mut env = provider
+            .vm
+            .attach_current_thread()
+            .map_err(|_| "Could not access Android secure storage")?;
+        let result = (|| -> jni::errors::Result<Option<Vec<u8>>> {
+            let profile = env.new_string(profile)?;
+            let class: &JClass = provider.class.as_obj().into();
+            let value = env
+                .call_static_method(
+                    class,
+                    "load",
+                    "(Landroid/content/Context;Ljava/lang/String;)[B",
+                    &[
+                        JValue::Object(provider.context.as_obj()),
+                        JValue::Object(profile.as_ref()),
+                    ],
+                )?
+                .l()?;
+            if value.is_null() {
+                return Ok(None);
+            }
+            env.convert_byte_array(JByteArray::from(value)).map(Some)
+        })();
+        result.map_err(|_| {
+            let _ = env.exception_clear();
+            "Could not read the Android Keystore identity. Unlock this device and try again.".into()
+        })
+    }
+
+    pub(super) fn store(profile: &str, bytes: &[u8]) -> Result<(), String> {
+        let provider = PROVIDER
+            .get()
+            .ok_or("Android secure storage has not been initialized")?;
+        let mut env = provider
+            .vm
+            .attach_current_thread()
+            .map_err(|_| "Could not access Android secure storage")?;
+        let result = (|| -> jni::errors::Result<()> {
+            let profile = env.new_string(profile)?;
+            let bytes = env.byte_array_from_slice(bytes)?;
+            let class: &JClass = provider.class.as_obj().into();
+            env.call_static_method(
+                class,
+                "store",
+                "(Landroid/content/Context;Ljava/lang/String;[B)V",
+                &[
+                    JValue::Object(provider.context.as_obj()),
+                    JValue::Object(profile.as_ref()),
+                    JValue::Object(bytes.as_ref()),
+                ],
+            )?;
+            Ok(())
+        })();
+        result.map_err(|_| {
+            let _ = env.exception_clear();
+            "Could not save the Android Keystore identity. Unlock this device and try again.".into()
+        })
+    }
+}
+
+/// iOS apps live in a container whose absolute path (it includes a UUID) can
+/// change across updates and reinstalls, while Keychain items persist. The
+/// credential name must therefore depend only on the path inside the
+/// container, or an update would orphan the identity of an existing profile.
+#[cfg(target_os = "ios")]
+fn container_relative(path: &Path) -> PathBuf {
+    std::env::var_os("HOME")
+        .map(PathBuf::from)
+        .map(|home| canonical_profile_path(&home))
+        .and_then(|home| path.strip_prefix(&home).ok().map(Path::to_path_buf))
+        .unwrap_or_else(|| path.to_path_buf())
+}
+
+#[cfg(not(target_os = "ios"))]
+fn container_relative(path: &Path) -> PathBuf {
+    path.to_path_buf()
 }
 
 fn canonical_profile_path(path: &Path) -> PathBuf {

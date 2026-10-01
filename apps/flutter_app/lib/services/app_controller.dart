@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -10,6 +11,7 @@ import '../models.dart';
 import '../platform/desktop_adapter.dart';
 import '../platform/mobile_share_bridge.dart';
 import 'core_api.dart';
+import 'diagnostics.dart';
 
 class AppController extends ChangeNotifier with WidgetsBindingObserver {
   AppController({
@@ -17,16 +19,21 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     DesktopAdapter? desktop,
     MobileShareBridge? mobile,
     Directory? dataDirectory,
-  })
-      : _core = core ?? RustCoreApi(),
+    bool startInBackground = false,
+    bool openOverlayOnStart = false,
+  })  : _core = core ?? RustCoreApi(),
         _desktop = desktop ?? DesktopAdapter(),
         _mobile = mobile ?? MobileShareBridge(),
-        _dataDirectoryOverride = dataDirectory;
+        _dataDirectoryOverride = dataDirectory,
+        _startInBackground = startInBackground,
+        _openOverlayOnStart = openOverlayOnStart;
 
   final CoreApi _core;
   final DesktopAdapter _desktop;
   final MobileShareBridge _mobile;
   final Directory? _dataDirectoryOverride;
+  final bool _startInBackground;
+  final bool _openOverlayOnStart;
 
   MeshStatus? _status;
   List<ClipboardItem> _items = const [];
@@ -43,7 +50,15 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   int _errorSerial = 0;
   String? _notice;
   String _shortcut = '';
+  String _relayUrl = '';
+  String? _mobileDiscoveryConfig;
+  bool _backgroundEnabled = true;
+  bool _launchAtLogin = false;
+  Directory? _supportDirectory;
   int _retentionHours = 24;
+  int _maxItems = 500;
+  int _historyLimit = 250;
+  bool _hasMoreHistory = false;
   ThemeMode _themeMode = ThemeMode.system;
   bool _ready = false;
   bool _loading = true;
@@ -82,16 +97,24 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   List<PairingRequest> get pairings => _pairings;
   PairingInvite? get invite => _invite;
   PairingRequest? get currentJoin => _currentJoin;
-  bool pairingApproved(String sessionId) => _approvedPairingSessions.contains(sessionId);
+  bool pairingApproved(String sessionId) =>
+      _approvedPairingSessions.contains(sessionId);
   String? get query => _query;
   String? get error {
     if (_errors.isEmpty) return null;
-    final source = _errorOrder.entries.reduce((a, b) => a.value > b.value ? a : b).key;
+    final source =
+        _errorOrder.entries.reduce((a, b) => a.value > b.value ? a : b).key;
     return _errors[source];
   }
+
   String? get notice => _notice;
   String get shortcut => _shortcut;
+  String get relayUrl => _relayUrl;
+  bool get backgroundEnabled => _backgroundEnabled;
+  bool get launchAtLogin => _launchAtLogin;
   int get retentionHours => _retentionHours;
+  int get maxItems => _maxItems;
+  bool get hasMoreHistory => _hasMoreHistory;
   ThemeMode get themeMode => _themeMode;
   bool get ready => _ready;
   bool get loading => _loading;
@@ -103,9 +126,23 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   bool get overlaySearchLoading => _overlaySearchLoading;
   bool get automaticDesktopCapture => _automaticDesktopCapture;
   DesktopCapabilities? get desktopCapabilities => _desktopCapabilities;
-  bool get desktopAvailable => Platform.isWindows || Platform.isMacOS || Platform.isLinux;
+  bool get desktopAvailable =>
+      Platform.isWindows || Platform.isMacOS || Platform.isLinux;
   bool get _isMobilePlatform => Platform.isIOS || Platform.isAndroid;
   bool get hasMesh => _status?.hasMesh ?? false;
+  Future<void> requestPasteAccess() => _perform(() async {
+        _desktopCapabilities = await _desktop.requestPasteAccess();
+      });
+
+  void dismissNotice() {
+    _notice = null;
+    _notifyListeners();
+  }
+
+  Future<void> openKeyboardSettings() => _perform(_mobile.openKeyboardSettings);
+  Future<void> exportMobileFile(
+          {required String name, required Uint8List bytes}) =>
+      _mobile.exportFile(name: name, bytes: bytes);
 
   Future<void> start() {
     if (_disposed || _ready) return Future<void>.value();
@@ -130,12 +167,16 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       await _core.initializeBridge();
       final prefs = await SharedPreferences.getInstance();
       final runtimeDataDir = Platform.environment['ARCADE_DATA_DIR']?.trim();
-      final buildDataDir = const String.fromEnvironment('ARCADE_DATA_DIR').trim();
-      final configuredDataDir = runtimeDataDir?.isNotEmpty == true ? runtimeDataDir! : buildDataDir;
-      final support = _dataDirectoryOverride ?? (configuredDataDir.isNotEmpty
-          ? Directory(configuredDataDir)
-          : await getApplicationSupportDirectory());
+      final buildDataDir =
+          const String.fromEnvironment('ARCADE_DATA_DIR').trim();
+      final configuredDataDir =
+          runtimeDataDir?.isNotEmpty == true ? runtimeDataDir! : buildDataDir;
+      final support = _dataDirectoryOverride ??
+          (configuredDataDir.isNotEmpty
+              ? Directory(configuredDataDir)
+              : await getApplicationSupportDirectory());
       await support.create(recursive: true);
+      _supportDirectory = support;
       if (_disposed) return;
       final deviceName = prefs.getString('device_name') ?? _defaultDeviceName();
       await prefs.setString('device_name', deviceName);
@@ -145,11 +186,24 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         'dark' => ThemeMode.dark,
         _ => ThemeMode.system,
       };
-      _automaticDesktopCapture = prefs.getBool('automatic_desktop_capture') ?? false;
-      final initialized = await _core.invoke('initialize', {
-        'data_dir': support.path,
-        'device_name': deviceName,
-      });
+      // Desktop copies join the mesh by default; Private mode pauses it.
+      _automaticDesktopCapture =
+          prefs.getBool('automatic_desktop_capture') ?? desktopAvailable;
+      _backgroundEnabled = prefs.getBool('background_enabled') ?? true;
+      Map<String, dynamic>? initialized;
+      for (var attempt = 0; initialized == null; attempt++) {
+        try {
+          initialized = await _core.invoke('initialize', {
+            'data_dir': support.path,
+            'device_name': deviceName,
+          });
+        } catch (exception) {
+          // A previous instance may still be releasing the profile (quick
+          // relaunch, login autostart races). Wait for it briefly.
+          if (attempt >= 8 || !'$exception'.contains('already open')) rethrow;
+          await Future<void>.delayed(const Duration(milliseconds: 500));
+        }
+      }
       _status = MeshStatus.fromJson(initialized);
       _revision = _status!.revision;
       await _loadSettings();
@@ -158,6 +212,17 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         await Future.wait([refreshHistory(), refreshDevices()]);
       }
       _ready = true;
+      if (Platform.isIOS) {
+        _mobile.setDiscoveryHandler((Map<String, dynamic> data) async {
+          try {
+            await _core.invoke('discovery_candidates', data);
+            _clearError('discovery');
+          } catch (exception) {
+            _setError(exception, source: 'discovery');
+          }
+        });
+        await _configureMobileDiscovery();
+      }
       if (desktopAvailable) {
         try {
           _desktopCapabilities = await _desktop.initialize(
@@ -165,6 +230,23 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
             onOverlayRequested: openOverlay,
           );
           _desktopReady = true;
+          _desktop.setRichCaptureHandler(_captureRichFromDesktop);
+          _desktop.onQuit = shutdown;
+          try {
+            await _desktop.setBackgroundEnabled(_backgroundEnabled);
+            _launchAtLogin = await _desktop.launchAtLoginEnabled();
+            if (_startInBackground && _backgroundEnabled) {
+              await _desktop.hideMainWindow();
+            }
+          } on MissingPluginException {
+            _backgroundEnabled = false;
+          } on PlatformException {
+            _backgroundEnabled = false;
+          }
+          // Without a tray there is no way back to a hidden window.
+          if (_startInBackground && !_backgroundEnabled) {
+            await _desktop.showMainWindow();
+          }
           await _syncDesktopCaptureEnabled();
           if (_desktopCapabilities?.globalShortcut == true) {
             await _desktop.configureShortcut(_shortcut);
@@ -179,6 +261,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       }
       await _drainSharedInbox();
       unawaited(_watchChanges());
+      if (_openOverlayOnStart && _desktopReady) unawaited(openOverlay());
     } catch (exception) {
       _setError(exception, source: 'startup');
     } finally {
@@ -190,7 +273,33 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && _ready) {
-      unawaited(refreshAll());
+      unawaited(_resumeMobile().then((_) => refreshAll()));
+    }
+  }
+
+  /// A suspended mobile app may come back with dead sockets and a stopped
+  /// Bonjour announcement; reconnect and republish immediately.
+  Future<void> _resumeMobile() async {
+    if (!_isMobilePlatform || !hasMesh) return;
+    try {
+      await _core.invoke('resume');
+    } catch (exception) {
+      Diagnostics.log('lifecycle', 'resume failed: $exception');
+    }
+    if (Platform.isIOS) {
+      _mobileDiscoveryConfig = null;
+      await _configureMobileDiscovery();
+    }
+  }
+
+  /// Shows the iOS Local Network prompt while the user scans a pairing code,
+  /// so the first pairing connection is not refused.
+  Future<void> prepareToJoin() async {
+    if (!Platform.isIOS) return;
+    try {
+      await _mobile.primeLocalNetwork();
+    } catch (_) {
+      // The join itself reports reachability problems.
     }
   }
 
@@ -210,7 +319,8 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       while (!_disposed && _ready) {
         final afterRevision = _revision;
         try {
-          final result = await _core.invoke('wait_for_change', {'after_revision': afterRevision});
+          final result = await _core
+              .invoke('wait_for_change', {'after_revision': afterRevision});
           if (_disposed) break;
           final revision = _latestInt(
             _intValue(result['revision']),
@@ -256,7 +366,8 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       _revision = status.revision > _revision ? status.revision : _revision;
       final now = DateTime.now();
       _pairings = status.pendingPairings
-          .where((pairing) => pairing.expiresAt == null || pairing.expiresAt!.isAfter(now))
+          .where((pairing) =>
+              pairing.expiresAt == null || pairing.expiresAt!.isAfter(now))
           .toList(growable: false);
       if (!status.hasMesh) {
         _items = const [];
@@ -265,18 +376,19 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         _historyLoading = false;
         _overlaySearchLoading = false;
         _overlayQuery = null;
-        _overlaySearchLoading = false;
         _historyGeneration++;
         _overlayHistoryGeneration++;
       }
       if (_currentJoin != null) {
-        final matching = _pairings.where((entry) => entry.sessionId == _currentJoin!.sessionId);
+        final matching = _pairings
+            .where((entry) => entry.sessionId == _currentJoin!.sessionId);
         if (matching.isNotEmpty) {
           _currentJoin = matching.first;
         } else if (status.hasMesh) {
           _currentJoin = null;
         } else {
-          final expired = _currentJoin!.expiresAt != null && !_currentJoin!.expiresAt!.isAfter(now);
+          final expired = _currentJoin!.expiresAt != null &&
+              !_currentJoin!.expiresAt!.isAfter(now);
           _currentJoin = null;
           _notice = expired
               ? 'The pairing request expired. Ask for a new invite and try again.'
@@ -285,17 +397,22 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       }
       await _syncDesktopCaptureEnabled();
       _clearError('status');
+      if (_ready && Platform.isIOS) await _configureMobileDiscovery();
       await _publishKeyboardHistory();
     } catch (exception) {
-      if (!_disposed && generation == _statusGeneration) _setError(exception, source: 'status');
+      if (!_disposed && generation == _statusGeneration) {
+        _setError(exception, source: 'status');
+      }
     }
     _notifyListeners();
   }
 
-  Future<void> refreshHistory({String? query, bool publishKeyboard = true}) async {
+  Future<void> refreshHistory(
+      {String? query, bool publishKeyboard = true}) async {
     if (query != null && query != _query) {
       _query = query;
       _items = const [];
+      _historyLimit = 250;
     }
     final generation = ++_historyGeneration;
     _historyLoading = true;
@@ -315,10 +432,13 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     final activeQuery = _query ?? '';
     var errorSource = 'history';
     try {
-      final data = await _core.invoke('history', {'query': activeQuery, 'limit': 250});
+      final data = await _core
+          .invoke('history', {'query': activeQuery, 'limit': _historyLimit});
       final result = _parseHistory(data);
       if (generation != _historyGeneration || _disposed) return;
       _items = _sortedItems(result);
+      _hasMoreHistory =
+          result.length >= _historyLimit && _historyLimit < _maxItems;
       _clearError('history');
       if (publishKeyboard && _isMobilePlatform) {
         // The platform keyboard has its own independent cache. Always source
@@ -348,23 +468,29 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   List<ClipboardItem> _parseHistory(Map<String, dynamic> data) {
-    final rows = (data['items'] ?? data['history'] ?? data['rows']) as List<dynamic>? ?? const [];
+    final rows =
+        (data['items'] ?? data['history'] ?? data['rows']) as List<dynamic>? ??
+            const [];
     return rows
         .whereType<Map<String, dynamic>>()
         .map(ClipboardItem.fromJson)
-        .where((item) => item.id.isNotEmpty && !item.isExpiredAt(DateTime.now()))
+        .where(
+            (item) => item.id.isNotEmpty && !item.isExpiredAt(DateTime.now()))
         .toList(growable: false);
   }
 
-  List<ClipboardItem> _sortedItems(List<ClipboardItem> items) => [...items]
-    ..sort((a, b) {
-        if (a.pinned != b.pinned) return a.pinned ? -1 : 1;
-        return b.createdAt.compareTo(a.createdAt);
-      });
+  List<ClipboardItem> _sortedItems(List<ClipboardItem> items) =>
+      [...items]..sort((a, b) {
+          if (a.pinned != b.pinned) return a.pinned ? -1 : 1;
+          return b.createdAt.compareTo(a.createdAt);
+        });
 
-  List<ClipboardItem> _recentItems(List<ClipboardItem> items, {required int limit}) => [...items]
-    ..sort((a, b) => b.createdAt.compareTo(a.createdAt))
-    ..removeRange(limit < items.length ? limit : items.length, items.length);
+  List<ClipboardItem> _recentItems(List<ClipboardItem> items,
+          {required int limit}) =>
+      [...items]
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt))
+        ..removeRange(
+            limit < items.length ? limit : items.length, items.length);
 
   Future<void> refreshDevices() async {
     final generation = ++_devicesGeneration;
@@ -380,7 +506,8 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     try {
       final data = await _core.invoke('devices');
       if (generation != _devicesGeneration || _disposed) return;
-      final rows = (data['devices'] ?? data['items']) as List<dynamic>? ?? const [];
+      final rows =
+          (data['devices'] ?? data['items']) as List<dynamic>? ?? const [];
       _devices = rows
           .whereType<Map<String, dynamic>>()
           .map(MeshDevice.fromJson)
@@ -388,7 +515,9 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
           .toList(growable: false);
       _clearError('devices');
     } catch (exception) {
-      if (generation == _devicesGeneration && !_disposed) _setError(exception, source: 'devices');
+      if (generation == _devicesGeneration && !_disposed) {
+        _setError(exception, source: 'devices');
+      }
     } finally {
       if (generation == _devicesGeneration) _devicesLoading = false;
     }
@@ -398,7 +527,9 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> searchOverlay(String query) async {
     final generation = ++_overlayHistoryGeneration;
     final cleanedQuery = query.trim();
-    if (_overlayQuery != cleanedQuery) _overlayItems = const [];
+    if (_overlayQuery != null && _overlayQuery != cleanedQuery) {
+      _overlayItems = const [];
+    }
     _overlayQuery = cleanedQuery;
     _overlaySearchLoading = true;
     _notifyListeners();
@@ -410,9 +541,10 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       return;
     }
     try {
-      final data = await _core.invoke('history', {'query': cleanedQuery, 'limit': 250});
+      final data =
+          await _core.invoke('history', {'query': cleanedQuery, 'limit': 250});
       if (generation != _overlayHistoryGeneration || _disposed) return;
-      _overlayItems = _sortedItems(_parseHistory(data));
+      _overlayItems = _recentItems(_parseHistory(data), limit: 250);
       _clearError('overlay-history');
     } catch (exception) {
       if (generation == _overlayHistoryGeneration && !_disposed) {
@@ -428,7 +560,9 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> createMesh(String deviceName) async => _perform(() async {
         final name = deviceName.trim();
-        if (name.isEmpty) throw const AppActionException('Add a name for this device.');
+        if (name.isEmpty) {
+          throw const AppActionException('Add a name for this device.');
+        }
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('device_name', name);
         await _core.invoke('create_mesh', {'device_name': name});
@@ -438,22 +572,29 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> createInvite() async => _perform(() async {
         if (!canManageDevices) {
-          throw const AppActionException('Only the mesh owner can add devices.');
+          throw const AppActionException(
+              'Only the mesh owner can add devices.');
         }
         _invite = null;
         final response = await _core.invoke('create_invite');
         final invite = PairingInvite.fromJson(response);
         if (invite.invite.isEmpty) {
-          throw const AppActionException('The pairing service did not return an invite.');
+          throw const AppActionException(
+              'The pairing service did not return an invite.');
         }
         _invite = invite;
         _notice = null;
       });
 
-  Future<void> joinMesh({required String invite, required String deviceName}) async =>
+  Future<void> joinMesh(
+          {required String invite, required String deviceName}) async =>
       _perform(() async {
-        if (invite.trim().isEmpty) throw const AppActionException('Paste the pairing code first.');
-        if (deviceName.trim().isEmpty) throw const AppActionException('Add a name for this device.');
+        if (invite.trim().isEmpty) {
+          throw const AppActionException('Paste the pairing code first.');
+        }
+        if (deviceName.trim().isEmpty) {
+          throw const AppActionException('Add a name for this device.');
+        }
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('device_name', deviceName.trim());
         final joinData = await _core.invoke('join', {
@@ -467,28 +608,40 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         if (pairing.sessionId.isNotEmpty) _currentJoin = pairing;
         await refreshStatus();
         if (_currentJoin == null) {
-          final outbound = _pairings.where((entry) => entry.direction == 'outbound');
+          final outbound =
+              _pairings.where((entry) => entry.direction == 'outbound');
           if (outbound.isNotEmpty) _currentJoin = outbound.first;
         }
         await refreshDevices();
-        _notice = 'Compare the verification code on both devices before approving.';
+        _notice =
+            'Compare the verification code on both devices before approving.';
       });
 
   Future<void> confirmPairing(String sessionId, {required bool accept}) async =>
       _perform(() async {
-        if (sessionId.isEmpty) throw const AppActionException('This pairing request has expired. Ask for a new invite.');
-        await _core.invoke('confirm_pairing', {'session_id': sessionId, 'accept': accept});
+        if (sessionId.isEmpty) {
+          throw const AppActionException(
+              'This pairing request has expired. Ask for a new invite.');
+        }
+        await _core.invoke(
+            'confirm_pairing', {'session_id': sessionId, 'accept': accept});
         if (accept) _approvedPairingSessions.add(sessionId);
-        if (!accept && _currentJoin?.sessionId == sessionId) _currentJoin = null;
+        if (!accept && _currentJoin?.sessionId == sessionId) {
+          _currentJoin = null;
+        }
         await refreshStatus();
         await refreshDevices();
-        if (accept) _notice = 'Pairing approval sent. This device will appear when both sides approve.';
+        if (accept) {
+          _notice =
+              'Pairing approval sent. This device will appear when both sides approve.';
+        }
         if (!accept) _notice = 'Pairing request declined.';
       });
 
   Future<void> revokeDevice(MeshDevice device) async => _perform(() async {
         if (!canManageDevices) {
-          throw const AppActionException('Only the mesh owner can remove devices.');
+          throw const AppActionException(
+              'Only the mesh owner can remove devices.');
         }
         if (device.id == _status?.deviceId || device.isOwner) {
           throw const AppActionException('The mesh owner cannot be removed.');
@@ -502,32 +655,153 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         await refreshHistory(query: _query);
       });
 
-  Future<void> setPinned(ClipboardItem item, bool pinned) async => _perform(() async {
+  Future<void> setPinned(ClipboardItem item, bool pinned) async =>
+      _perform(() async {
         await _core.invoke('pin', {'id': item.id, 'pinned': pinned});
         await refreshHistory(query: _query);
       });
 
   Future<void> setPrivatePause(bool paused) async => _perform(() async {
-        await _core.invoke('settings', {'values': {'paused': paused}});
+        await _core.invoke('settings', {
+          'values': {'paused': paused}
+        });
         await refreshStatus();
       });
 
   Future<void> setRetentionHours(int hours) async => _perform(() async {
         if (!const {1, 24, 168, 720}.contains(hours)) {
-          throw const AppActionException('Choose a supported history retention period.');
+          throw const AppActionException(
+              'Choose a supported history retention period.');
         }
-        await _core.invoke('settings', {'values': {'retention_hours': hours}});
+        await _core.invoke('settings', {
+          'values': {'retention_hours': hours}
+        });
         await _loadSettings();
+      });
+
+  Future<void> setMaxItems(int count) => _perform(() async {
+        if (!const {500, 1000, 5000}.contains(count)) {
+          throw const AppActionException('Choose a supported history limit.');
+        }
+        await _core.invoke('settings', {
+          'values': {'max_items': count}
+        });
+        await _loadSettings();
+        await refreshHistory(query: _query);
+      });
+
+  Future<void> loadMoreHistory() async {
+    if (_historyLoading || !_hasMoreHistory) return;
+    _historyLimit = (_historyLimit + 250).clamp(250, _maxItems);
+    await refreshHistory(query: _query);
+  }
+
+  Future<void> setRelayUrl(String url) async => _perform(() async {
+        final cleaned = url.trim();
+        await _core.invoke('settings', {
+          'values': {'relay_url': cleaned}
+        });
+        await _loadSettings();
+        await refreshStatus();
+        _notice = cleaned.isEmpty
+            ? 'Remote relay disconnected.'
+            : 'Relay settings saved.';
+      });
+
+  Future<void> setBackgroundEnabled(bool enabled) async => _perform(() async {
+        await _desktop.setBackgroundEnabled(enabled);
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('background_enabled', enabled);
+        _backgroundEnabled = enabled;
+      });
+
+  Future<void> setLaunchAtLogin(bool enabled) async => _perform(() async {
+        await _desktop.setLaunchAtLogin(enabled);
+        _launchAtLogin = await _desktop.launchAtLoginEnabled();
+      });
+
+  Future<void> addText(String text) async => _perform(() async {
+        if (!hasMesh) {
+          throw const AppActionException('Create or join a mesh first.');
+        }
+        if (_status?.paused == true) {
+          throw const AppActionException(
+              'Resume sharing before adding a clip.');
+        }
+        if (text.trim().isEmpty) {
+          throw const AppActionException('Enter something to share.');
+        }
+        await _core.invoke('capture', {'text': text});
+        await refreshHistory(query: _query);
+        _notice = 'Clip added.';
+      });
+
+  Future<void> addRepresentations(
+          {required List<ClipRepresentation> representations,
+          String text = '',
+          required String kind}) =>
+      _perform(() async {
+        if (!hasMesh) {
+          throw const AppActionException('Create or join a mesh first.');
+        }
+        if (_status?.paused == true) {
+          throw const AppActionException(
+              'Resume sharing before adding a clip.');
+        }
+        final size = representations.fold<int>(
+            0, (sum, item) => sum + (item.bytes?.length ?? 0));
+        if (representations.isEmpty || size == 0) {
+          throw const AppActionException('Choose a file to share.');
+        }
+        if (size > 16 * 1024 * 1024) {
+          throw const AppActionException('Choose files under 16 MB in total.');
+        }
+        await _core.invoke('capture', {
+          'text': text,
+          'kind': kind,
+          'representations':
+              representations.map((value) => value.toJson()).toList()
+        });
+        await refreshHistory(query: _query);
+        _notice = 'Clip added.';
+      });
+
+  Future<ClipboardPayload> loadPayload(ClipboardItem item) async {
+    if (item.representations.isEmpty) {
+      return ClipboardPayload(
+          text: item.text, kind: item.kind, representations: const []);
+    }
+    return ClipboardPayload.fromJson(
+        await _core.invoke('payload', {'id': item.id}));
+  }
+
+  Future<void> resendItem(ClipboardItem item) => _perform(() async {
+        if (_status?.paused == true) {
+          throw const AppActionException(
+              'Resume sharing before sharing a clip again.');
+        }
+        await _core.invoke('resend', {'id': item.id});
+        await refreshHistory(query: _query);
+        _notice = 'Clip shared again.';
+      });
+
+  Future<void> clearHistory({bool includePinned = false}) => _perform(() async {
+        await _core.invoke('clear_history', {'include_pinned': includePinned});
+        await refreshHistory(query: _query);
+        _notice =
+            includePinned ? 'History cleared.' : 'Unpinned history cleared.';
       });
 
   Future<void> setThemeMode(ThemeMode mode) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('appearance_mode', switch (mode) {
-        ThemeMode.light => 'light',
-        ThemeMode.dark => 'dark',
-        ThemeMode.system => 'system',
-      });
+      await prefs.setString(
+          'appearance_mode',
+          switch (mode) {
+            ThemeMode.light => 'light',
+            ThemeMode.dark => 'dark',
+            ThemeMode.system => 'system',
+          });
       if (_disposed) return;
       _themeMode = mode;
       _clearError('settings');
@@ -537,12 +811,15 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     _notifyListeners();
   }
 
-  Future<void> setAutomaticDesktopCapture(bool enabled) async => _perform(() async {
+  Future<void> setAutomaticDesktopCapture(bool enabled) async =>
+      _perform(() async {
         if (!desktopAvailable) {
-          throw const AppActionException('Automatic clipboard capture is available on desktop.');
+          throw const AppActionException(
+              'Automatic clipboard capture is available on desktop.');
         }
         if (!_desktopReady) {
-          throw const AppActionException('Desktop clipboard monitoring is not available in this session.');
+          throw const AppActionException(
+              'Desktop clipboard monitoring is not available in this session.');
         }
         final effective = enabled && hasMesh && _status?.paused != true;
         await _desktop.setCaptureEnabled(effective);
@@ -557,7 +834,9 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> configureShortcut(String shortcut) async => _perform(() async {
         final cleaned = shortcut.trim();
-        if (cleaned.isEmpty) throw const AppActionException('Enter a shortcut combination.');
+        if (cleaned.isEmpty) {
+          throw const AppActionException('Enter a shortcut combination.');
+        }
         if (!_desktopReady || _desktopCapabilities?.globalShortcut != true) {
           throw AppActionException(
             _desktopCapabilities?.detail.isNotEmpty == true
@@ -574,11 +853,8 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> copyLocally(ClipboardItem item) async {
     try {
-      if (_desktopReady) {
-        await _desktop.copyText(item.text);
-      } else {
-        await Clipboard.setData(ClipboardData(text: item.text));
-      }
+      await _copyOrPaste(item, paste: false);
+      _clearError('action');
       _notice = 'Copied to this device’s clipboard.';
     } catch (exception) {
       _setError(exception, source: 'action');
@@ -587,12 +863,23 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> openOverlay() async {
-    if (!_desktopReady || _desktopCapabilities?.overlay == false || !hasMesh || _overlayBusy || _disposed) return;
+    if (!_desktopReady ||
+        _desktopCapabilities?.overlay == false ||
+        !hasMesh ||
+        _overlayBusy ||
+        _disposed) {
+      return;
+    }
     _overlayBusy = true;
     _notifyListeners();
     try {
       _overlayOpen = true;
       _overlayQuery = null;
+      // Show the already loaded history on the first frame; the query below
+      // only refreshes it.
+      if ((_query ?? '').isEmpty && _items.isNotEmpty) {
+        _overlayItems = _recentItems(_items, limit: 250);
+      }
       unawaited(searchOverlay(''));
       _notifyListeners();
       await _desktop.showOverlay();
@@ -626,17 +913,19 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     try {
       await _desktop.hideOverlay();
       if (_desktopCapabilities?.paste != false) {
-        await _desktop.pasteText(item.text);
+        await _copyOrPaste(item, paste: true);
         _notice = null;
       } else {
-        await _desktop.copyText(item.text);
-        _notice = 'This desktop cannot paste into other apps here. The clip is ready; press Ctrl+V to paste.';
+        await _copyOrPaste(item, paste: false);
+        _notice =
+            'This desktop cannot paste into other apps here. The clip is ready; press Ctrl+V to paste.';
       }
       _clearError('overlay');
     } catch (exception) {
       try {
-        await _desktop.copyText(item.text);
-        _notice = 'Automatic paste was unavailable. The clip is on your clipboard; press Ctrl+V to paste.';
+        await _copyOrPaste(item, paste: false);
+        _notice =
+            'Automatic paste was unavailable. The clip is on your clipboard; press Ctrl+V to paste.';
       } catch (_) {
         _setError(exception, source: 'overlay');
       }
@@ -644,8 +933,171 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     _notifyListeners();
   }
 
+  Future<void> _copyOrPaste(ClipboardItem item, {required bool paste}) async {
+    final payload = await loadPayload(item);
+    if (payload.representations.isEmpty) {
+      if (_desktopReady) {
+        if (paste) {
+          await _desktop.pasteText(payload.text);
+        } else {
+          await _desktop.copyText(payload.text);
+        }
+      } else {
+        await Clipboard.setData(ClipboardData(text: payload.text));
+      }
+      return;
+    }
+    final formats = <Map<String, Object?>>[];
+    final files = <String>[];
+    final names = <String>{};
+    for (final representation in payload.representations) {
+      final bytes = representation.bytes;
+      if (bytes == null) continue;
+      if (payload.kind == 'file' || payload.kind == 'files') {
+        final directory = Directory(
+            '${_supportDirectory!.path}/clipboard-files/${item.id.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_')}');
+        await directory.create(recursive: true);
+        var name = (representation.name ?? 'Shared file')
+            .replaceAll(RegExp(r'[/\\<>:"|?*\x00-\x1f]'), '_')
+            .replaceAll(RegExp(r'[. ]+$'), '');
+        if (name.isEmpty || name == '.' || name == '..') name = 'Shared file';
+        while (utf8.encode(name).length > 200) {
+          name = name.characters.skipLast(1).string;
+        }
+        if (RegExp(r'^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)',
+                caseSensitive: false)
+            .hasMatch(name)) {
+          name = '_$name';
+        }
+        final baseName = name;
+        var suffix = 2;
+        while (!names.add(name.toLowerCase())) {
+          name = '${suffix++}_$baseName';
+        }
+        final file = File('${directory.path}/$name');
+        await file.writeAsBytes(bytes, flush: true);
+        files.add(file.path);
+      } else {
+        formats.add({'mimeType': representation.mimeType, 'bytes': bytes});
+      }
+    }
+    if (payload.text.isNotEmpty &&
+        !formats.any((format) => format['mimeType'] == 'text/plain') &&
+        files.isEmpty) {
+      formats.add({
+        'mimeType': 'text/plain',
+        'bytes': Uint8List.fromList(utf8.encode(payload.text))
+      });
+    }
+    if (_desktopReady) {
+      if (paste) {
+        await _desktop.pasteContent(formats: formats, files: files);
+      } else {
+        await _desktop.copyContent(formats: formats, files: files);
+      }
+    } else if (files.isNotEmpty) {
+      throw const AppActionException(
+          'Use Save to keep a shared file on this device.');
+    } else if (payload.kind == 'image') {
+      await _mobile.writeClipboard(formats: formats);
+    } else {
+      await Clipboard.setData(ClipboardData(text: payload.text));
+    }
+  }
+
+  Future<void> _captureRichFromDesktop(Map<String, Object?> clipboard,
+      {bool initial = false}) async {
+    Diagnostics.log('capture',
+        'handler: auto=$_automaticDesktopCapture mesh=$hasMesh paused=${_status?.paused}');
+    if (!_automaticDesktopCapture ||
+        !hasMesh ||
+        _status?.paused == true ||
+        clipboard['sensitive'] == true) {
+      return;
+    }
+    final representations = <ClipRepresentation>[];
+    var text = '';
+    var size = 0;
+    final files = (clipboard['files'] as List<dynamic>? ?? const [])
+        .whereType<String>()
+        .toList();
+    try {
+      if (files.isNotEmpty) {
+        for (final path in files) {
+          final file = File(path);
+          if (!await file.exists()) continue;
+          size += await file.length();
+          if (size > 16 * 1024 * 1024) return;
+          representations.add(ClipRepresentation(
+              mimeType: 'application/octet-stream',
+              name: file.uri.pathSegments.last,
+              bytes: await file.readAsBytes()));
+        }
+      } else {
+        final formats = clipboard['formats'] as List<dynamic>? ?? const [];
+        for (final format in formats.whereType<Map<dynamic, dynamic>>()) {
+          final mime = format['mimeType'];
+          final bytes = format['bytes'];
+          if (mime is! String || bytes is! Uint8List) continue;
+          if (!const {
+            'text/plain',
+            'text/html',
+            'text/uri-list',
+            'image/png',
+            'image/jpeg'
+          }.contains(mime)) {
+            continue;
+          }
+          size += bytes.length;
+          if (size > 16 * 1024 * 1024) return;
+          if (mime == 'text/plain') {
+            text = utf8.decode(bytes, allowMalformed: true);
+          }
+          representations.add(ClipRepresentation(mimeType: mime, bytes: bytes));
+        }
+      }
+      if (representations.isEmpty) return;
+      final kind = files.isNotEmpty
+          ? files.length > 1
+              ? 'files'
+              : 'file'
+          : representations.any((value) => value.mimeType.startsWith('image/'))
+              ? 'image'
+              : representations.any((value) => value.mimeType == 'text/html')
+                  ? 'rich_text'
+                  : _isWebUrl(text)
+                      ? 'url'
+                      : 'text';
+      final textOnly = representations.length == 1 &&
+          representations.single.mimeType == 'text/plain' &&
+          utf8.encode(text).length <= _maxPreviewTextBytes;
+      if (text.trim().isEmpty && textOnly) return;
+      await _core.invoke('capture', {
+        // The text field drives search, previews and the mobile keyboard and
+        // is bounded; the full content always travels as a representation.
+        'text': _boundedText(text),
+        'kind': kind,
+        if (initial) 'only_if_new': true,
+        if (!textOnly)
+          'representations':
+              representations.map((value) => value.toJson()).toList()
+      });
+      Diagnostics.log('capture', 'stored $kind clip');
+      await refreshHistory(query: _query);
+      _clearError('capture');
+    } catch (exception) {
+      Diagnostics.log('capture', 'core rejected clip: $exception');
+      _setError(exception, source: 'capture');
+    }
+  }
+
   Future<void> _captureFromDesktop(String text) async {
-    if (!_automaticDesktopCapture || !hasMesh || text.trim().isEmpty || _status?.paused == true) return;
+    if (!_automaticDesktopCapture ||
+        !hasMesh ||
+        text.trim().isEmpty ||
+        _status?.paused == true) {
+      return;
+    }
     try {
       await _core.invoke('capture', {'text': text});
       await refreshHistory(query: _query);
@@ -670,6 +1122,9 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
             'id': clip.id,
             'text': clip.text,
             'kind': clip.kind,
+            if (clip.representations.isNotEmpty)
+              'representations':
+                  clip.representations.map((value) => value.toJson()).toList(),
           });
           acknowledged.add(clip.id);
         } catch (exception) {
@@ -692,7 +1147,11 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> _publishKeyboardHistory() async {
     if (!_isMobilePlatform || _disposed) return;
-    final items = _keyboardItems.take(40).map((item) => item.toKeyboardJson()).toList(growable: false);
+    final items = _keyboardItems
+        .where((item) => item.canInsertText)
+        .take(40)
+        .map((item) => item.toKeyboardJson())
+        .toList(growable: false);
     final paused = _status?.paused ?? false;
     _keyboardPublishQueue = _keyboardPublishQueue.then((_) async {
       if (_disposed) return;
@@ -710,6 +1169,8 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> _loadSettings() async {
     final result = await _core.invoke('settings');
     _retentionHours = (result['retention_hours'] as num?)?.toInt() ?? 24;
+    _maxItems = (result['max_items'] as num?)?.toInt() ?? 500;
+    _relayUrl = result['relay_url'] as String? ?? '';
     if (result.containsKey('paused') && _status != null) {
       _status = MeshStatus(
         initialized: _status!.initialized,
@@ -719,15 +1180,35 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         paused: result['paused'] == true,
         connection: _status!.connection,
         diagnostic: _status!.diagnostic,
+        transport: _status!.transport,
         revision: _status!.revision,
         pendingPairings: _status!.pendingPairings,
       );
     }
   }
 
+  Future<void> _configureMobileDiscovery() async {
+    if (_disposed || !Platform.isIOS) return;
+    try {
+      final config = await _core.invoke('discovery_config');
+      final encoded = jsonEncode(config);
+      if (encoded == _mobileDiscoveryConfig) return;
+      await _mobile.configureDiscovery(config);
+      _mobileDiscoveryConfig = encoded;
+      _clearError('discovery');
+    } catch (exception) {
+      _setError(exception, source: 'discovery');
+    }
+  }
+
   Future<void> _syncDesktopCaptureEnabled() async {
     if (!_desktopReady || _disposed) return;
-    final enabled = _automaticDesktopCapture && hasMesh && _status?.paused != true;
+    // Capture is on by default; sessions that cannot watch the clipboard
+    // keep it off quietly and Settings explains why.
+    final enabled = _automaticDesktopCapture &&
+        _desktopCapabilities?.clipboardCapture == true &&
+        hasMesh &&
+        _status?.paused != true;
     if (enabled == _desktopCaptureEnabled) return;
     try {
       await _desktop.setCaptureEnabled(enabled);
@@ -756,6 +1237,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
 
   void _setError(Object exception, {String source = 'action'}) {
     if (_disposed) return;
+    Diagnostics.log(source, 'error: $exception');
     _errors[source] = _friendlyError(exception);
     _errorOrder[source] = ++_errorSerial;
     _notifyListeners();
@@ -777,7 +1259,8 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
 
   String _friendlyError(Object exception) {
     if (exception is AppActionException) return exception.message;
-    final message = exception.toString().replaceFirst(RegExp(r'^Exception: '), '').trim();
+    final message =
+        exception.toString().replaceFirst(RegExp(r'^Exception: '), '').trim();
     final normalized = message.toLowerCase();
     if (normalized.contains('keychain') ||
         normalized.contains('keystore') ||
@@ -785,6 +1268,10 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         normalized.contains('keyring') ||
         normalized.contains('secure store')) {
       return 'The secure key store is unavailable. Unlock or set up your system keyring, then retry secure setup.';
+    }
+    if (Platform.isIOS && normalized.contains('could not reach the mesh owner')) {
+      return 'Could not reach your other device. Make sure both are on the same Wi-Fi, '
+          'and that Local Network access is on for Arcade Clipboard in Settings › Privacy & Security › Local Network. Then try again.';
     }
     if (normalized.contains('shortcut') && normalized.contains('conflict')) {
       return 'That shortcut is already in use. Choose another key combination.';
@@ -808,18 +1295,60 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
 
   String _defaultShortcut() => switch (Platform.operatingSystem) {
         'macos' => 'CMD+SHIFT+V',
-        'windows' => 'CTRL+SHIFT+V',
+        'windows' => 'CTRL+ALT+V',
         _ => 'CTRL+SHIFT+SPACE',
       };
+
+  /// Orderly shutdown used by the tray Quit action and termination signals.
+  Future<void> shutdown() async {
+    if (_disposed) return;
+    _disposed = true;
+    await _desktop.dispose();
+    if (_ready) {
+      try {
+        await _core.invoke('shutdown');
+      } catch (_) {
+        // The process is exiting.
+      }
+    }
+  }
 
   @override
   void dispose() {
     _disposed = true;
+    if (Platform.isIOS) {
+      _mobile.setDiscoveryHandler(null);
+      unawaited(_mobile.stopDiscovery().catchError((Object _) {}));
+    }
     if (_observerAdded) WidgetsBinding.instance.removeObserver(this);
-    if (_ready) unawaited(_core.invoke('shutdown').then<void>((_) {}).catchError((_) {}));
+    if (_ready) {
+      unawaited(_core.invoke('shutdown').then<void>((_) {}).catchError((_) {}));
+    }
     unawaited(_desktop.dispose());
     super.dispose();
   }
+}
+
+const int _maxPreviewTextBytes = 32 * 1024;
+
+bool _isWebUrl(String text) {
+  final trimmed = text.trim();
+  if (trimmed.contains(RegExp(r'\s'))) return false;
+  return const {'http', 'https'}.contains(Uri.tryParse(trimmed)?.scheme);
+}
+
+/// Truncates on a character boundary to the core's 32 KiB text field limit.
+String _boundedText(String text) {
+  if (utf8.encode(text).length <= _maxPreviewTextBytes) return text;
+  final buffer = StringBuffer();
+  var size = 0;
+  for (final rune in text.runes) {
+    final length = utf8.encode(String.fromCharCode(rune)).length;
+    if (size + length > _maxPreviewTextBytes) break;
+    buffer.writeCharCode(rune);
+    size += length;
+  }
+  return buffer.toString();
 }
 
 class AppActionException implements Exception {

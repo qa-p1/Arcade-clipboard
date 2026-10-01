@@ -2,7 +2,10 @@ package dev.arcade.clipboard.mobile
 
 import android.app.Activity
 import android.content.Intent
+import android.net.Uri
+import android.provider.OpenableColumns
 import android.os.Bundle
+import java.io.ByteArrayOutputStream
 import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
@@ -23,7 +26,7 @@ class ShareTargetActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val retained = lastCustomNonConfigurationInstance as? ShareSession
+        val retained = lastNonConfigurationInstance as? ShareSession
         val active = retained ?: restoreOrReadShare(savedInstanceState)
         session = active
         active.attach(this)
@@ -78,14 +81,25 @@ class ShareTargetActivity : Activity() {
         }
 
         return when (val result = readSharedText(intent)) {
-            is ShareInput.Valid -> ShareSession(text = result.text, status = Status.PREVIEW)
+            is ShareInput.Valid -> ShareSession(text = result.text, sources = result.sources, status = Status.PREVIEW)
             is ShareInput.Invalid -> ShareSession(text = null, status = Status.INVALID, message = result.message)
         }
     }
 
     private fun readSharedText(source: Intent): ShareInput {
-        if (source.action != Intent.ACTION_SEND) {
+        if (source.action !in setOf(Intent.ACTION_SEND, Intent.ACTION_SEND_MULTIPLE)) {
             return ShareInput.Invalid("This share doesn’t contain supported text.")
+        }
+
+        @Suppress("DEPRECATION")
+        val streams: List<Uri> = if (source.action == Intent.ACTION_SEND_MULTIPLE) {
+            source.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM).orEmpty()
+        } else listOfNotNull(source.getParcelableExtra<Uri>(Intent.EXTRA_STREAM))
+        if (streams.isNotEmpty()) {
+            if (streams.size > 32 || streams.any { it.scheme != "content" }) {
+                return ShareInput.Invalid("Share up to 32 files from an app on this device.")
+            }
+            return ShareInput.Valid(streams.joinToString("\n") { displayName(it) }, streams)
         }
 
         val value = try {
@@ -153,7 +167,7 @@ class ShareTargetActivity : Activity() {
             setTextColor(0xff202124.toInt())
         }, matchWidth())
         root.addView(TextView(this).apply {
-            text = "This text will be queued on this phone. Sync is not confirmed until Arcade Clipboard finishes syncing it."
+            text = "Add this content to your shared clipboard."
             textSize = 15f
             setTextColor(0xff5f6368.toInt())
             setPadding(0, dp(10), 0, dp(14))
@@ -199,7 +213,31 @@ class ShareTargetActivity : Activity() {
         render(active)
         SHARE_WORKER.execute {
             val outcome = runCatching {
-                MobileSharedStore(applicationContext).enqueue(active.text.orEmpty(), "This phone")
+                if (active.sources.isEmpty()) MobileSharedStore(applicationContext).enqueue(active.text.orEmpty(), "This phone")
+                else {
+                    var total = 0
+                    val representations = active.sources.map { uri ->
+                        val bytes = contentResolver.openInputStream(uri)?.use { input ->
+                            val output = ByteArrayOutputStream()
+                            val buffer = ByteArray(64 * 1024)
+                            while (true) {
+                                val count = input.read(buffer)
+                                if (count < 0) break
+                                total += count
+                                require(total <= 16 * 1024 * 1024) { "This share exceeds 16 MB." }
+                                output.write(buffer, 0, count)
+                            }
+                            output.toByteArray()
+                        } ?: error("The shared file is no longer available.")
+                        val mime = contentResolver.getType(uri) ?: "application/octet-stream"
+                        mapOf<String, Any?>(
+                            "mime_type" to mime,
+                            "data_base64" to android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP),
+                            "name" to displayName(uri),
+                        )
+                    }
+                    MobileSharedStore(applicationContext).enqueue("", "This phone", representations)
+                }
             }
             MAIN.post {
                 active.completeSubmission(outcome)
@@ -304,10 +342,19 @@ class ShareTargetActivity : Activity() {
         ViewGroup.LayoutParams.WRAP_CONTENT,
     )
 
+    private fun displayName(uri: Uri): String {
+        val name = runCatching {
+            contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) cursor.getString(0) else null
+            }
+        }.getOrNull() ?: "shared-file"
+        return name.replace('/', '_').replace('\\', '_').replace('\u0000', '_').take(100).ifBlank { "shared-file" }
+    }
+
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
     private sealed class ShareInput {
-        data class Valid(val text: String) : ShareInput()
+        data class Valid(val text: String, val sources: List<Uri> = emptyList()) : ShareInput()
         data class Invalid(val message: String) : ShareInput()
     }
 
@@ -316,6 +363,7 @@ class ShareTargetActivity : Activity() {
     /** Retained across rotation. A restored process never repeats a confirmed submission. */
     private class ShareSession(
         val text: String?,
+        val sources: List<Uri> = emptyList(),
         status: Status,
         message: String? = null,
     ) {

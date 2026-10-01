@@ -1,34 +1,70 @@
 # Arcade Clipboard
 
-Arcade Clipboard is a device-to-device clipboard history. A clip explicitly added on one trusted device is synchronized into the mesh history on the others. Receiving a clip never silently replaces the receiving device's normal OS clipboard; choosing a clip is the action that copies or pastes it.
+Clipboard history shared between your trusted devices. Remote clips enter the mesh history; they never replace your normal clipboard automatically. Choose a clip to copy it or paste it into the app you were using.
 
-**Status: development checkpoint, not an installable or release-ready app.** This checkout contains the Flutter UI source, Rust core, platform adapter source, mobile extension source, relay service, and development scripts. Flutter bridge bindings and generated platform runners are not checked in, and native pairing, capture, focus restoration, and paste have not been accepted on real devices. Do not use it with sensitive clipboard contents yet. See [platform limits](docs/platform-limitations.md), [verification status](docs/verification/toolchain-blocker.md), and the [security review](docs/security-review.md).
+The shared Flutter client uses a Rust core for identities, encrypted storage, pairing, discovery, LAN/relay connections and synchronization. No account is required.
 
-## What's in the repository
+## Start on Linux
 
-- `apps/flutter_app`: shared Flutter application source and Dart state tests.
-- `core/rust`: mesh identity, pairing, authenticated encrypted transport, encrypted local payload storage, history, and synchronization source.
-- `platform/desktop`: small Windows, macOS, Linux, and Hyprland integration source.
-- `platform/ios` and `platform/android`: native share/keyboard and protected handoff source.
-- `services/relay`: a standalone opaque WebSocket relay. The current client does not use it as a remote fallback.
-- `tests`: Rust integration and process-smoke test sources; their presence is not a claim that this checkout passed them.
+From the repository root:
 
-## Development entry points
+~~~bash
+bash scripts/dev.sh desktop
+~~~
 
-From the repository root, `bash scripts/dev.sh relay` starts the local relay. `bash scripts/dev.sh test` and `bash scripts/dev.sh smoke` are available for a developer who chooses to run the Rust checks; no tests or native/emulator checks were run for this publishing checkpoint. `bash scripts/dev.sh desktop` currently stops with an explanatory preflight until Flutter/Rust bridge bindings and a Linux runner have been generated in a compatible Flutter environment.
+For a release bundle:
 
-See [development](docs/development.md) for prerequisites and the path to a two-device test. That acceptance flow is not currently ready to execute from a clean checkout. No public relay is provisioned.
+~~~bash
+bash scripts/dev.sh build-linux
+./apps/flutter_app/build/linux/x64/release/bundle/clipboard
+~~~
 
-## Project docs
+The archive is dist/Arcade-Clipboard-linux-x64.tar.gz. Keep the executable beside its lib/ and data/ directories. To install the release in your user application directory, run bash scripts/install-linux.sh. No shell startup files are changed.
 
-- [Architecture and module boundaries](docs/architecture.md)
-- [Development setup and commands](docs/development.md)
-- [Protocol v1](docs/protocol.md)
-- [Security review and open risks](docs/security-review.md)
-- [Platform limits and readiness](docs/platform-limitations.md)
-- [Desktop integration](docs/desktop-integration.md)
-- [Mobile integration](docs/mobile-integration.md)
-- [Manual acceptance checklist](docs/acceptance.md)
-- [Relay behavior](services/relay/README.md)
+An unlocked Secret Service keyring is required. Normal copies (Ctrl+C) are added to the mesh automatically; turn on Private mode to pause. Hyprland supports the full shortcut → picker → Enter → paste flow (Ctrl+Shift+V is sent to terminals). On other Wayland desktops, bind a system shortcut to `clipboard --overlay`; choosing a clip copies it for a manual Ctrl+V. On Wayland, install wl-clipboard (2.2+) for capture.
 
-A platform should be called supported only after its build, permissions, clipboard behavior, lifecycle, focus, and paste or insertion path have been exercised on that platform. This checkpoint makes no such release claim.
+The app runs as a single instance: launching it again shows the running window, and `clipboard --overlay` opens the picker. Start with `ARCADE_DEBUG=1` to print capture/paste/connection diagnostics (never clipboard contents) to stderr.
+
+## Pair and test
+
+1. Create a mesh on the first device and give it a name.
+2. Open Devices → Add device.
+3. On the other device, choose Join mesh and scan the QR code, import its image, or paste the pairing code.
+4. Compare the verification number and approve on both devices.
+5. Add a clip. It should appear in the other device's history without replacing its active clipboard.
+6. Open the desktop picker with the shortcut shown in Settings; select a clip and press Enter.
+
+Invites expire after two minutes. The creator approves new devices and removes members; paired members can synchronize while the creator is offline.
+
+## iPhone IPA
+
+GitHub Actions → Build iPhone IPA → Run workflow builds an unsigned arm64 IPA with both native extensions. Download the artifact, extract the IPA, then sign and install it with your usual signing tool. No signing certificate is uploaded to GitHub. See [iPhone build and installation](docs/ios-install.md), especially the App Group requirement.
+
+The iPhone client synchronizes while the main app is running. Shares are saved securely by the extension and imported when the app resumes. The keyboard inserts previously synchronized text from its local cache.
+
+## What is implemented
+
+- Human-confirmed QR pairing, owner-signed membership and actual revocation.
+- Noise end-to-end encryption, authenticated origin signatures and encrypted SQLite payloads/previews.
+- Trusted peer discovery, LAN preference, encrypted relay fallback and reconnect/catch-up.
+- Text, URLs, HTML/RTF, PNG/JPEG, files and file groups; up to 16 MiB per clip.
+- Search, source/type filters, inspect, copy, export, resend, synchronized pins and deletion.
+- Private mode, automatic capture (on by default), retention and item-count limits.
+- Copying something already in history moves it to the top on every device instead of duplicating it.
+- Light/dark UI, keyboard navigation, desktop picker and native clipboard formats.
+- Linux tray/background behavior, desktop startup controls, native mobile share and keyboard integrations.
+
+Folder transfer and byte-offset resume are not implemented. Interrupted transfers restart from their retained item. There is no public relay configured.
+
+## Development and deployment
+
+~~~bash
+bash scripts/dev.sh test
+bash scripts/dev.sh check
+bash scripts/dev.sh relay
+bash scripts/dev.sh native-test
+~~~
+
+[Development](docs/development.md) · [Architecture](docs/architecture.md) · [Protocol](docs/protocol.md) · [Security](docs/security.md) · [Platform limits](docs/platform-limitations.md) · [Relay deployment with Cloudflare](docs/relay-deployment.md) · [Acceptance](docs/acceptance.md)
+
+Linux release builds and automated core/client checks have been run locally. Apple/Windows native runtime behavior needs its target platform; an unsigned IPA workflow is a build path, not a claim that this Linux machine tested an iPhone.

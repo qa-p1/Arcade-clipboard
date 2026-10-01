@@ -1,0 +1,19 @@
+{
+    email {$ACME_EMAIL}
+    admin off
+    # HTTP errors can contain query-string bearer tickets. Suppress that
+    # namespace; access logging is also deliberately left disabled.
+    log default {
+        exclude http.log.error http.log.access
+    }
+}
+
+{$RELAY_DOMAIN} {
+    @relay path /healthz /v1/relay/*
+    handle @relay {
+        reverse_proxy relay:8787
+    }
+    handle {
+        respond "Not found" 404
+    }
+}

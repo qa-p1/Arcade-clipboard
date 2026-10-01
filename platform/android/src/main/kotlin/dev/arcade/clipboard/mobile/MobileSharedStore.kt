@@ -41,9 +41,17 @@ internal class MobileSharedStore(context: Context) {
         val expiresAt: Long,
     )
 
-    fun enqueue(textValue: String, sourceName: String): SharedText = withInboxLock {
+    fun enqueue(textValue: String, sourceName: String, representations: List<Map<String, Any?>> = emptyList()): SharedText = withInboxLock {
         val text = textValue
-        require(text.isNotBlank()) { "There is no text to add." }
+        require(text.isNotBlank() || representations.isNotEmpty()) { "There is no content to add." }
+        require(representations.size <= 32) { "Share up to 32 files at a time." }
+        var payloadBytes = 0L
+        for (representation in representations) {
+            val encoded = representation["data_base64"] as? String ?: error("Shared content has no data.")
+            require(encoded.length <= 24 * 1024 * 1024) { "This share exceeds 16 MB." }
+            payloadBytes += android.util.Base64.decode(encoded, android.util.Base64.NO_WRAP).size
+        }
+        require(payloadBytes <= 16 * 1024 * 1024) { "This share exceeds 16 MB." }
         val textBytes = text.toByteArray(StandardCharsets.UTF_8).size
         require(textBytes <= MAX_SHARED_BYTES) {
             "This text is too large to share. The limit is 32 KB."
@@ -57,7 +65,7 @@ internal class MobileSharedStore(context: Context) {
         val item = SharedText(
             id = UUID.randomUUID().toString(),
             text = text,
-            kind = if (isHttpUrl(text.trim())) "url" else "text",
+            kind = if (representations.any { (it["mime_type"] as? String)?.startsWith("image/") == true }) "image" else if (representations.isNotEmpty()) "file" else if (isHttpUrl(text.trim())) "url" else "text",
             sourceName = sourceName.take(MAX_SOURCE_NAME_CHARS),
             createdAt = System.currentTimeMillis(),
             expiresAt = System.currentTimeMillis() + MAX_INBOX_AGE_MS,
@@ -69,6 +77,7 @@ internal class MobileSharedStore(context: Context) {
             .put("sourceName", item.sourceName)
             .put("createdAt", item.createdAt)
             .put("expiresAt", item.expiresAt)
+            .put("representations", JSONArray(representations))
             .toString()
             .toByteArray(StandardCharsets.UTF_8)
         val encryptedBytes = payload.size.toLong() + ENVELOPE_OVERHEAD_BYTES
@@ -89,12 +98,23 @@ internal class MobileSharedStore(context: Context) {
                 if (!isUuid(id)) return@mapNotNull null
                 runCatching {
                     val payload = JSONObject(String(readEncrypted(file, "inbox:$id"), StandardCharsets.UTF_8))
-                    val text = payload.optString("text").takeIf { it.isNotBlank() } ?: return@runCatching null
+                    val text = payload.optString("text")
+                    val representations = payload.optJSONArray("representations") ?: JSONArray()
+                    if (text.isBlank() && representations.length() == 0) return@runCatching null
+                    val formats = (0 until representations.length()).map { index ->
+                        val format = representations.getJSONObject(index)
+                        buildMap<String, Any> {
+                            put("mime_type", format.getString("mime_type"))
+                            put("data_base64", format.getString("data_base64"))
+                            if (format.has("name") && !format.isNull("name")) put("name", format.getString("name"))
+                        }
+                    }
                     payload.optLong("createdAt") to mapOf(
                         "id" to id,
                         "text" to text,
                         "kind" to payload.optString("kind", if (isHttpUrl(text.trim())) "url" else "text"),
                         "sourceName" to payload.optString("sourceName", "This phone"),
+                        "representations" to formats,
                     ) as Map<String, Any>
                 }.getOrNull()
             }
@@ -220,7 +240,7 @@ internal class MobileSharedStore(context: Context) {
 
     private fun readEncrypted(file: File, aad: String): ByteArray {
         require(file.canonicalPath.startsWith(directory.canonicalPath + File.separator))
-        val limit = if (file.parentFile?.canonicalPath == inbox.canonicalPath) MAX_INBOX_FILE_BYTES else MAX_ENCRYPTED_CACHE_FILE_BYTES
+        val limit = if (file.parentFile?.canonicalPath == inbox.canonicalPath) MAX_INBOX_FILE_BYTES else MAX_ENCRYPTED_CACHE_FILE_BYTES.toLong()
         require(file.length() <= limit) { "Mobile cache entry is too large." }
         return decrypt(file.readBytes(), aad.toByteArray(StandardCharsets.UTF_8))
     }
@@ -317,8 +337,8 @@ internal class MobileSharedStore(context: Context) {
         private const val MAX_SHARED_BYTES = 32 * 1024
         private const val MAX_SOURCE_NAME_CHARS = 80
         private const val MAX_INBOX_ITEMS = 100
-        private const val MAX_INBOX_BYTES = 4 * 1024 * 1024
-        private const val MAX_INBOX_FILE_BYTES = 64 * 1024L
+        private const val MAX_INBOX_BYTES = 64 * 1024 * 1024
+        private const val MAX_INBOX_FILE_BYTES = 24 * 1024 * 1024L
         private const val MAX_DRAIN_ITEMS = 50
         private const val MAX_INBOX_AGE_MS = 7L * 24 * 60 * 60 * 1000
         private const val MAX_CACHE_ITEMS = 30

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 class MeshStatus {
   const MeshStatus({
@@ -9,6 +10,7 @@ class MeshStatus {
     required this.paused,
     required this.connection,
     required this.diagnostic,
+    this.transport = 'offline',
     this.revision = 0,
     this.pendingPairings = const [],
   });
@@ -20,6 +22,7 @@ class MeshStatus {
   final bool paused;
   final String connection;
   final String diagnostic;
+  final String transport;
   final int revision;
   final List<PairingRequest> pendingPairings;
 
@@ -33,11 +36,13 @@ class MeshStatus {
         paused: json['paused'] == true,
         connection: json['connection'] as String? ?? 'offline',
         diagnostic: json['diagnostic'] as String? ?? '',
+        transport: json['transport'] as String? ?? 'offline',
         revision: _integer(json['revision']) ?? 0,
-        pendingPairings: (json['pending_pairings'] as List<dynamic>? ?? const [])
-            .whereType<Map<String, dynamic>>()
-            .map(PairingRequest.fromJson)
-            .toList(growable: false),
+        pendingPairings:
+            (json['pending_pairings'] as List<dynamic>? ?? const [])
+                .whereType<Map<String, dynamic>>()
+                .map(PairingRequest.fromJson)
+                .toList(growable: false),
       );
 }
 
@@ -51,6 +56,9 @@ class ClipboardItem {
     required this.text,
     required this.kind,
     required this.pinned,
+    this.representations = const [],
+    this.size = 0,
+    this.previewText = '',
   });
 
   final String id;
@@ -61,22 +69,50 @@ class ClipboardItem {
   final String text;
   final String kind;
   final bool pinned;
+  final List<ClipRepresentation> representations;
+  final int size;
+  final String previewText;
 
-  bool isExpiredAt(DateTime now) => expiresAt != null && !expiresAt!.isAfter(now);
+  bool get hasBinaryContent =>
+      kind == 'image' || kind == 'file' || kind == 'files';
+  bool get canInsertText => !hasBinaryContent && text.isNotEmpty;
+
+  bool isExpiredAt(DateTime now) =>
+      !pinned && expiresAt != null && !expiresAt!.isAfter(now);
 
   factory ClipboardItem.fromJson(Map<String, dynamic> json) => ClipboardItem(
         id: json['id'] as String? ?? '',
         originDevice: json['origin_device'] as String? ?? '',
         sourceName: json['source_name'] as String? ?? 'Unknown device',
-        createdAt: DateTime.fromMillisecondsSinceEpoch(_integer(json['created_at']) ?? 0),
+        createdAt: DateTime.fromMillisecondsSinceEpoch(
+            _integer(json['created_at']) ?? 0),
         expiresAt: _date(json['expires_at']),
         text: json['text'] as String? ?? '',
         kind: json['kind'] as String? ?? 'text',
         pinned: json['pinned'] == true,
+        size: _integer(json['size']) ?? 0,
+        previewText: json['preview'] as String? ?? '',
+        representations: (json['representations'] as List<dynamic>? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(ClipRepresentation.fromJson)
+            .toList(growable: false),
       );
 
   String get preview {
-    final normalized = text.replaceAll(RegExp(r'\s+'), ' ').trim();
+    final normalized = (previewText.isNotEmpty ? previewText : text)
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    if (normalized.isEmpty && hasBinaryContent) {
+      final names = representations
+          .map((value) => value.name)
+          .whereType<String>()
+          .toList();
+      return names.isNotEmpty
+          ? names.join(', ')
+          : kind == 'image'
+              ? 'Image'
+              : 'Shared file';
+    }
     if (normalized.length <= 180) return normalized;
     return '${normalized.substring(0, 177)}…';
   }
@@ -87,10 +123,56 @@ class ClipboardItem {
         'id': id,
         'source_name': sourceName,
         'created_at': createdAt.millisecondsSinceEpoch,
-        if (expiresAt != null) 'expires_at': expiresAt!.millisecondsSinceEpoch,
+        if (!pinned && expiresAt != null)
+          'expires_at': expiresAt!.millisecondsSinceEpoch,
         'text': text,
         'pinned': pinned,
       };
+}
+
+class ClipRepresentation {
+  const ClipRepresentation(
+      {required this.mimeType, this.name, this.size = 0, this.bytes});
+
+  final String mimeType;
+  final String? name;
+  final int size;
+  final Uint8List? bytes;
+
+  factory ClipRepresentation.fromJson(Map<String, dynamic> json) {
+    final encoded = json['data_base64'] as String?;
+    final bytes = encoded == null ? null : base64Decode(encoded);
+    return ClipRepresentation(
+      mimeType: json['mime_type'] as String? ?? 'application/octet-stream',
+      name: json['name'] as String?,
+      size: _integer(json['size']) ?? bytes?.length ?? 0,
+      bytes: bytes,
+    );
+  }
+
+  Map<String, Object?> toJson() => {
+        'mime_type': mimeType,
+        if (name != null) 'name': name,
+        if (bytes != null) 'data_base64': base64Encode(bytes!),
+      };
+}
+
+class ClipboardPayload {
+  const ClipboardPayload(
+      {required this.text, required this.kind, required this.representations});
+  final String text;
+  final String kind;
+  final List<ClipRepresentation> representations;
+
+  factory ClipboardPayload.fromJson(Map<String, dynamic> json) =>
+      ClipboardPayload(
+        text: json['text'] as String? ?? '',
+        kind: json['kind'] as String? ?? 'text',
+        representations: (json['representations'] as List<dynamic>? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(ClipRepresentation.fromJson)
+            .toList(growable: false),
+      );
 }
 
 class MeshDevice {
@@ -112,9 +194,12 @@ class MeshDevice {
 
   factory MeshDevice.fromJson(Map<String, dynamic> json) => MeshDevice(
         id: json['id'] as String? ?? json['device_id'] as String? ?? '',
-        name: json['name'] as String? ?? json['device_name'] as String? ?? 'Device',
+        name: json['name'] as String? ??
+            json['device_name'] as String? ??
+            'Device',
         platform: json['platform'] as String? ?? 'Device',
-        state: json['state'] as String? ?? json['status'] as String? ?? 'offline',
+        state:
+            json['state'] as String? ?? json['status'] as String? ?? 'offline',
         lastSeen: _date(json['last_seen']),
         isOwner: json['is_owner'] == true,
       );
@@ -146,7 +231,8 @@ class PairingRequest {
         state: json['state'] as String? ?? 'pending',
       );
 
-  factory PairingRequest.fromJoinResponse(Map<String, dynamic> json) => PairingRequest.fromJson({
+  factory PairingRequest.fromJoinResponse(Map<String, dynamic> json) =>
+      PairingRequest.fromJson({
         ...json,
         'direction': json['direction'] ?? 'outbound',
       });
@@ -184,11 +270,15 @@ String? _nullableString(Object? value) {
 DateTime? _date(Object? value) {
   if (value is String) {
     final milliseconds = int.tryParse(value);
-    if (milliseconds != null) return DateTime.fromMillisecondsSinceEpoch(milliseconds);
+    if (milliseconds != null) {
+      return DateTime.fromMillisecondsSinceEpoch(milliseconds);
+    }
     return DateTime.tryParse(value);
   }
   final milliseconds = _integer(value);
-  if (milliseconds != null) return DateTime.fromMillisecondsSinceEpoch(milliseconds);
+  if (milliseconds != null) {
+    return DateTime.fromMillisecondsSinceEpoch(milliseconds);
+  }
   return null;
 }
 

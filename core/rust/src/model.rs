@@ -15,8 +15,11 @@ pub struct HistoryItem {
     pub created_at: i64,
     pub expires_at: i64,
     pub text: String,
+    pub preview: String,
     pub kind: String,
     pub pinned: bool,
+    pub size: usize,
+    pub representations: Vec<crate::payload::RepresentationInfo>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -47,6 +50,7 @@ pub struct Status {
     pub device_name: String,
     pub paused: bool,
     pub connection: String,
+    pub transport: String,
     pub diagnostic: String,
     pub pending_pairings: Vec<PendingPairingInfo>,
     pub retention_hours: u32,
@@ -66,6 +70,8 @@ pub struct InviteV1 {
     pub host_static_public: String,
     pub owner_signing_public: String,
     pub pairing_token: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub relay_url: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -77,6 +83,12 @@ pub enum WireMessage {
         device_id: String,
         device_name: String,
         static_public: String,
+        #[serde(default)]
+        item_signing_public: String,
+        #[serde(default)]
+        platform: String,
+        #[serde(default)]
+        capabilities: Vec<String>,
         endpoint: String,
     },
     PairDecision {
@@ -92,8 +104,17 @@ pub enum WireMessage {
     ClipboardItem {
         item: WireItem,
     },
+    ClipboardChunk {
+        id: String,
+        offset: usize,
+        total: usize,
+        data: String,
+    },
     DeleteItem {
         id: String,
+    },
+    PinUpdate {
+        state: SignedPinState,
     },
     MembershipSnapshot {
         certificates: Vec<SignedMemberCertificate>,
@@ -119,6 +140,10 @@ pub struct WireItem {
     pub text: String,
     pub kind: String,
     pub content_hash: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub origin_signature: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub representations: Vec<crate::payload::Representation>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -129,6 +154,12 @@ pub struct MemberCertificate {
     pub device_name: String,
     pub static_public: String,
     pub issued_at: i64,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub item_signing_public: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub platform: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub capabilities: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -149,6 +180,18 @@ pub struct Revocation {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SignedRevocation {
     pub revocation: Revocation,
+    pub signature: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SignedPinState {
+    pub version: u16,
+    pub mesh_id: String,
+    pub id: String,
+    pub pinned: bool,
+    pub actor_device: String,
+    pub revision: u64,
+    pub changed_at: i64,
     pub signature: String,
 }
 

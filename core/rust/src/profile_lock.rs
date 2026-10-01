@@ -1,4 +1,7 @@
-use std::{fs::{File, OpenOptions, TryLockError}, path::Path};
+use std::{
+    fs::{File, OpenOptions, TryLockError},
+    path::Path,
+};
 
 /// Prevent two app instances from creating/replacing one secure identity or
 /// mutating the same profile concurrently. The OS releases this lock on crash.
@@ -9,8 +12,12 @@ pub(crate) struct ProfileLock {
 
 impl ProfileLock {
     pub(crate) fn acquire(directory: &Path) -> Result<Self, String> {
-        let file = OpenOptions::new().read(true).write(true).create(true)
-            .truncate(false).open(directory.join("profile.lock"))
+        let file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(directory.join("profile.lock"))
             .map_err(|_| "Could not open the clipboard profile lock".to_string())?;
         match file.try_lock() {
             Ok(()) => Ok(Self { _file: file }),

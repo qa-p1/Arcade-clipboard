@@ -8,10 +8,10 @@ DOWNLOADS="${TOOLS}/downloads"
 # Reproducible stable versions selected from the official release channels on
 # 2026-09-30. All installations stay inside .tools; this script never changes
 # user shell configuration or the system PATH.
-RUST_VERSION="1.98.1"
-FLUTTER_VERSION="3.47.5"
+RUST_VERSION="1.98.0"
+FLUTTER_VERSION="3.47.2"
 FLUTTER_ARCHIVE="flutter_linux_${FLUTTER_VERSION}-stable.tar.xz"
-FLUTTER_SHA256="2132e990f236f8d22e7c6314b29a191a95b10d7cbcfec9b4e2e303d996652cbb"
+FLUTTER_SHA256="447878859d01ca9bfdb99a85f245af07ed8a15fedcd9d189c4749e8e92d1f185"
 
 mkdir -p "${DOWNLOADS}" "${TOOLS}/rustup" "${TOOLS}/cargo"
 

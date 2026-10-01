@@ -7,6 +7,10 @@ cd "$arcade_root"
 command -v gnome-keyring-daemon >/dev/null
 command -v dbus-send >/dev/null
 arcade_test_state="$(mktemp -d)"
+# GUI checks can share the display while using an isolated Secret Service.
+if [[ -n "${WAYLAND_DISPLAY:-}" && "$WAYLAND_DISPLAY" != /* ]]; then
+  export WAYLAND_DISPLAY="${XDG_RUNTIME_DIR:?}/$WAYLAND_DISPLAY"
+fi
 export XDG_DATA_HOME="$arcade_test_state/data"
 export XDG_RUNTIME_DIR="$arcade_test_state/run"
 mkdir -m 700 -p "$XDG_DATA_HOME" "$XDG_RUNTIME_DIR" "$XDG_RUNTIME_DIR/keyring"
@@ -35,4 +39,9 @@ if [[ "$arcade_ready" != true ]]; then
   echo 'Isolated Secret Service did not start.' >&2
   exit 1
 fi
-python3 tests/process_smoke.py --data-dir "$arcade_test_state/profiles"
+if [[ $# -gt 0 ]]; then
+  export ARCADE_DATA_DIR="$arcade_test_state/gui-profile"
+  "$@"
+else
+  python3 tests/process_smoke.py --data-dir "$arcade_test_state/profiles"
+fi
