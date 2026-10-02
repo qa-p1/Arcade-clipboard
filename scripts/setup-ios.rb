@@ -78,6 +78,21 @@ def add_embed_extension(host, extension)
   build_file = phase.files.find { |item| item.file_ref == extension.product_reference }
   build_file.settings ||= {}
   build_file.settings['ATTRIBUTES'] = (Array(build_file.settings['ATTRIBUTES']) + ['CodeSignOnCopy']).uniq
+  place_before_thin_binary(host, phase)
+end
+
+# Flutter's "Thin Binary" script reads the app's processed Info.plist, which
+# Xcode only produces after embedded extensions are copied. Embedding after
+# that script makes the new build system report a dependency cycle.
+def place_before_thin_binary(host, phase)
+  thin_binary = host.shell_script_build_phases.find { |item| item.name == 'Thin Binary' }
+  return unless thin_binary
+
+  phases = host.build_phases
+  return if phases.index(phase) < phases.index(thin_binary)
+
+  phases.delete(phase)
+  phases.insert(phases.index(thin_binary), phase)
 end
 
 def find_or_create_extension(project, name, deployment_target)

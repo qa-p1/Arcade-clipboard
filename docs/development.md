@@ -1,53 +1,124 @@
 # Development
 
-Run commands from the repository root. The verified local toolchain is Flutter 3.47.2 / Dart 3.13.2 and Rust 1.98.1. CI uses the official Rust 1.98.0 release. Flutter Rust Bridge runtime and generated bindings are both 2.13.0.
+Run all commands from the repository root.
+
+## Toolchain
+
+| Tool | Version |
+| --- | --- |
+| Flutter | 3.47.2 (Dart 3.13) |
+| Rust | 1.98.1 |
+| flutter_rust_bridge | 2.13.0, for both the Dart runtime and the code generator |
+
+CI uses the same versions. `scripts/dev-env.sh`, which every script sources, prefers installed tools and falls back to toolchains under `.tools/` for the current process only. It never edits shell or system configuration.
 
 ## Linux prerequisites
 
-Install Flutter stable, Rust, Python 3, clang, CMake, Ninja, pkg-config, GTK 3 development files, keybinder 3 development files and a working Secret Service implementation.
+Debian and Ubuntu:
 
-Ubuntu/Debian native dependencies:
+```bash
+sudo apt-get install clang cmake ninja-build pkg-config \
+  libgtk-3-dev libkeybinder-3.0-dev libdbus-1-dev libsecret-1-dev
+```
 
-~~~bash
-sudo apt-get install clang cmake ninja-build pkg-config libgtk-3-dev libkeybinder-3.0-dev libdbus-1-dev libsecret-1-dev libstdc++-12-dev
-~~~
+Arch: `clang cmake ninja pkgconf gtk3 libkeybinder3 libsecret`.
 
-On Arch-based systems use the corresponding clang, cmake, ninja, gtk3, keybinder3 and libsecret packages. Hyprland capture/paste uses wl-clipboard and hyprctl, with Lua and legacy configuration support. X11 focus/paste uses the bundled X11 helper. Generic Wayland has no global shortcut provider implemented here; bind a system shortcut to `clipboard --overlay` (the running instance opens the picker) and use copy fallback. Wayland capture needs wl-clipboard 2.2+. Set `ARCADE_DEBUG=1` for diagnostics on stderr. Setting `ARCADE_DATA_DIR` allows a second, independent local instance for pairing tests.
+For running the app you also need a Secret Service provider and, on Wayland, `wl-clipboard`. See [Linux](linux.md#requirements).
 
 ## Commands
 
-| Command | Result |
+`scripts/dev.sh` wraps the common tasks:
+
+| Command | What it does |
 | --- | --- |
-| bash scripts/dev.sh desktop | Run Linux debug client |
-| bash scripts/dev.sh build-linux | Build release bundle and tar.gz |
-| bash scripts/install-linux.sh | Install built bundle under the user data directory |
-| bash scripts/dev.sh test | Rust workspace and Flutter tests |
-| bash scripts/dev.sh check | Rust format/Clippy and Flutter analysis |
-| bash scripts/dev.sh smoke | Two actual Rust API processes using system secure storage |
-| dbus-run-session -- bash tests/with-secret-service.sh | Isolated synthetic Secret Service/process acceptance |
-| bash scripts/dev.sh native-test | Hyprland native pairing/history/Enter-paste acceptance |
-| bash scripts/dev.sh relay | Local relay on 127.0.0.1:8787 |
-| bash scripts/dev.sh generate | Regenerate matching Flutter/Rust bindings |
-| bash scripts/dev.sh build-ios | On macOS, build and package unsigned iPhone IPA |
+| `bash scripts/dev.sh desktop` | Run the Linux app in debug mode |
+| `bash scripts/dev.sh build-linux` | Build the release bundle and `dist/Arcade-Clipboard-linux-x64.tar.gz` |
+| `bash scripts/install-linux.sh` | Install the release bundle for the current user |
+| `bash scripts/dev.sh test` | Rust workspace tests and Flutter tests |
+| `bash scripts/dev.sh check` | `rustfmt`, Clippy with warnings as errors, and `flutter analyze` |
+| `bash scripts/dev.sh smoke` | Pair two real core processes and sync between them |
+| `bash scripts/dev.sh native-test` | Pairing, sync and picker paste on a live Hyprland session |
+| `bash scripts/dev.sh relay` | Run the relay on `127.0.0.1:8787` |
+| `bash scripts/dev.sh generate` | Regenerate the Flutter–Rust bindings |
+| `bash scripts/dev.sh build-ios` | Build the unsigned IPA (macOS only) |
 
-Generated bindings and customized platform runners are included. Do not regenerate runners over them. scripts/prepare-runners.sh only fills missing runners.
+## Project structure
 
-scripts/dev-env.sh prefers installed tools and scopes optional local toolchains to the current process. No temporary toolchain paths belong in shell, compositor or systemd startup configuration.
+[Architecture](architecture.md) describes the layout and how the pieces fit together. A few things to know before changing code:
 
-## Isolated clients
+- **Bindings.** `apps/flutter_app/lib/src/rust/` and `core/rust/src/frb_generated.rs` are generated. The Rust API is a single JSON function, so adding an operation needs no regeneration: add a branch to the operation match in `core.rs` and call it from Dart with `CoreApi.invoke`.
+- **Platform runners.** `apps/flutter_app/{linux,ios,android,macos,windows}` are customized. Do not run `flutter create` over them. `scripts/prepare-runners.sh` only creates runners that are missing.
+- **iOS project.** `scripts/setup-ios.rb` adds the extension targets and build settings to the Xcode project. Run it after changing the extension wiring. It edits `project.pbxproj` in place and is safe to rerun. On Linux, run it with any Ruby that has the `xcodeproj` gem.
+- **Desktop plugin.** Native Linux code is in `platform/desktop/arcade_desktop_bridge/linux`. The Wayland capture helper (`wl_capture_helper.cc`) is built as a separate executable and installed into the bundle's `lib/` directory.
 
-Set ARCADE_DATA_DIR to a different durable directory for each process. Each profile has its own secure identity and encrypted database. Do not open the same profile simultaneously. One process per profile is enforced.
+## Running two instances
 
-For two local GUI clients, use distinct profiles and change the second client's shortcut if it conflicts. Pair through Devices. For reproducible automated pairing, run the process smoke test; it does not replace the normal secure store with a test key file.
+To pair two profiles on one machine, give each its own data directory:
 
-ARCADE_CORE_LIBRARY is an optional runtime override for development. Release bundles locate their Rust library automatically. ARCADE_RELAY_URL supplies an optional deployment default; Settings can override it.
+```bash
+ARCADE_DATA_DIR=/tmp/arcade-a apps/flutter_app/build/linux/x64/release/bundle/clipboard
+ARCADE_DATA_DIR=/tmp/arcade-b apps/flutter_app/build/linux/x64/release/bundle/clipboard
+```
 
-## Other builds
+Each profile has its own identity in the keyring and its own database. Setting `ARCADE_DATA_DIR` also turns off the single-instance check. Change the second instance's shortcut so the two do not conflict.
 
-Android: install an Android SDK/NDK and the Rust Android targets, run python3 scripts/build-android-core.py, then flutter build apk in apps/flutter_app. The Kotlin share target, provider and IME are included in the runner.
+## Debugging
 
-iOS: use the unsigned IPA workflow or follow docs/ios-install.md. Xcode/macOS are required for native compilation. scripts/setup-ios.rb wires both extensions and the Rust archive.
+- `ARCADE_DEBUG=1` prints capture, picker, paste and connection events to stderr. The last 200 events are also kept in memory by `Diagnostics` (`lib/services/diagnostics.dart`). Never log clipboard contents.
+- `ARCADE_CORE_LIBRARY=/path/to/libarcade_core.so` loads a specific build of the core.
+- `ARCADE_RELAY_URL` sets the default relay for new profiles.
+- On Hyprland, `hyprctl binds` and `hyprctl clients` show the app's binding and windows.
 
-macOS: flutter build macos --release followed by bash scripts/build-macos-core.sh on a Mac. Windows: flutter build windows on Windows; its CMake build compiles and bundles the Rust DLL.
+## Tests
 
-[Relay hosting](relay-deployment.md) describes the domain/server setup separately from app development.
+### Automated
+
+| Suite | Covers |
+| --- | --- |
+| `cargo test -p arcade_core` | Noise sessions and tampering, pairing consent and replay, signatures, revocation, storage encryption and migrations, size limits, offline catch-up, pins, deduplication, reconnection after restart, LAN-to-relay failover |
+| `cargo test -p arcade_relay` | Route limits and real WebSocket forwarding |
+| `flutter test` (in `apps/flutter_app`) | Onboarding, history, search, settings, picker keyboard navigation and layouts |
+| `bash scripts/dev.sh smoke` | Two separate processes through the real API and system keyring |
+| `dbus-run-session -- bash tests/with-secret-service.sh` | The same, against an isolated Secret Service |
+| `bash scripts/dev.sh native-test` | Real pairing, sync and Enter-to-paste into a GTK test window on Hyprland |
+
+The Rust integration tests start real listeners on loopback. Several of them depend on timing; if one fails under heavy load, run it again on its own before investigating.
+
+### Manual checks before a release
+
+With two devices paired:
+
+- [ ] Copy text with Unicode and surrounding whitespace on one device. It appears exactly once on the other, and the other device's clipboard is unchanged.
+- [ ] Copy the same text again. No duplicate appears; an older copy moves to the top on both devices.
+- [ ] Open the picker, move the selection, press Enter. The clip is pasted into the previous window. Repeat in a terminal.
+- [ ] Press Escape in the picker. Focus returns to the previous window and nothing is pasted.
+- [ ] Copy HTML, an image and a group of files. Each can be opened, copied and saved on the other device.
+- [ ] Quit one device, add clips on the other, start it again. The clips arrive once.
+- [ ] Pin and unpin while disconnected. Both devices agree after reconnecting.
+- [ ] Remove a device. It disconnects and its new clips are not accepted.
+- [ ] Turn on Private mode. Copies are not added.
+- [ ] With a relay configured, disconnect the LAN. Clips still arrive; when the LAN returns, the direct connection is used again.
+
+On iPhone, additionally:
+
+- [ ] Join a mesh. Local Network and camera prompts appear, and pairing succeeds.
+- [ ] Share text, a photo and a file. Open the app; each is added once.
+- [ ] Enable the keyboard, insert a clip in Notes, search with its keys, switch back with the globe key.
+- [ ] Leave the app for a few minutes, add clips elsewhere, return. They arrive within seconds.
+
+## Continuous integration
+
+| Workflow | Trigger | Does |
+| --- | --- | --- |
+| **Core and Linux build** (`ci.yml`) | Push to `main`, pull requests | Rust formatting, Clippy and tests; Flutter analysis and tests; Linux release build, uploaded as `Arcade-Clipboard-linux-x64` |
+| **Build iPhone IPA** (`build-ios-ipa.yml`) | Manual | Builds the Rust core for iOS, builds the app and extensions without signing, validates and uploads the IPA. See [iPhone](ios.md). |
+
+Third-party actions are pinned to commit SHAs.
+
+## Other platforms
+
+- **Android:** install the SDK and NDK and the Rust Android targets, run `python3 scripts/build-android-core.py`, then `flutter build apk` in `apps/flutter_app`.
+- **macOS:** `flutter build macos --release`, then `bash scripts/build-macos-core.sh`.
+- **Windows:** `flutter build windows`. The CMake build compiles and bundles the Rust DLL.
+
+[Relay deployment](relay-deployment.md) covers hosting the relay.

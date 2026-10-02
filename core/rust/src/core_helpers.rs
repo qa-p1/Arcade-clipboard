@@ -352,6 +352,9 @@ trait AsyncPeer: tokio::io::AsyncRead + tokio::io::AsyncWrite + Send + Unpin {}
 impl<T: tokio::io::AsyncRead + tokio::io::AsyncWrite + Send + Unpin> AsyncPeer for T {}
 type PeerStream = Box<dyn AsyncPeer>;
 
+// The iPhone host browses with Bonjour and reports candidates instead of
+// running the mDNS daemon, so these hooks exist only on other platforms.
+#[cfg(not(target_os = "ios"))]
 impl Core {
     pub(crate) fn install_discovery(&self, daemon: mdns_sd::ServiceDaemon) {
         if let Ok(mut slot) = self.discovery.lock() {
@@ -364,6 +367,9 @@ impl Core {
     pub(crate) fn track_discovery(&self, task: JoinHandle<()>) {
         self.track(task);
     }
+}
+
+impl Core {
     pub(crate) async fn discovery_candidates(
         &self,
         id: &str,
@@ -701,7 +707,7 @@ async fn reconnect_loop(core: Arc<Core>) {
                 let backoff = if route == Some("relay") {
                     30
                 } else {
-                    (1u64 << failures.min(5)).min(60)
+                    (1u64 << failures.min(6)).min(60)
                 };
                 schedule.insert(
                     peer.device_id.clone(),

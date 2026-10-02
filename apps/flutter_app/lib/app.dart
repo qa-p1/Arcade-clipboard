@@ -697,6 +697,9 @@ class _WelcomeViewState extends State<_WelcomeView> {
           XTypeGroup(
             label: 'Pairing QR image',
             extensions: ['png', 'jpg', 'jpeg'],
+            mimeTypes: ['image/png', 'image/jpeg'],
+            // iOS and macOS filter by type identifier, not extension.
+            uniformTypeIdentifiers: ['public.png', 'public.jpeg'],
           ),
         ],
       );

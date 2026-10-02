@@ -1,4 +1,4 @@
-# Host the internet relay
+# Relay deployment
 
 The included Rust service forwards encrypted WebSocket traffic between two connected devices. You need a Linux server or container host that stays online, Docker with Compose, and a domain/subdomain. A domain connected to Cloudflare supplies DNS/proxying; it does not run this Rust service by itself.
 
@@ -43,5 +43,3 @@ Relay restarts discard only in-memory rendezvous state. Client identities and hi
 The service allows 512 simultaneous sockets and 120 upgrades per observed TCP peer per minute. Direct deployments default to 16 sockets per IP. Compose raises that limit to 512 because all traffic reaches the relay through Caddy's single address. Upgrade throttling is still aggregate behind this proxy. For a large/public service, apply per-client limits at your trusted edge and protect direct access to the origin. Forwarded headers do not bypass the Rust limits.
 
 Pairing/route bearer tickets use query strings. The supplied Caddy config disables HTTP access/error request logging to avoid storing tickets. Keep query strings out of any Cloudflare log export or other proxy/monitoring system you add. No Cloudflare API token or Apple signing material belongs in this repository.
-
-The Docker configuration is supplied for deployment; no public server has been provisioned from this workspace.

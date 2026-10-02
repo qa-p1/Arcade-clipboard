@@ -1,22 +1,97 @@
 # Security
 
-Clipboard contents are encrypted in the originating application before transport. TLS protects public relay connections in addition to the client Noise session; the relay has no payload decryption key.
+## What is protected
 
-- X25519 and established Noise patterns authenticate/encrypt sessions.
-- Ed25519 signs membership, revocations, originating items and pin preferences.
-- XChaCha20-Poly1305 protects SQLite payloads and preview records; associated data binds their headers.
-- BLAKE3 hashes content; stored content tags are keyed to reduce guessed-content lookup.
-- Pairing requires both human approvals, an expiring authorization token and a transcript-bound verification number.
-- Revocation is enforced against connections and future content. Retained copies already delivered to a removed device cannot be remotely erased.
+Arcade Clipboard is designed so that only devices you approved can read your clips:
 
-Desktop/iOS identities use native credential storage through keyring. Android identities are AES-GCM encrypted with a per-profile Android Keystore key. Existing profiles fail closed if their secure identity disappears; the app does not silently create a replacement or store private keys in plain JSON.
+- **In transit.** Clips are encrypted end to end between devices with the Noise protocol. A relay or anyone on the network sees only ciphertext. Relay connections additionally use TLS.
+- **At rest.** Each device stores its history encrypted, with a key kept in the platform credential store.
+- **Membership.** A device can join only after a person approves it on both devices and compares a verification number. Every connection is checked against the owner's signed membership list.
+- **Origin.** Every clip is signed by the device that created it. A member can forward another member's clip but cannot change it or claim to be its author.
 
-iOS extension handoff uses App Group files protected by complete iOS Data Protection. Android handoff/cache uses Keystore-backed encryption. Keyboard extensions read their cache and insert selected text; they do not scrape host text fields or synchronize clipboard contents themselves.
+## Threat model
 
-## Limits
+| Party | Can | Cannot |
+| --- | --- | --- |
+| Someone on your network | See that devices connect, when, and how much data moves | Read clips, join the mesh, impersonate a device |
+| The relay operator | See device IP addresses, connection timing and traffic volume | Read clips, join the mesh, inject or change clips |
+| Someone who sees the QR code | Try to join within its two-minute window | Join without the verification number matching and you approving on both devices |
+| A removed device | Keep the clips it received before removal | Connect again, receive new clips, or have its new clips accepted |
+| Malware running as your user | Read the clipboard, the unlocked keyring and the app's memory | Nothing in this design stops it; the app relies on the operating system for local isolation |
 
-Payload encryption does not hide all metadata. Local headers include device IDs, names, timestamps and item types. A relay/proxy can observe IPs, timing, route lifetime and traffic size. Pair tickets occur in URL queries; deployment logs must redact those queries.
+## Cryptography
 
-The local source/security review found and fixed public-ID relay route prediction, idle route cache exhaustion, and reconnect payload accumulation. Automated tests cover authentication, signatures/tampering, revocation, malformed data, expiry, replay, catch-up and relay takeover.
+| Purpose | Mechanism |
+| --- | --- |
+| Pairing | `Noise_XXpsk3_25519_ChaChaPoly_BLAKE2s`, with the one-time token from the QR code as the pre-shared key |
+| Device connections | `Noise_XX_25519_ChaChaPoly_BLAKE2s`; the remote static key must match its membership certificate |
+| Membership, revocations | Ed25519 signatures by the mesh owner |
+| Clips and pin changes | Ed25519 signatures by the originating device, over a canonical encoding of every field |
+| Local storage | XChaCha20-Poly1305 for payloads and previews, with the record header as associated data |
+| Content matching | BLAKE3, keyed per profile so that stored tags do not reveal guessable content |
+| Relay routes | Route ID and access ticket derived separately from the two devices' X25519 shared secret |
 
-This is a focused implementation review, not an independent cryptographic certification. Apple/Windows native device behavior requires target-platform acceptance. [Review record](security-review.md) and [platform limits](platform-limitations.md) distinguish source implementation from runtime evidence.
+The implementation uses [snow](https://docs.rs/snow) for Noise, [ed25519-dalek](https://docs.rs/ed25519-dalek) and [x25519-dalek](https://docs.rs/x25519-dalek) for keys, and RustCrypto's `chacha20poly1305`.
+
+## Pairing
+
+1. The owner creates an invite containing a random token valid for 120 seconds, shown as a QR code.
+2. The joining device connects and runs a Noise handshake keyed with that token.
+3. Both devices derive a six-digit number from the handshake transcript and display it. If a third party were in the middle, the numbers would differ.
+4. A person approves on both devices. Only then does the owner sign a membership certificate for the new device.
+
+Tokens are single use. An expired or used token is rejected.
+
+## Key storage
+
+| Platform | Where device keys are stored |
+| --- | --- |
+| Linux | Secret Service, such as GNOME Keyring or KWallet |
+| macOS, iOS | Keychain |
+| Windows | Credential Manager |
+| Android | A file encrypted with an AES-GCM key held in Android Keystore |
+
+If the stored identity for an existing profile is missing or damaged, the profile does not open. The app never creates a replacement identity silently and never writes private keys in plain text.
+
+On iOS the Keychain entry's name is derived from the profile's path relative to the app container, because the container's absolute path changes when the app is updated.
+
+## Mobile extensions
+
+- The iOS share extension and keyboard communicate with the app through files in the App Group container, written with complete data protection. They are readable only by the three signed bundles and only while the device is unlocked.
+- On Android, the share target and keyboard exchange data with the app through files encrypted with a Keystore key.
+- Neither keyboard reads the text around the cursor or what you type. They insert only the clip you tap.
+- Extensions validate sizes, MIME types and file names before saving, and the app validates them again before capture.
+
+## Desktop clipboard
+
+- Content marked sensitive by password managers (`x-kde-passwordManagerHint`, `application/x-keepassxc-clipboard`) is never captured.
+- Clips received from other devices are never written to your clipboard automatically. Your clipboard changes only when you choose a clip.
+- Before pasting, the app confirms that the remembered window still exists and belongs to the same process instance.
+- **Private mode** stops capture entirely.
+- Diagnostic logs (`ARCADE_DEBUG=1`) record events only, never clipboard contents.
+
+## What is not protected
+
+- **Metadata.** Device IDs, device names, timestamps and clip types are stored unencrypted in local record headers so that history can be listed and synced. Network observers and the relay see IP addresses, timing and traffic volume.
+- **Delivered clips.** Removing a device stops future sync but cannot erase what it already received.
+- **Relay tickets in URLs.** Relay access tickets are passed in query strings. The supplied Caddy configuration does not log requests; any proxy or monitoring you add must not log query strings either.
+- **Local compromise.** Anything running as your user can read the clipboard and the unlocked keyring.
+
+## Review checklist
+
+Check these before a release:
+
+- [ ] Invite tokens expire after 120 seconds, are single use, and pairing requires matching verification and both approvals.
+- [ ] Every connection's Noise static key matches an owner-signed, unrevoked certificate.
+- [ ] Clip and pin signatures cover every canonical field; tampered items are rejected.
+- [ ] Revoked devices cannot connect or author accepted clips.
+- [ ] A missing or damaged identity fails closed.
+- [ ] Database records fail to decrypt if their header is altered; schema migrations roll back on error.
+- [ ] Frame, chunk, MIME type, image dimension, file name and queue limits are enforced.
+- [ ] Deletion tombstones survive restarts and prevent deleted clips from returning.
+- [ ] Relay routes cannot be guessed from public device IDs; idle reservations cannot exhaust the route table.
+- [ ] Logs contain no clipboard contents or relay tickets.
+- [ ] Sensitive clipboard content is skipped; paste targets are verified.
+- [ ] Mobile shared storage stays within the App Group (or Keystore encryption) and respects its size and age limits.
+
+Most of these are covered by the Rust tests (`cargo test --workspace`).

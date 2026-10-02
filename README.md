@@ -1,70 +1,79 @@
 # Arcade Clipboard
 
-Clipboard history shared between your trusted devices. Remote clips enter the mesh history; they never replace your normal clipboard automatically. Choose a clip to copy it or paste it into the app you were using.
+Arcade Clipboard keeps one clipboard history across your own devices. Copy something on your PC and it shows up in the history on your phone and your other computers. Open the picker with a shortcut, choose a clip, and it is pasted into the app you were using.
 
-The shared Flutter client uses a Rust core for identities, encrypted storage, pairing, discovery, LAN/relay connections and synchronization. No account is required.
+Devices pair directly with a QR code. There is no account and no server that can read your clips: everything is end-to-end encrypted, and history is stored encrypted on each device.
 
-## Start on Linux
+## How it behaves
 
-From the repository root:
+- **Copying adds to the mesh.** On the desktop, every normal copy (Ctrl+C, a menu's Copy, a screenshot tool) is added to history and sent to your other devices. Turn on **Private mode** to pause this.
+- **Receiving never overwrites your clipboard.** A clip from another device only appears in history. Your clipboard changes only when you choose a clip.
+- **Copying something again moves it to the top.** If you copy text that is already in history, the existing entry moves to the top on every device instead of creating a duplicate.
+- **The picker pastes for you.** Press the shortcut (Ctrl+Shift+Space on Linux), move with the arrow keys or type to search, then press Enter. The picker closes, focus returns to your app, and the clip is pasted. Terminals get Ctrl+Shift+V.
+- **Devices keep syncing when the creator is away.** The device that created the mesh approves new devices and can remove them. Once paired, any two members sync directly.
 
-~~~bash
-bash scripts/dev.sh desktop
-~~~
+Supported content: plain text (up to 32 KiB), links, HTML and RTF, PNG and JPEG images, and files. A single clip can be up to 16 MiB.
 
-For a release bundle:
+## Platform support
 
-~~~bash
+| Platform | Status |
+| --- | --- |
+| Linux, Hyprland | Full support: automatic capture, global shortcut, picker, automatic paste. The primary platform, tested end to end. |
+| Linux, X11 | Automatic capture, global shortcut, picker, automatic paste through `xdotool`. |
+| Linux, other Wayland | Automatic capture on compositors with data-control (KDE, Sway, niri, …). Bind `clipboard --overlay` to a shortcut; the chosen clip is copied and you press Ctrl+V. GNOME does not allow background capture. |
+| iPhone and iPad | Share extension, clipboard keyboard, sync while the app is open. Built as an unsigned IPA by GitHub Actions; see [iPhone](docs/ios.md). |
+| Android | Share target and clipboard keyboard. Builds, but is not yet tested on a device. |
+| Windows, macOS | Native integration is written but has not been built or tested on those systems. |
+
+Details and known limits are in [Platforms](docs/platforms.md).
+
+## Install
+
+### Linux
+
+Build and install the release bundle (requirements are listed in [Linux](docs/linux.md#requirements)):
+
+```bash
 bash scripts/dev.sh build-linux
-./apps/flutter_app/build/linux/x64/release/bundle/clipboard
-~~~
+bash scripts/install-linux.sh
+```
 
-The archive is dist/Arcade-Clipboard-linux-x64.tar.gz. Keep the executable beside its lib/ and data/ directories. To install the release in your user application directory, run bash scripts/install-linux.sh. No shell startup files are changed.
+The app is installed in `~/.local/share/arcade-clipboard` with a desktop entry. You need an unlocked Secret Service keyring (GNOME Keyring or KWallet), and `wl-clipboard` on Wayland. The CI workflow also publishes the bundle as `Arcade-Clipboard-linux-x64.tar.gz`.
 
-An unlocked Secret Service keyring is required. Normal copies (Ctrl+C) are added to the mesh automatically; turn on Private mode to pause. Hyprland supports the full shortcut → picker → Enter → paste flow (Ctrl+Shift+V is sent to terminals). On other Wayland desktops, bind a system shortcut to `clipboard --overlay`; choosing a clip copies it for a manual Ctrl+V. On Wayland, install wl-clipboard (2.2+) for capture.
+### iPhone
 
-The app runs as a single instance: launching it again shows the running window, and `clipboard --overlay` opens the picker. Start with `ARCADE_DEBUG=1` to print capture/paste/connection diagnostics (never clipboard contents) to stderr.
+Run **Actions → Build iPhone IPA → Run workflow** on GitHub, download the artifact, then sign and install the IPA with your own signing tool. The app and both extensions must keep the App Group `group.dev.arcade.clipboard`. Step-by-step instructions are in [iPhone](docs/ios.md).
 
-## Pair and test
+## Pair your devices
 
-1. Create a mesh on the first device and give it a name.
-2. Open Devices → Add device.
-3. On the other device, choose Join mesh and scan the QR code, import its image, or paste the pairing code.
-4. Compare the verification number and approve on both devices.
-5. Add a clip. It should appear in the other device's history without replacing its active clipboard.
-6. Open the desktop picker with the shortcut shown in Settings; select a clip and press Enter.
+1. On the first device, choose **Create a mesh** and give it a name.
+2. Open **Devices → Add device**. A QR code appears, valid for two minutes.
+3. On the second device, choose **Join an existing mesh** and scan the code. You can also import a screenshot of it or paste the pairing code.
+4. Both devices show a six-digit number. Check that they match and approve on both.
+5. Copy something on one device. It appears in the other device's history within a moment.
 
-Invites expire after two minutes. The creator approves new devices and removes members; paired members can synchronize while the creator is offline.
+Devices on the same network find each other automatically. To sync across networks, run the [relay](docs/relay-deployment.md) and set its address in **Settings → Remote relay** on every device.
 
-## iPhone IPA
+## Documentation
 
-GitHub Actions → Build iPhone IPA → Run workflow builds an unsigned arm64 IPA with both native extensions. Download the artifact, extract the IPA, then sign and install it with your usual signing tool. No signing certificate is uploaded to GitHub. See [iPhone build and installation](docs/ios-install.md), especially the App Group requirement.
+| Document | Contents |
+| --- | --- |
+| [Linux](docs/linux.md) | Requirements, shortcut and picker, Hyprland details, command-line options, troubleshooting |
+| [iPhone](docs/ios.md) | Building the IPA, signing, the share extension and keyboard, troubleshooting |
+| [Platforms](docs/platforms.md) | What each platform supports and what it cannot do |
+| [Architecture](docs/architecture.md) | How the app, Rust core and native code fit together; capture and sync in detail |
+| [Protocol](docs/protocol.md) | Pairing, wire format, items, convergence |
+| [Security](docs/security.md) | Threat model, cryptography, key storage, what is not protected |
+| [Relay deployment](docs/relay-deployment.md) | Hosting the relay with Docker, Caddy and Cloudflare |
+| [Development](docs/development.md) | Building from source, tests, CI, debugging |
 
-The iPhone client synchronizes while the main app is running. Shares are saved securely by the extension and imported when the app resumes. The keyboard inserts previously synchronized text from its local cache.
+## Limitations
 
-## What is implemented
+- Each device keeps its own history. A device that is offline catches up when it reconnects, as long as the clips are still within the history limit.
+- The relay only forwards traffic between devices that are online at the same time. It does not store anything.
+- Folders cannot be shared, and an interrupted large transfer restarts from the beginning.
+- On iPhone, sync runs only while the app is open; iOS does not allow it to run continuously in the background.
 
-- Human-confirmed QR pairing, owner-signed membership and actual revocation.
-- Noise end-to-end encryption, authenticated origin signatures and encrypted SQLite payloads/previews.
-- Trusted peer discovery, LAN preference, encrypted relay fallback and reconnect/catch-up.
-- Text, URLs, HTML/RTF, PNG/JPEG, files and file groups; up to 16 MiB per clip.
-- Search, source/type filters, inspect, copy, export, resend, synchronized pins and deletion.
-- Private mode, automatic capture (on by default), retention and item-count limits.
-- Copying something already in history moves it to the top on every device instead of duplicating it.
-- Light/dark UI, keyboard navigation, desktop picker and native clipboard formats.
-- Linux tray/background behavior, desktop startup controls, native mobile share and keyboard integrations.
+## License
 
-Folder transfer and byte-offset resume are not implemented. Interrupted transfers restart from their retained item. There is no public relay configured.
-
-## Development and deployment
-
-~~~bash
-bash scripts/dev.sh test
-bash scripts/dev.sh check
-bash scripts/dev.sh relay
-bash scripts/dev.sh native-test
-~~~
-
-[Development](docs/development.md) · [Architecture](docs/architecture.md) · [Protocol](docs/protocol.md) · [Security](docs/security.md) · [Platform limits](docs/platform-limitations.md) · [Relay deployment with Cloudflare](docs/relay-deployment.md) · [Acceptance](docs/acceptance.md)
-
-Linux release builds and automated core/client checks have been run locally. Apple/Windows native runtime behavior needs its target platform; an unsigned IPA workflow is a build path, not a claim that this Linux machine tested an iPhone.
+[MIT](LICENSE)

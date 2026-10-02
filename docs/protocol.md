@@ -1,33 +1,87 @@
-# Protocol v1
+# Protocol
 
-Messages are bounded JSON over a four-byte big-endian length-prefixed byte stream. Noise ciphertext frames are limited to 65,535 bytes including the authentication tag. TCP and relay WebSockets share the authenticated session codec.
+This describes version 1 of the device-to-device protocol implemented in `core/rust`. [Security](security.md) explains the reasoning behind these choices.
 
-## Trust
+## Framing
 
-Pairing uses Noise_XXpsk3_25519_ChaChaPoly_BLAKE2s with a random short-lived authorization token. Paired sessions use Noise_XX_25519_ChaChaPoly_BLAKE2s and validate the Noise static identity against an owner-signed certificate. Both pairing participants compare a six-digit transcript-bound verification code and approve before commit. Tokens expire after 120 seconds and are consumed.
+Every message is a JSON object, sent as a frame with a 4-byte big-endian length prefix. After the handshake, each frame is a Noise ciphertext of at most 65,535 bytes including the authentication tag. The same framing is used over TCP and, through the relay, over binary WebSocket messages.
 
-Certificates bind mesh/device ID, static public key, item-signing public key, name, platform and capabilities. The creator signs membership and revocations with Ed25519. Signed origin provenance covers the canonical item, including representations and file names. A trusted peer may forward another member's retained item without impersonating its origin.
+Unknown JSON fields are ignored, so fields can be added without a version change. Unknown message types and unsupported protocol versions close the connection.
+
+## Pairing
+
+Pairing uses `Noise_XXpsk3_25519_ChaChaPoly_BLAKE2s`. The QR code carries the mesh ID, the owner's address, port, device ID and public keys, an optional relay URL, and a random token used as the pre-shared key. The token expires after 120 seconds and is consumed on use.
+
+After the handshake, both devices display a six-digit number derived from the handshake transcript. The user compares the numbers and approves on both devices. The owner then signs a membership certificate for the new device and sends it the current membership list. The new device is stored only after both approvals; a rejected or interrupted pairing leaves no partial state.
+
+## Membership
+
+A certificate binds:
+
+- mesh ID and device ID,
+- the device's Noise static public key (X25519),
+- its item-signing public key (Ed25519),
+- its name, platform and capabilities.
+
+The owner signs certificates and revocations with Ed25519. Devices exchange membership records at the start of every connection, so a revocation spreads even when the owner is offline.
+
+## Device sessions
+
+Paired devices use `Noise_XX_25519_ChaChaPoly_BLAKE2s`. Each side checks that the other's static key matches an unrevoked certificate for the mesh. The first message after the handshake is a hello that carries the sender's listening port, so the receiver can record an address to call back.
+
+When two devices dial each other at the same moment, both may end up with two sessions. Each side keeps the session whose handshake hash is smaller, which both sides compute identically. Heartbeats run every 15 seconds; a session whose heartbeat cannot be sent is closed.
 
 ## Items
 
-Items carry protocol version, UUID, origin device, sender sequence, timestamps, expiry, type, text, representations, content hash and origin signature. A representation contains MIME type, base64 data and an optional safe file name. Plain text is limited to 32 KiB; aggregate decoded content to 16 MiB and 32 representations.
+An item (a clip) contains:
 
-Supported types are text, URL, rich text, image, file and files. HTML/RTF and compatible plain text can coexist. PNG/JPEG dimension and encoded-data bounds are checked. Files are transferred as content, not remote paths.
+| Field | Description |
+| --- | --- |
+| `protocol_version` | Protocol version |
+| `id` | UUID, stable across forwarding, resend and catch-up |
+| `origin_device`, `sender_sequence` | Device that created the item and its per-device sequence number |
+| `source_name` | Name of the originating device, shown in history |
+| `created_at`, `expires_at` | Creation and expiry times in milliseconds |
+| `kind` | `text`, `url`, `rich_text`, `image`, `file` or `files` |
+| `text` | Plain text, at most 32 KiB |
+| `representations` | MIME type, base64 data and optional file name for each format |
+| `content_hash` | BLAKE3 hash of the content |
+| `origin_signature` | Ed25519 signature by the origin over the canonical item |
 
-Payloads beyond one frame use 24 KiB chunks. Reconnect restarts a retained item's transfer; byte-offset resumption is not implemented. IDs and hashes stay stable across forwarding, resend and catch-up. Replays with different content under one ID fail.
+The total decoded size is limited to 16 MiB across at most 32 representations. HTML or RTF can be sent together with plain text. PNG and JPEG images have their dimensions checked. File names must be plain names, with no path separators. Files are sent as content, never as paths on the sender's disk.
 
-## Convergence and storage
+An item that arrives again with the same ID but different content is rejected.
 
-SQLite stores encrypted payloads and encrypted history previews with XChaCha20-Poly1305. Authenticated associated data binds item headers; stored content lookup tags are keyed. Schema migrations are transactional. Device/routing/timestamp metadata is not all encrypted.
+## Transfer
 
-Signed pin preferences use a Lamport revision and actor-ID tie break. Deleted-item tombstones and seen IDs prevent synchronization loops and deleted-history resurrection. Retention defaults to 24 hours and 500 items; settings bound history to 10,000. Pinned content survives time expiry until unpinned, but remains subject to the count limit.
+Items larger than one frame are split into 24 KiB chunks. The sender waits for queue space before producing more, so memory use stays bounded. If a connection drops during a transfer, the item is sent again from the start on the next connection.
 
-Membership/revocation information and pin preferences precede history catch-up. Connection checks and heartbeat timeouts support reconnect without re-pairing. Unknown JSON fields are ignored; unknown message variants and unsupported protocol versions fail the connection.
+## Catch-up
+
+At the start of every session, the two devices exchange, in order:
+
+1. membership records and revocations,
+2. pin states,
+3. the IDs of retained items,
+4. the items the other side does not have, one payload at a time.
+
+Each device remembers the item IDs it has already seen and deleted, so an item is never applied twice and a deleted item is not restored by a device that missed the deletion.
+
+## Pins and deletion
+
+A pin change is a signed record with a Lamport counter. The record with the higher counter wins, and ties are broken by device ID, so all devices reach the same state regardless of the order in which they receive changes.
+
+Deleting an item leaves a tombstone, kept for 31 days. Copying content that already exists in history deletes the older item on every device and creates a new one, which moves the content to the top.
+
+## Retention
+
+Each device applies its own **Keep history** period (default 24 hours) and **History limit** (default 500 items, at most 10,000). Pinned items do not expire but count toward the item limit.
 
 ## Relay
 
-The relay receives opaque frames only. Pair routes and bearer tickets derive separately from a contributory pairwise X25519 secret and context. Public device identifiers do not reveal a usable route. Noise still authenticates the peer after routing.
+Devices that cannot reach each other directly can meet at a relay. The relay forwards binary WebSocket messages between two sockets without reading them; the Noise session inside is the same as over TCP.
 
-The relay has bounded connections, frames and queues, short rendezvous windows and an evictable idle route cache. It retains no offline clipboard archive. Trusted devices retain encrypted history for delivery on reconnect.
+- **Pairing route:** `/v1/relay/{session_id}?token={ticket}`, where the session ID and ticket come from the invite.
+- **Paired route:** `/v1/relay/paired/{route_id}/{slot}?token={route_token}`. The route ID and token are derived separately from the two devices' X25519 shared secret, so knowing a device's public ID does not reveal its route. Slots `a` and `b` are assigned by device ID order.
 
-References: [Noise](https://noiseprotocol.org/noise.html), [snow](https://docs.rs/snow/0.10.0/snow/), [Ed25519](https://docs.rs/ed25519-dalek/2.2.0/ed25519_dalek/).
+The relay keeps no queue. Both devices must be connected at the same time; anything missed is delivered by catch-up on the next session. The server side is documented in [services/relay](../services/relay/README.md).

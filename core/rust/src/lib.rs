@@ -10,6 +10,7 @@ mod frb_generated;
 pub mod api;
 mod core;
 mod crypto;
+#[cfg(not(target_os = "ios"))]
 mod discovery;
 mod model;
 mod payload;
