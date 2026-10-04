@@ -8,6 +8,11 @@ edition = "2021"
 license = "MIT"
 rust-version = "1.89"
 
+[workspace.dependencies]
+# Arcade Link (the shared protocol). A relative path until Arcade-link has a
+# tagged release; then a git dependency with a local [patch] override.
+arcade-link = { path = "../../Rust/Arcade-link/crates/arcade-link" }
+
 [profile.release]
 lto = "thin"
 codegen-units = 1

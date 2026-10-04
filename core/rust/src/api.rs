@@ -32,7 +32,36 @@ pub async fn call(request: String) -> Result<String, String> {
             let _guard = LIFECYCLE.get_or_init(|| RwLock::new(())).write().await;
             initialize(value).await?
         }
+        // Arcade Link operations that need no open profile.
+        #[cfg(not(any(target_os = "android", target_os = "ios")))]
+        "link_manifest" => {
+            let settings = crate::link::LinkSettings::from_request(value.get("link"));
+            serde_json::to_value(crate::link::manifest(&settings))
+                .map_err(|_| "Could not encode the manifest".to_string())?
+        }
+        #[cfg(not(any(target_os = "android", target_os = "ios")))]
+        "link_quit_running" => serde_json::json!({"quit": crate::link::quit_running()}),
+        #[cfg(not(any(target_os = "android", target_os = "ios")))]
+        "link_configure" => {
+            let settings = crate::link::LinkSettings::from_request(value.get("link"));
+            tokio::task::spawn_blocking(move || crate::link::configure(&settings))
+                .await
+                .map_err(|_| "Could not update Arcade Link".to_string())?;
+            crate::link::diagnostics()
+        }
+        #[cfg(not(any(target_os = "android", target_os = "ios")))]
+        "link_wait" => crate::link::wait_event().await,
+        #[cfg(not(any(target_os = "android", target_os = "ios")))]
+        "link_diagnostics" => crate::link::diagnostics(),
+        "version" => serde_json::json!({"version": env!("CARGO_PKG_VERSION")}),
         "shutdown" => {
+            // Before the lifecycle lock, which waits for pending long-polls:
+            // the endpoint must disappear promptly on quit.
+            #[cfg(not(any(target_os = "android", target_os = "ios")))]
+            {
+                let _ = tokio::task::spawn_blocking(crate::link::stop).await;
+                crate::link::push_event(serde_json::json!({"kind": "closed"}));
+            }
             let _guard = LIFECYCLE.get_or_init(|| RwLock::new(())).write().await;
             let current = { core_slot().lock().await.take() };
             if let Some(core) = current {
@@ -71,6 +100,13 @@ async fn initialize(request: Value) -> Result<Value, String> {
         .map_err(|_| "Could not initialize the local clipboard core".to_string())??;
     let core = Arc::new(core);
     core.start().await?;
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    {
+        let settings = crate::link::LinkSettings::from_request(request.get("link"));
+        let link_core = core.clone();
+        // Off the startup path: the manifest write and bind run on a blocking task.
+        tokio::task::spawn_blocking(move || crate::link::start(&link_core, &settings));
+    }
     let status = serde_json::to_value(core.status().await?)
         .map_err(|_| "Could not encode device status".to_string())?;
     let displaced = { core_slot().lock().await.replace(core) };

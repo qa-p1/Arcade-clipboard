@@ -137,6 +137,9 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
   final List<StreamSubscription<ProcessSignal>> _exitSignals = [];
   bool _quitting = false;
 
+  /// Quits like the tray's Quit item (also used by Arcade Link's app.quit).
+  Future<void> quit() => _quit();
+
   Future<void> _quit() async {
     if (_quitting) return;
     _quitting = true;
@@ -282,6 +285,8 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
           await _requestOverlay();
         } else if (call.method == 'show') {
           await showMainWindow();
+        } else if (call.method == 'quit') {
+          await _quit();
         }
       });
     }

@@ -15,7 +15,8 @@ struct _MyApplication {
 };
 
 // A second launch forwards to the running instance through these actions:
-// `clipboard` shows the main window, `clipboard --overlay` opens the picker.
+// `clipboard` shows the main window, `clipboard --overlay` opens the picker,
+// `clipboard --quit` quits.
 static void forward_instance_action(GSimpleAction* action, GVariant*, gpointer user_data) {
   MyApplication* self = MY_APPLICATION(user_data);
   if (self->instance_channel == nullptr) return;
@@ -121,8 +122,18 @@ static gboolean my_application_local_command_line(GApplication* application,
   MyApplication* self = MY_APPLICATION(application);
   // Strip out the first argument as it is the binary name.
   self->dart_entrypoint_arguments = g_strdupv(*arguments + 1);
+  gboolean quit = FALSE;
+  gboolean query = FALSE;
   for (gchar** argument = self->dart_entrypoint_arguments; *argument != nullptr; ++argument) {
     if (g_strcmp0(*argument, "--background") == 0) self->start_hidden = TRUE;
+    if (g_strcmp0(*argument, "--quit") == 0) quit = TRUE;
+    if (g_strcmp0(*argument, "--version") == 0 || g_strcmp0(*argument, "--arcade-manifest") == 0) query = TRUE;
+  }
+  // --version and --arcade-manifest answer from this process (Dart prints
+  // and exits before any window is shown); never forward them.
+  if (query) {
+    self->start_hidden = TRUE;
+    g_application_set_flags(application, G_APPLICATION_NON_UNIQUE);
   }
 
   g_autoptr(GError) error = nullptr;
@@ -130,6 +141,23 @@ static gboolean my_application_local_command_line(GApplication* application,
     g_warning("Failed to register: %s", error->message);
     *exit_status = 1;
     return TRUE;
+  }
+
+  if (quit) {
+    if (g_application_get_is_remote(application)) {
+      g_action_group_activate_action(G_ACTION_GROUP(application), "quit", nullptr);
+      GDBusConnection* bus = g_application_get_dbus_connection(application);
+      if (bus != nullptr) g_dbus_connection_flush_sync(bus, nullptr, nullptr);
+      *exit_status = 0;
+      return TRUE;
+    }
+    // Unique and nothing running: nothing to quit. Development profiles
+    // (ARCADE_DATA_DIR) aren't unique; Dart asks over Arcade Link instead.
+    if (!(g_application_get_flags(application) & G_APPLICATION_NON_UNIQUE)) {
+      *exit_status = 0;
+      return TRUE;
+    }
+    self->start_hidden = TRUE;
   }
 
   if (g_application_get_is_remote(application)) {
@@ -160,6 +188,7 @@ static void my_application_startup(GApplication* application) {
   static const GActionEntry actions[] = {
       {"show", forward_instance_action, nullptr, nullptr, nullptr, {0}},
       {"overlay", forward_instance_action, nullptr, nullptr, nullptr, {0}},
+      {"quit", forward_instance_action, nullptr, nullptr, nullptr, {0}},
   };
   g_action_map_add_action_entries(G_ACTION_MAP(application), actions,
                                   G_N_ELEMENTS(actions), application);

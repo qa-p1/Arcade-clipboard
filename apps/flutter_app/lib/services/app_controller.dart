@@ -12,6 +12,7 @@ import '../platform/desktop_adapter.dart';
 import '../platform/mobile_share_bridge.dart';
 import 'core_api.dart';
 import 'diagnostics.dart';
+import 'link_service.dart';
 
 class AppController extends ChangeNotifier with WidgetsBindingObserver {
   AppController({
@@ -30,6 +31,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
 
   final CoreApi _core;
   final DesktopAdapter _desktop;
+  late final LinkService _link = LinkService(_core);
   final MobileShareBridge _mobile;
   final Directory? _dataDirectoryOverride;
   final bool _startInBackground;
@@ -190,12 +192,15 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       _automaticDesktopCapture =
           prefs.getBool('automatic_desktop_capture') ?? desktopAvailable;
       _backgroundEnabled = prefs.getBool('background_enabled') ?? true;
+      if (desktopAvailable && LinkService.supported) await _link.load();
       Map<String, dynamic>? initialized;
       for (var attempt = 0; initialized == null; attempt++) {
         try {
           initialized = await _core.invoke('initialize', {
             'data_dir': support.path,
             'device_name': deviceName,
+            if (desktopAvailable && LinkService.supported)
+              'link': _link.settings(_shortcut),
           });
         } catch (exception) {
           // A previous instance may still be releasing the profile (quick
@@ -232,6 +237,9 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
           _desktopReady = true;
           _desktop.setRichCaptureHandler(_captureRichFromDesktop);
           _desktop.onQuit = shutdown;
+          _link.onQuit = _desktop.quit;
+          _link.onShow = _desktop.showMainWindow;
+          _link.listen();
           try {
             await _desktop.setBackgroundEnabled(_backgroundEnabled);
             _launchAtLogin = await _desktop.launchAtLoginEnabled();
@@ -848,6 +856,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('mesh_shortcut', cleaned);
         _shortcut = cleaned;
+        unawaited(_link.configure(cleaned).catchError((Object _) {}));
         _notice = 'Shortcut updated.';
       });
 
@@ -1303,6 +1312,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> shutdown() async {
     if (_disposed) return;
     _disposed = true;
+    _link.close();
     await _desktop.dispose();
     if (_ready) {
       try {
