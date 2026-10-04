@@ -1,0 +1,5 @@
+#!/bin/sh
+# arcade-clipboard: the unambiguous name for Arcade Clipboard on PATH
+# ("clipboard" is a generic name other tools use too). Same flags.
+here=$(dirname "$(readlink -f "$0")")
+exec "$here/clipboard" "$@"

@@ -33,7 +33,7 @@ for file in [bundle / 'clipboard', *sorted((bundle / 'lib').glob('*.so*'))]:
     if 'not found' in output:
         raise SystemExit(f'Runtime dependency missing for {file.name}:\n{output}')
 (bundle / 'START.txt').write_text(
-    'Arcade Clipboard\n\nRun ./clipboard from this folder.\n'
+    'Arcade Clipboard\n\nRun ./clipboard (or ./arcade-clipboard) from this folder.\n'
     'Keep the data/ and lib/ folders beside the executable.\n'
     'Linux needs GTK 3 and an unlocked Secret Service keyring.\n'
     'Hyprland automatic paste needs hyprctl, wl-copy and wl-paste.\n'

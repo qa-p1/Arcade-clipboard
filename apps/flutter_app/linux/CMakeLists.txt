@@ -108,6 +108,9 @@ install(FILES "${ARCADE_ROOT}/target/release/libarcade_core.so"
 
 install(TARGETS ${BINARY_NAME} RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}"
   COMPONENT Runtime)
+# `arcade-clipboard`: an unambiguous launcher name beside `clipboard`.
+install(PROGRAMS "${CMAKE_CURRENT_SOURCE_DIR}/arcade-clipboard"
+  DESTINATION "${CMAKE_INSTALL_PREFIX}" COMPONENT Runtime)
 
 install(FILES "${FLUTTER_ICU_DATA_FILE}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
   COMPONENT Runtime)
