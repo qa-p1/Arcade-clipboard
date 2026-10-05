@@ -85,6 +85,11 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   int _revision = 0;
   Future<void> _keyboardPublishQueue = Future<void>.value();
   String? _overlayQuery;
+
+  /// An open `clipboard.pick` request from another Arcade app: the picker
+  /// returns the chosen clip to it instead of pasting.
+  int? _linkPick;
+  String? _linkPickFor;
   DesktopCapabilities? _desktopCapabilities;
 
   MeshStatus? get status => _status;
@@ -123,6 +128,9 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   bool get historyLoading => _historyLoading;
   bool get devicesLoading => _devicesLoading;
   bool get overlayOpen => _overlayOpen;
+
+  /// The app waiting for a clip from the picker, if any.
+  String? get linkPickFor => _linkPickFor;
   bool get working => _working;
   bool get overlayBusy => _overlayBusy;
   bool get overlaySearchLoading => _overlaySearchLoading;
@@ -239,6 +247,8 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
           _desktop.onQuit = shutdown;
           _link.onQuit = _desktop.quit;
           _link.onShow = _desktop.showMainWindow;
+          _link.onPick = _openLinkPick;
+          _link.onPickCancelled = _cancelLinkPick;
           _link.listen();
           try {
             await _desktop.setBackgroundEnabled(_backgroundEnabled);
@@ -891,7 +901,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       }
       unawaited(searchOverlay(''));
       _notifyListeners();
-      await _desktop.showOverlay();
+      await _desktop.showOverlay(paste: _linkPick == null);
     } catch (exception) {
       _overlayOpen = false;
       _setError(exception, source: 'overlay');
@@ -901,7 +911,44 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _openLinkPick(int request, String caller) async {
+    _linkPick = request;
+    _linkPickFor = caller;
+    if (!hasMesh) {
+      await _answerLinkPick(error: 'no devices are set up yet');
+      return;
+    }
+    if (_overlayOpen) {
+      _notifyListeners();
+      return;
+    }
+    await openOverlay();
+    if (!_overlayOpen) {
+      await _answerLinkPick(error: 'the picker can\'t open here');
+    }
+  }
+
+  Future<void> _answerLinkPick({String? itemId, String? error}) async {
+    final request = _linkPick;
+    if (request == null) return;
+    _linkPick = null;
+    _linkPickFor = null;
+    try {
+      await _link.answerPick(request, itemId: itemId, error: error);
+    } catch (exception) {
+      Diagnostics.log('link', 'pick answer failed: $exception');
+    }
+  }
+
+  Future<void> _cancelLinkPick(int request) async {
+    if (_linkPick != request) return;
+    _linkPick = null;
+    _linkPickFor = null;
+    await dismissOverlay();
+  }
+
   Future<void> dismissOverlay() async {
+    unawaited(_answerLinkPick());
     if (!_overlayOpen) return;
     _overlayHistoryGeneration++;
     _overlaySearchLoading = false;
@@ -919,6 +966,16 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     _overlaySearchLoading = false;
     _overlayOpen = false;
     _notifyListeners();
+    if (_linkPick != null) {
+      // Picking for another Arcade app: the clip goes back to it.
+      try {
+        await _desktop.hideOverlay();
+      } catch (exception) {
+        _setError(exception, source: 'overlay');
+      }
+      await _answerLinkPick(itemId: item.id);
+      return;
+    }
     try {
       await _desktop.hideOverlay();
       if (_desktopCapabilities?.paste != false) {

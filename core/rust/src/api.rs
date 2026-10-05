@@ -53,6 +53,21 @@ pub async fn call(request: String) -> Result<String, String> {
         "link_wait" => crate::link::wait_event().await,
         #[cfg(not(any(target_os = "android", target_os = "ios")))]
         "link_diagnostics" => crate::link::diagnostics(),
+        // The picker's answer to a `clipboard.pick` request: an item, an
+        // error when it can't open, or nothing when the user closed it.
+        #[cfg(not(any(target_os = "android", target_os = "ios")))]
+        "link_pick_result" => {
+            let request = value
+                .get("request")
+                .and_then(Value::as_u64)
+                .ok_or_else(|| "Request is missing request".to_string())?;
+            let item = value.get("item_id").and_then(Value::as_str);
+            let error = value.get("error").and_then(Value::as_str);
+            let _guard = LIFECYCLE.get_or_init(|| RwLock::new(())).read().await;
+            let core = { core_slot().lock().await.clone() }
+                .ok_or_else(|| "Clipboard core is not initialized".to_string())?;
+            serde_json::json!({"answered": crate::link::finish_pick(&core, request, item, error).await})
+        }
         "version" => serde_json::json!({"version": env!("CARGO_PKG_VERSION")}),
         "shutdown" => {
             // Before the lifecycle lock, which waits for pending long-polls:

@@ -24,6 +24,13 @@ class LinkService {
   Future<void> Function()? onQuit;
   Future<void> Function()? onShow;
 
+  /// `clipboard.pick`: open the picker for `caller`; the choice goes back
+  /// through [answerPick].
+  Future<void> Function(int request, String caller)? onPick;
+
+  /// The caller gave up on a pick (the picker should close).
+  Future<void> Function(int request)? onPickCancelled;
+
   static bool get supported =>
       Platform.isLinux || Platform.isWindows || Platform.isMacOS;
 
@@ -68,6 +75,11 @@ class LinkService {
           await onQuit?.call();
         case 'show':
           await onShow?.call();
+        case 'pick':
+          await onPick?.call(event['request'] as int,
+              event['caller_name'] as String? ?? 'another app');
+        case 'pick_cancelled':
+          await onPickCancelled?.call(event['request'] as int);
         case 'closed':
           return;
       }
@@ -78,6 +90,15 @@ class LinkService {
     if (!supported) return;
     await _core.invoke('link_configure', {'link': settings(shortcut)});
   }
+
+  /// Answers a `clipboard.pick` request with the chosen item, an error
+  /// when the picker can't open, or neither when the user closed it.
+  Future<void> answerPick(int request, {String? itemId, String? error}) =>
+      _core.invoke('link_pick_result', {
+        'request': request,
+        if (itemId != null) 'item_id': itemId,
+        if (error != null) 'error': error,
+      });
 
   void close() => _closed = true;
 }

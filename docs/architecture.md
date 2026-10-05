@@ -48,6 +48,7 @@ The main operations are:
 | Devices | `devices`, `revoke` |
 | Settings | `settings` |
 | Mobile discovery | `discovery_config`, `discovery_candidates` |
+| Arcade Link (desktop) | `link_manifest`, `link_configure`, `link_wait`, `link_pick_result`, `link_diagnostics`, `link_quit_running`; see [Arcade Link](arcade-link.md) |
 
 `wait_for_change` is a long poll that returns when the history, device list or connection state changes. The controller keeps one outstanding call, so remote clips appear without polling.
 

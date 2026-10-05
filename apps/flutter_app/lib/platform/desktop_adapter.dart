@@ -790,7 +790,9 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
   static const String _mainTitle = 'Arcade Clipboard';
   static const String _overlayTitle = 'Mesh Clipboard';
 
-  Future<void> showOverlay() async {
+  /// Shows the picker. With `paste: false` (choosing a clip for another
+  /// Arcade app) nothing will be pasted, so a missing paste target is fine.
+  Future<void> showOverlay({bool paste = true}) async {
     if (!_initialized || _closed) {
       throw const DesktopIntegrationException(
           'Desktop integration is not available.');
@@ -812,7 +814,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
       try {
         await _rememberTarget();
       } catch (_) {
-        if (capabilities.paste) rethrow;
+        if (capabilities.paste && paste) rethrow;
         // The overlay and copy fallback remain useful without a paste target.
       }
     }

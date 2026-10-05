@@ -2278,7 +2278,11 @@ class _MeshOverlayState extends State<MeshOverlay> {
                 Row(
                   children: [
                     Expanded(
-                      child: Text('Mesh Clipboard',
+                      child: Text(
+                          widget.controller.linkPickFor == null
+                              ? 'Mesh Clipboard'
+                              : 'Choose a clip for ${widget.controller.linkPickFor}',
+                          overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.titleMedium
                               ?.copyWith(fontWeight: FontWeight.w600)),
                     ),

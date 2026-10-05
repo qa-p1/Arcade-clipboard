@@ -249,7 +249,7 @@ class _Desktop extends DesktopAdapter {
   @override
   Future<bool> launchAtLoginEnabled() async => false;
   @override
-  Future<void> showOverlay() async {}
+  Future<void> showOverlay({bool paste = true}) async {}
   @override
   Future<void> hideOverlay() async {}
   @override

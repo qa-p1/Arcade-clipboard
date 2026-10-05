@@ -18,6 +18,10 @@ The Rust core, the encryption and the sync protocol are the same everywhere. Wha
 
 See [Linux](linux.md).
 
+## Other Arcade apps (Arcade Link)
+
+On Linux, Windows and macOS, Clipboard works with the other Arcade apps through [Arcade Link](arcade-link.md): "Send to my devices" in Lens, Look and Box, and choosing a clip from history in Box and Wheel. iPhone, iPad and Android are not Link participants (apps there can't reach each other over local sockets, and background work is limited). They still benefit: content a desktop app sends with "Send to my devices" arrives in their history like any other clip.
+
 ## iPhone and iPad
 
 See [iPhone](ios.md). In short:
