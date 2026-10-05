@@ -20,6 +20,20 @@ UI (show, quit, the picker).
 
 Nothing exposes history contents unless you choose a clip in the picker.
 
+## Isolated verification
+
+The shared runner's `tools/e2e_checks/clipboard.py` group exercises the real
+Linux bundle with a temporary profile, private D-Bus/keyring and Xvfb:
+
+```sh
+python3 ../../Rust/Arcade-link/tools/e2e.py --only clipboard
+```
+
+It verifies text, URL, PNG and multi-file additions, stored history kinds,
+the 16 MiB limit and standard error messages, no-mesh availability, Private
+mode, devices, picker selection, Escape and caller cancellation. The test
+driver creates the mesh before starting the bundle; no live desktop is used.
+
 ## Settings
 
 `link_enabled` ("Connect with other Arcade apps") and `link_disabled_peers`
