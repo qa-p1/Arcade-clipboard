@@ -14,6 +14,108 @@ void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   testWidgets(
+      'standalone item menu keeps only the existing actions and reads no peers',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1180, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final fixture =
+        (await tester.runAsync(() => _Fixture.create(hasMesh: true)))!;
+    addTearDown(fixture.dispose);
+    await tester.pumpWidget(ArcadeApp(controller: fixture.controller));
+    await tester.pumpAndSettle();
+    await fixture.controller.addText('Standalone synthetic clip');
+    await tester.pumpAndSettle();
+    final before = fixture.core.calls.length;
+    await tester.tap(find.byTooltip('Clip actions'));
+    await tester.pumpAndSettle();
+    expect(find.text('Inspect clip'), findsOneWidget);
+    expect(find.text('Pin clip'), findsOneWidget);
+    expect(find.text('Share again'), findsOneWidget);
+    expect(find.text('Delete clip'), findsOneWidget);
+    expect(find.byType(PopupMenuItem<String>), findsNWidgets(4));
+    expect(fixture.core.calls.length, before);
+    expect(find.textContaining('Quick Look'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+      'Connected apps labels, cached shortcut warning and picker actions fit a narrow window',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(430, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final fixture =
+        (await tester.runAsync(() => _Fixture.create(hasMesh: true)))!;
+    addTearDown(fixture.dispose);
+    fixture.core.linkPeers = [
+      {
+        'id': 'arcade.box',
+        'name': 'Arcade Box',
+        'state': 'Running',
+        'version': '1.0.0',
+        'enabled': true,
+        'link_enabled': true
+      },
+      {
+        'id': 'arcade.look',
+        'name': 'Arcade Look',
+        'state': 'Not installed',
+        'version': '',
+        'pitch': 'Preview a clip.'
+      },
+    ];
+    fixture.core.linkShortcuts = [
+      {'name': 'Arcade Box', 'accelerator': 'Alt+Control+Space'}
+    ];
+    fixture.core.linkOffers = {
+      'text': [
+        {
+          'peer': 'arcade.box',
+          'action': 'box:arcade.text.clean#clean',
+          'title': 'Clean text',
+          'shortcut': 'T',
+          'available': true,
+          'import': true
+        },
+      ]
+    };
+    await fixture.controller.link.refresh();
+    await tester.pumpWidget(ArcadeApp(controller: fixture.controller));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Settings').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Connected apps'));
+    await tester.pumpAndSettle();
+    expect(find.text('Connect with other Arcade apps'), findsOneWidget);
+    expect(find.text('Use with Arcade Clipboard'), findsOneWidget);
+    expect(find.text('Running · v1.0.0'), findsOneWidget);
+    expect(find.text('Get'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Mesh Clipboard Shortcut'), 150,
+        scrollable: find.byType(Scrollable).first);
+    await tester.ensureVisible(
+        find.widgetWithText(TextButton, fixture.controller.shortcut));
+    await tester.pumpAndSettle();
+    await tester
+        .tap(find.widgetWithText(TextButton, fixture.controller.shortcut));
+    await tester.pump();
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.altLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.space);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.altLeft);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await tester.pumpAndSettle();
+    expect(find.text('Used by Arcade Box'), findsOneWidget);
+    expect(fixture.controller.shortcut, isNot('CTRL+ALT+SPACE'));
+    await fixture.controller.addText('A synthetic text clip');
+    await fixture.controller.openOverlay();
+    await tester.pumpAndSettle();
+    expect(find.text('Clean text ↗ · Ctrl+Alt+T'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
       'create a mesh, add a clip, inspect it, and filter pinned history',
       (tester) async {
     await tester.binding.setSurfaceSize(const Size(1180, 800));

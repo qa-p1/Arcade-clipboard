@@ -14,6 +14,8 @@ mod crypto;
 mod discovery;
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 mod link;
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+mod link_consumer;
 mod model;
 mod payload;
 mod profile_lock;

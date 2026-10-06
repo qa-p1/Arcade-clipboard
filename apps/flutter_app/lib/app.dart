@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import 'arcade_widgets.dart';
 import 'clipboard_widgets.dart';
 import 'models.dart';
 import 'services/app_controller.dart';
@@ -990,6 +991,8 @@ class _ClipboardPageState extends State<_ClipboardPage> {
                     child: _InlineMessage(
                         text: controller.notice!,
                         onDismiss: controller.dismissNotice)),
+              WaitingPhoto(controller: controller),
+              LinkWorkStatus(controller: controller),
               if (controller.status?.paused == true)
                 Padding(
                   padding: const EdgeInsets.only(top: 12),
@@ -1173,7 +1176,13 @@ class _ClipboardRow extends StatelessWidget {
                 if (action == 'pin') onPin();
                 if (action == 'delete') onDelete();
                 if (action == 'resend') onResend();
+                for (final offer in controller.linkActions(item)) {
+                  if (action == 'link:${offer.peer}/${offer.action}') {
+                    controller.invokeItemAction(item, offer);
+                  }
+                }
               },
+              constraints: const BoxConstraints(minWidth: 240, maxWidth: 390),
               itemBuilder: (_) => [
                     const PopupMenuItem(
                         value: 'inspect', child: Text('Inspect clip')),
@@ -1184,6 +1193,11 @@ class _ClipboardRow extends StatelessWidget {
                         value: 'resend', child: Text('Share again')),
                     const PopupMenuItem(
                         value: 'delete', child: Text('Delete clip')),
+                    for (final action in controller.linkActions(item))
+                      PopupMenuItem(
+                          value: 'link:${action.peer}/${action.action}',
+                          enabled: action.enabled,
+                          child: LinkActionLabel(action: action, item: item)),
                   ]),
         ]),
       ),
@@ -1655,6 +1669,7 @@ class _SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<_SettingsPage> {
   bool _recording = false;
   String? _shortcutDraft;
+  String? _shortcutWarning;
   final FocusNode _shortcutFocus = FocusNode();
 
   @override
@@ -1672,6 +1687,19 @@ class _SettingsPageState extends State<_SettingsPage> {
       children: [
         const _PageTitle(eyebrow: '', title: 'Settings'),
         const SizedBox(height: 28),
+        if (controller.desktopAvailable) ...[
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.apps_rounded),
+            title: const Text('Connected apps'),
+            subtitle:
+                const Text('Work with other Arcade apps on this desktop.'),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                builder: (_) => ConnectedAppsPage(controller: controller))),
+          ),
+          const SizedBox(height: 20),
+        ],
         Text('PRIVACY', style: _eyebrowStyle(context)),
         const SizedBox(height: 8),
         _SettingLine(
@@ -1779,6 +1807,25 @@ class _SettingsPageState extends State<_SettingsPage> {
                       ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                 ),
               ),
+            ),
+          if (_shortcutWarning != null)
+            Padding(
+              padding: const EdgeInsets.only(left: 49, bottom: 10),
+              child: Wrap(
+                  spacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(_shortcutWarning!),
+                    TextButton(
+                        onPressed: () => _saveShortcut(_shortcutDraft!),
+                        child: const Text('Use anyway')),
+                    TextButton(
+                        onPressed: () => setState(() {
+                              _shortcutWarning = null;
+                              _shortcutDraft = null;
+                            }),
+                        child: const Text('Cancel')),
+                  ]),
             ),
           const Divider(height: 1),
         ],
@@ -1973,6 +2020,7 @@ class _SettingsPageState extends State<_SettingsPage> {
     setState(() {
       _recording = true;
       _shortcutDraft = null;
+      _shortcutWarning = null;
     });
     WidgetsBinding.instance
         .addPostFrameCallback((_) => _shortcutFocus.requestFocus());
@@ -2004,10 +2052,20 @@ class _SettingsPageState extends State<_SettingsPage> {
       _recording = false;
       _shortcutDraft = shortcut;
     });
+    final owner = widget.controller.link.shortcutOwner(shortcut);
+    if (owner != null) {
+      setState(() => _shortcutWarning = 'Used by $owner');
+    } else {
+      _saveShortcut(shortcut);
+    }
+    return KeyEventResult.handled;
+  }
+
+  void _saveShortcut(String shortcut) {
+    setState(() => _shortcutWarning = null);
     widget.controller.configureShortcut(shortcut).then((_) {
       if (mounted) setState(() => _shortcutDraft = null);
     });
-    return KeyEventResult.handled;
   }
 
   bool _isModifier(LogicalKeyboardKey key) => {
@@ -2325,6 +2383,12 @@ class _MeshOverlayState extends State<MeshOverlay> {
                     )),
                 if (widget.controller.overlaySearchLoading)
                   const LinearProgressIndicator(minHeight: 2),
+                LinkWorkStatus(controller: widget.controller),
+                WaitingPhoto(controller: widget.controller),
+                if (widget.controller.error != null)
+                  Text(widget.controller.error!, maxLines: 2),
+                if (widget.controller.notice != null)
+                  Text(widget.controller.notice!, maxLines: 2),
                 const SizedBox(height: 10),
                 Expanded(
                   child: items.isEmpty
@@ -2352,6 +2416,22 @@ class _MeshOverlayState extends State<MeshOverlay> {
                         ),
                 ),
                 Divider(height: 1, color: theme.dividerColor),
+                if (items.isNotEmpty)
+                  Wrap(spacing: 6, children: [
+                    for (final action
+                        in widget.controller.linkActions(items[selectedIndex]))
+                      Tooltip(
+                          message: action.disabledReason ??
+                              items[selectedIndex].preview,
+                          child: TextButton.icon(
+                              icon: ArcadeGlyph(action.peer),
+                              label: Text(
+                                  '${action.title} ↗ · Ctrl+Alt+${action.shortcut}'),
+                              onPressed: action.enabled
+                                  ? () => widget.controller.invokeItemAction(
+                                      items[selectedIndex], action)
+                                  : null)),
+                  ]),
                 const SizedBox(height: 10),
                 Row(
                   children: [
@@ -2391,6 +2471,18 @@ class _MeshOverlayState extends State<MeshOverlay> {
 
   KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    if (HardwareKeyboard.instance.isControlPressed &&
+        HardwareKeyboard.instance.isAltPressed &&
+        _visible.isNotEmpty) {
+      final item = _visible[_selectedIndex(_visible)];
+      for (final action in widget.controller.linkActions(item)) {
+        if (event.logicalKey.keyLabel.toUpperCase() == action.shortcut &&
+            action.enabled) {
+          widget.controller.invokeItemAction(item, action);
+          return KeyEventResult.handled;
+        }
+      }
+    }
     return _handleKey(event.logicalKey);
   }
 

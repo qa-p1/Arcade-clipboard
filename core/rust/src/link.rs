@@ -32,6 +32,7 @@ const MAX_PARTS: usize = 32;
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct LinkSettings {
     pub enabled: bool,
+    pub mode: &'static str,
     pub disabled_peers: Vec<String>,
     pub shortcut: Option<String>,
 }
@@ -40,6 +41,11 @@ impl LinkSettings {
     pub(crate) fn from_request(value: Option<&Value>) -> Self {
         let value = value.cloned().unwrap_or_else(|| json!({}));
         Self {
+            mode: if value["mode"] == "background" {
+                "background"
+            } else {
+                "foreground"
+            },
             enabled: value
                 .get("enabled")
                 .and_then(Value::as_bool)
@@ -113,11 +119,12 @@ fn events() -> &'static Events {
 }
 
 pub(crate) fn push_event(event: Value) {
-    events()
-        .queue
-        .lock()
-        .unwrap_or_else(|e| e.into_inner())
-        .push_back(event);
+    let mut queue = events().queue.lock().unwrap_or_else(|e| e.into_inner());
+    if event["kind"] == "registry_changed" || event["kind"] == "invoke_progress" {
+        queue.retain(|old| old["kind"] != event["kind"] || old["request"] != event["request"]);
+    }
+    queue.push_back(event);
+    drop(queue);
     events().ready.notify_one();
 }
 
@@ -289,6 +296,18 @@ fn capture_error(message: String) -> LinkError {
 
 /// The content handed back by `clipboard.pick` for a stored clip.
 pub(crate) fn picked_content(payload: &Value) -> Result<Content, LinkError> {
+    let h = Handoff::create(&Locations::discover(), ids::CLIPBOARD)
+        .map_err(|e| LinkError::internal(format!("couldn't hand the clip over: {e}")))?;
+    let content = payload_content(payload, &h)?;
+    // A picker caller reads the result after the job ends. Outbound consumers
+    // instead retain their Handoff guard until the peer has finished.
+    if content.path.is_some() || !content.paths.is_empty() {
+        h.keep();
+    }
+    Ok(content)
+}
+
+pub(crate) fn payload_content(payload: &Value, h: &Handoff) -> Result<Content, LinkError> {
     let kind = payload["kind"].as_str().unwrap_or("text");
     let text = payload["text"].as_str().unwrap_or_default();
     let reps: Vec<Representation> =
@@ -304,14 +323,9 @@ pub(crate) fn picked_content(payload: &Value) -> Result<Content, LinkError> {
             .map(|r| decode(r).map(|b| String::from_utf8_lossy(&b).into_owned()))
             .transpose()
     };
-    let handoff = || {
-        Handoff::create(&Locations::discover(), ids::CLIPBOARD)
-            .map_err(|e| LinkError::internal(format!("couldn't hand the clip over: {e}")))
-    };
     let io = |e: std::io::Error| LinkError::internal(format!("couldn't hand the clip over: {e}"));
     match kind {
         "image" | "file" | "files" => {
-            let h = handoff()?;
             let mut paths = Vec::new();
             for (i, r) in reps.iter().enumerate() {
                 let name = match (&r.name, r.mime_type.as_str()) {
@@ -326,9 +340,6 @@ pub(crate) fn picked_content(payload: &Value) -> Result<Content, LinkError> {
                     break;
                 }
             }
-            // The caller reads the files after the job ends; the 24-hour
-            // handoff cleanup removes them.
-            h.keep();
             let content = match paths.as_slice() {
                 [] => return Err(LinkError::internal("the clip has no data")),
                 [one] => Content::file(one),
@@ -343,11 +354,7 @@ pub(crate) fn picked_content(payload: &Value) -> Result<Content, LinkError> {
                 "rich_text" => "text/rich",
                 _ => "text/plain",
             };
-            let h = handoff()?;
             let mut content = h.text(kind, &full).map_err(io)?;
-            if content.path.is_some() {
-                h.keep();
-            }
             if kind == "text/rich" {
                 content.html = rep_text("text/html")?;
             }
@@ -414,6 +421,7 @@ pub(crate) async fn finish_pick(
 }
 
 struct ClipboardHandler {
+    mode: &'static str,
     core: Weak<Core>,
     runtime: Handle,
 }
@@ -495,6 +503,10 @@ impl ClipboardHandler {
 }
 
 impl Handler for ClipboardHandler {
+    fn status(&self) -> Value {
+        json!({"mode": self.mode})
+    }
+
     fn describe(&self) -> Vec<Action> {
         actions()
     }
@@ -531,11 +543,13 @@ fn slot() -> &'static Mutex<Option<Arc<Presence>>> {
 /// blocking task of the core's runtime (requests run on that runtime).
 pub(crate) fn start(core: &Arc<Core>, settings: &LinkSettings) {
     let handler = Arc::new(ClipboardHandler {
+        mode: settings.mode,
         core: Arc::downgrade(core),
         runtime: Handle::current(),
     });
     let presence = Presence::start(Locations::discover(), manifest(settings), handler);
     *slot().lock().unwrap_or_else(|e| e.into_inner()) = Some(Arc::new(presence));
+    crate::link_consumer::start(settings);
 }
 
 /// Applies changed settings (the Link switch, peers, the shortcut).
@@ -544,11 +558,13 @@ pub(crate) fn configure(settings: &LinkSettings) {
     if let Some(p) = presence {
         p.update(manifest(settings));
     }
+    crate::link_consumer::configure(settings);
 }
 
 /// Stops listening and removes the endpoint file (the manifest stays).
 /// Open picks end as cancelled.
 pub(crate) fn stop() {
+    crate::link_consumer::stop();
     if let Some(p) = slot().lock().unwrap_or_else(|e| e.into_inner()).take() {
         p.stop();
     }

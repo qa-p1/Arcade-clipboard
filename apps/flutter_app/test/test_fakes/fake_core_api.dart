@@ -7,6 +7,8 @@ class FakeCoreApi implements CoreApi {
 
   final List<CoreCall> calls = [];
   final Map<String, Object> failures = {};
+  final Map<String, Future<Map<String, dynamic>> Function(Map<String, Object?>)>
+      replies = {};
   final Map<String, Future<Map<String, dynamic>> Function()> historyReplies =
       {};
   final List<_Waiter> _waiters = [];
@@ -15,6 +17,21 @@ class FakeCoreApi implements CoreApi {
   String _relayUrl = "";
   int _retentionHours = 24;
   int _maxItems = 500;
+  Map<String, dynamic> linkOffers = {};
+  List<Map<String, dynamic>> linkPeers = [];
+  List<Map<String, dynamic>> linkShortcuts = [];
+  final List<Map<String, dynamic>> _linkEvents = [];
+  Completer<Map<String, dynamic>>? _linkWait;
+
+  void sendLinkEvent(Map<String, dynamic> event) {
+    final waiting = _linkWait;
+    _linkWait = null;
+    if (waiting != null) {
+      waiting.complete(event);
+    } else {
+      _linkEvents.add(event);
+    }
+  }
 
   @override
   Future<void> initializeBridge() async {}
@@ -27,8 +44,25 @@ class FakeCoreApi implements CoreApi {
     calls.add(CoreCall(operation, Map<String, Object?>.of(arguments)));
     final failure = failures[operation];
     if (failure != null) throw failure;
+    final reply = replies[operation];
+    if (reply != null) return reply(arguments);
 
     switch (operation) {
+      case 'link_offers':
+        return {'offers': linkOffers};
+      case 'link_peers':
+        return {
+          'peers': linkPeers,
+          'shortcuts': linkShortcuts,
+          'watching': true
+        };
+      case 'link_diagnostics':
+      case 'link_configure':
+        return {'registry': '/test/arcade/apps', 'listening': true};
+      case 'link_wait':
+        if (_linkEvents.isNotEmpty) return _linkEvents.removeAt(0);
+        _linkWait = Completer<Map<String, dynamic>>();
+        return _linkWait!.future;
       case 'initialize':
         return Map<String, dynamic>.of(_status);
       case 'status':

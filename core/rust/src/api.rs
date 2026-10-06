@@ -53,6 +53,39 @@ pub async fn call(request: String) -> Result<String, String> {
         "link_wait" => crate::link::wait_event().await,
         #[cfg(not(any(target_os = "android", target_os = "ios")))]
         "link_diagnostics" => crate::link::diagnostics(),
+        #[cfg(not(any(target_os = "android", target_os = "ios")))]
+        "link_offers" => tokio::task::spawn_blocking(crate::link_consumer::all_offers)
+            .await
+            .map_err(|_| "Could not read item actions".to_string())?,
+        #[cfg(not(any(target_os = "android", target_os = "ios")))]
+        "link_peers" => tokio::task::spawn_blocking(crate::link_consumer::peers)
+            .await
+            .map_err(|_| "Could not read connected apps".to_string())?,
+        #[cfg(not(any(target_os = "android", target_os = "ios")))]
+        "link_open_releases" => {
+            let app = value["app"].as_str().unwrap_or_default().to_owned();
+            tokio::task::spawn_blocking(move || crate::link_consumer::open_releases(&app))
+                .await
+                .map_err(|_| "Could not open releases".to_string())?
+                .map_err(|e| e.user_message("Arcade Clipboard"))?
+        }
+        #[cfg(not(any(target_os = "android", target_os = "ios")))]
+        "link_cancel" => serde_json::json!({"cancelled": crate::link_consumer::cancel(
+            value["request"].as_u64().ok_or_else(|| "Request is missing request".to_string())?)}),
+        #[cfg(not(any(target_os = "android", target_os = "ios")))]
+        "link_stage_image" => {
+            tokio::task::spawn_blocking(move || crate::link_consumer::stage(&value))
+                .await
+                .map_err(|_| "Could not stage the photo".to_string())?
+                .map_err(|e| e.user_message("Arcade Clipboard"))?
+        }
+        #[cfg(not(any(target_os = "android", target_os = "ios")))]
+        "link_invoke" => {
+            let _guard = LIFECYCLE.get_or_init(|| RwLock::new(())).read().await;
+            let core = { core_slot().lock().await.clone() }
+                .ok_or_else(|| "Clipboard core is not initialized".to_string())?;
+            crate::link_consumer::begin(core, value)
+        }
         // The picker's answer to a `clipboard.pick` request: an item, an
         // error when it can't open, or nothing when the user closed it.
         #[cfg(not(any(target_os = "android", target_os = "ios")))]

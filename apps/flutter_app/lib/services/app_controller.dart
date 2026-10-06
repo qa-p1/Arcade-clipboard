@@ -31,7 +31,8 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
 
   final CoreApi _core;
   final DesktopAdapter _desktop;
-  late final LinkService _link = LinkService(_core);
+  late final LinkService _link =
+      LinkService(_core, startedInBackground: _startInBackground);
   final MobileShareBridge _mobile;
   final Directory? _dataDirectoryOverride;
   final bool _startInBackground;
@@ -138,6 +139,69 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   DesktopCapabilities? get desktopCapabilities => _desktopCapabilities;
   bool get desktopAvailable =>
       Platform.isWindows || Platform.isMacOS || Platform.isLinux;
+  LinkService get link => _link;
+  ClipboardItem? get waitingPhoto => _waitingPhoto;
+  ClipboardItem? _waitingPhoto;
+  int? _photoStage;
+  Map<String, Object?>? _photoInput;
+
+  List<LinkItemAction> linkActions(ClipboardItem item) => _link
+      .actionsFor(item, private: _status?.paused == true)
+      .where(
+          (action) => item.id != 'waiting-photo' || action.title == 'Compress')
+      .toList(growable: false);
+
+  Future<void> invokeItemAction(
+      ClipboardItem item, LinkItemAction action) async {
+    if (!action.enabled || _link.busy) return;
+    try {
+      final waiting = item.id == _waitingPhoto?.id;
+      final event = await _link.invoke(action,
+          itemId: waiting ? null : item.id,
+          stage: waiting ? _photoStage : null,
+          input: waiting ? _photoInput : null);
+      if (waiting) {
+        _waitingPhoto = null;
+        _photoStage = null;
+        _photoInput = null;
+      }
+      if (event['error'] != null) {
+        throw AppActionException(event['message'] as String? ?? 'Cancelled.');
+      }
+      final result = event['result'] as Map<String, dynamic>? ?? const {};
+      final outputs = result['outputs'] as List? ?? const [];
+      _notice = action.importsResult
+          ? outputs.any((o) =>
+                  o is Map &&
+                  ((o['type'] as String? ?? '').startsWith('text/') ||
+                      (o['type'] as String? ?? '').startsWith('file/')))
+              ? '${action.title}: added a new clip.'
+              : 'No text found.'
+          : result['message'] as String? ?? action.title;
+      _clearError('link-action');
+      await refreshHistory(query: _query);
+      if (_overlayOpen) await searchOverlay(_overlayQuery ?? '');
+    } catch (error) {
+      _setError(error, source: 'link-action');
+    }
+    _notifyListeners();
+  }
+
+  Future<void> setLinkEnabled(bool value) =>
+      _perform(() => _link.setEnabled(value, _shortcut));
+  Future<void> setLinkPeerEnabled(String peer, bool value) =>
+      _perform(() => _link.setPeerEnabled(peer, value, _shortcut));
+  Future<void> getArcadeApp(String peer) => _perform(() => _link.getApp(peer));
+
+  Future<void> dismissWaitingPhoto() async {
+    final stage = _photoStage;
+    _waitingPhoto = null;
+    _photoStage = null;
+    _photoInput = null;
+    if (stage != null) await _link.discardStage(stage);
+    _notifyListeners();
+  }
+
   bool get _isMobilePlatform => Platform.isIOS || Platform.isAndroid;
   bool get hasMesh => _status?.hasMesh ?? false;
   Future<void> requestPasteAccess() => _perform(() async {
@@ -201,6 +265,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
           prefs.getBool('automatic_desktop_capture') ?? desktopAvailable;
       _backgroundEnabled = prefs.getBool('background_enabled') ?? true;
       if (desktopAvailable && LinkService.supported) await _link.load();
+      _link.onChanged = _notifyListeners;
       Map<String, dynamic>? initialized;
       for (var attempt = 0; initialized == null; attempt++) {
         try {
@@ -1093,7 +1158,14 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
           final file = File(path);
           if (!await file.exists()) continue;
           size += await file.length();
-          if (size > 16 * 1024 * 1024) return;
+          if (size > 16 * 1024 * 1024) {
+            if (files.length == 1 &&
+                RegExp(r'\.(png|jpe?g)$', caseSensitive: false)
+                    .hasMatch(path)) {
+              await _offerLargePhoto(path: path, size: size);
+            }
+            return;
+          }
           representations.add(ClipRepresentation(
               mimeType: 'application/octet-stream',
               name: file.uri.pathSegments.last,
@@ -1101,6 +1173,16 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         }
       } else {
         final formats = clipboard['formats'] as List<dynamic>? ?? const [];
+        for (final format in formats.whereType<Map<dynamic, dynamic>>()) {
+          final mime = format['mimeType'];
+          final bytes = format['bytes'];
+          if ((mime == 'image/png' || mime == 'image/jpeg') &&
+              bytes is Uint8List &&
+              bytes.length > 16 * 1024 * 1024) {
+            await _offerLargePhoto(bytes: bytes, mime: mime as String);
+            return;
+          }
+        }
         for (final format in formats.whereType<Map<dynamic, dynamic>>()) {
           final mime = format['mimeType'];
           final bytes = format['bytes'];
@@ -1155,6 +1237,38 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       Diagnostics.log('capture', 'core rejected clip: $exception');
       _setError(exception, source: 'capture');
     }
+  }
+
+  Future<void> _offerLargePhoto(
+      {Uint8List? bytes, String? mime, String? path, int? size}) async {
+    final count = size ?? bytes!.length;
+    if (count > 32 * 1024 * 1024) {
+      return; // Native clipboard reads have the same cap.
+    }
+    final photo = ClipboardItem(
+        id: 'waiting-photo',
+        originDevice: _status?.deviceId ?? '',
+        sourceName: 'This device',
+        createdAt: DateTime.now(),
+        text: '',
+        kind: 'image',
+        pinned: false,
+        size: count,
+        previewText: 'Image too large to sync');
+    final compress =
+        linkActions(photo).where((a) => a.title == 'Compress' && a.enabled);
+    if (compress.isEmpty) {
+      return; // Standalone capture retains its existing limit.
+    }
+    await dismissWaitingPhoto();
+    if (bytes != null) {
+      _photoStage = await _link.stageImage(bytes, mime!);
+    } else {
+      _photoInput = {'type': 'file/image', 'path': path, 'size': count};
+    }
+    _waitingPhoto = photo;
+    _notice = 'Too large to send to your devices (limit 16 MB).';
+    _notifyListeners();
   }
 
   Future<void> _captureFromDesktop(String text) async {
@@ -1335,7 +1449,8 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         normalized.contains('secure store')) {
       return 'The secure key store is unavailable. Unlock or set up your system keyring, then retry secure setup.';
     }
-    if (Platform.isIOS && normalized.contains('could not reach the mesh owner')) {
+    if (Platform.isIOS &&
+        normalized.contains('could not reach the mesh owner')) {
       return 'Could not reach your other device. Make sure both are on the same Wi-Fi, '
           'and that Local Network access is on for Arcade Clipboard in Settings › Privacy & Security › Local Network. Then try again.';
     }
@@ -1383,6 +1498,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   @override
   void dispose() {
     _disposed = true;
+    _link.close();
     if (Platform.isIOS) {
       _mobile.setDiscoveryHandler(null);
       unawaited(_mobile.stopDiscovery().catchError((Object _) {}));
