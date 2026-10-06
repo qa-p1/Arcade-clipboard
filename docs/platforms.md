@@ -9,10 +9,10 @@ The Rust core, the encryption and the sync protocol are the same everywhere. Wha
 | Linux, other Wayland | With data-control (not GNOME) | Bind `clipboard --overlay` | No, copies for Ctrl+V | Yes | Build only |
 | iPhone, iPad | No (iOS does not allow it) | Share sheet and keyboard | Keyboard inserts text | Only while the app is open | Not yet run on a device |
 | Android | No | Share target and keyboard | Keyboard inserts text | While the app runs | Build only |
-| Windows | Yes | Yes | Yes | Yes | Not built |
-| macOS | Yes | Yes | Yes, needs Accessibility | Yes | Not built |
+| Windows | Yes | Yes | Yes | Yes | Build only (CI defined, not run here) |
+| macOS | Yes | Yes | Yes, needs Accessibility | Yes | Build only (CI defined, not run here) |
 
-"Build only" means the code compiles in CI or locally but has not been exercised on that system. "Not built" means the native code exists but has never been compiled.
+"Build only (CI defined, not run here)" means a workflow exists to compile the Flutter desktop app and Rust core; no Windows/macOS build or runtime result is claimed. Other "Build only" entries mean locally compiled code without a real-device runtime pass.
 
 ## Linux
 
@@ -45,11 +45,11 @@ To build: install the Android SDK and NDK plus the Rust Android targets, run `py
 
 ## Windows
 
-The Windows plugin uses the native clipboard listener for capture and supports text, HTML, RTF, images and files. The shortcut defaults to **Ctrl+Alt+V**. Before pasting, the app checks that the remembered window still belongs to the same process, then restores focus and sends Ctrl+V. It includes a tray icon and launch at login. Build with `flutter build windows` on Windows; CMake compiles and bundles the Rust library.
+The Windows plugin uses the native clipboard listener for capture and supports text, HTML, RTF, images and files. The shortcut defaults to **Ctrl+Alt+V**. Before pasting, the app checks that the remembered window still belongs to the same process, then restores focus and sends Ctrl+V. It includes a tray icon and launch at login. Build with `bash scripts/dev.sh build-windows` on Windows; CMake compiles and bundles the Rust library. The `windows-latest` CI job is defined but has not run here.
 
 ## macOS
 
-The macOS plugin watches the pasteboard for changes while capture is on. The shortcut defaults to **Cmd+Shift+V**. Pasting into another app requires Accessibility permission, which **Settings → Allow automatic paste** requests; without it, the chosen clip is copied and you press Cmd+V. The app lives in the menu bar and uses `SMAppService` for launch at login. Build with `flutter build macos --release`, then `bash scripts/build-macos-core.sh`.
+The macOS plugin watches the pasteboard for changes while capture is on. The shortcut defaults to **Cmd+Shift+V**. Pasting into another app requires Accessibility permission, which **Settings → Allow automatic paste** requests; without it, the chosen clip is copied and you press Cmd+V. The app lives in the menu bar and uses `SMAppService` for launch at login. Build with `bash scripts/dev.sh build-macos`; it builds the Flutter app, bundles the Rust library and applies an ad-hoc signature. The `macos-latest` CI job is defined but has not run here.
 
 ## Limits on every platform
 
@@ -59,3 +59,9 @@ The macOS plugin watches the pasteboard for changes while capture is on. The sho
 - History is limited by **Keep history** (1 hour to 30 days, default 24 hours) and **History limit** (500 to 5,000 clips, default 500). Pinned clips do not expire but count toward the limit.
 - A device removed from the mesh keeps the clips it already received. Removal stops all future sync with it.
 - Sync between different networks needs a [relay](relay-deployment.md) that both devices can reach.
+
+
+Desktop release formats are a Linux x64 tarball, a Windows x64 per-user Inno
+installer, and a macOS dmg for the CI runner architecture. Stable and nightly
+workflows are defined; no releases have been published from this work. See
+[Releases](releases.md) for installation and the shared-dependency owner action.

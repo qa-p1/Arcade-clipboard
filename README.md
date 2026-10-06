@@ -14,6 +14,19 @@ Devices pair directly with a QR code. There is no account and no server that can
 
 Supported content: plain text (up to 32 KiB), links, HTML and RTF, PNG and JPEG images, and files. A single clip can be up to 16 MiB.
 
+## Works with other Arcade apps
+
+Desktop clip menus and the picker can **Quick Look** with Look, **Extract text**,
+**Analyze with Lens** or **Pin** an image, and **Format JSON**, **Clean text** or
+**Convert to PNG** with Box. Results join your clipboard history and devices;
+your system clipboard stays unchanged. An oversized copied photo can wait for
+an opt-in **Compress** before it syncs. Entries appear when the peer is installed,
+enabled and available; standalone behavior stays the same.
+
+Choose peers in **Settings → Connected apps**. Other apps can send content to your
+devices or open your picker through the [documented Link actions](docs/arcade-link.md).
+Phones receive those clips through the mesh and do not participate in local Link.
+
 ## Platform support
 
 | Platform | Status |
@@ -73,6 +86,8 @@ Devices on the same network find each other automatically. To sync across networ
 - The relay only forwards traffic between devices that are online at the same time. It does not store anything.
 - Folders cannot be shared, and an interrupted large transfer restarts from the beginning.
 - On iPhone, sync runs only while the app is open; iOS does not allow it to run continuously in the background.
+
+Desktop release packages and installation steps: [Releases](docs/releases.md).
 
 ## License
 
