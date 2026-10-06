@@ -37,7 +37,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           repository: ${{ vars.ARCADE_LINK_REPOSITORY || 'qa-p1/Arcade-link' }}
-          ref: ${{ vars.ARCADE_LINK_REF || '539fa9174f88c3f95a9d84f41253ec2630f72021' }}
+          ref: ${{ vars.ARCADE_LINK_REF || '1ae6ffbf7c75076772723f763a3d2da030207379' }}
           path: Rust/Arcade-link
       - name: Validate the configured Link checkout
         env:
