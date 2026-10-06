@@ -10,9 +10,26 @@ const MAX_REQUEST_BYTES: usize = 24 * 1024 * 1024;
 
 static CORE: OnceLock<Mutex<Option<Arc<Core>>>> = OnceLock::new();
 static LIFECYCLE: OnceLock<RwLock<()>> = OnceLock::new();
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+static LINK_STARTUP: OnceLock<Mutex<Option<tokio::task::JoinHandle<()>>>> = OnceLock::new();
 
 fn core_slot() -> &'static Mutex<Option<Arc<Core>>> {
     CORE.get_or_init(|| Mutex::new(None))
+}
+
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+async fn stop_link() {
+    let startup = LINK_STARTUP
+        .get_or_init(|| Mutex::new(None))
+        .lock()
+        .await
+        .take();
+    // A blocking startup cannot be aborted once it runs. Join it before
+    // stopping, so it cannot install a listener/watcher after shutdown.
+    if let Some(startup) = startup {
+        let _ = startup.await;
+    }
+    let _ = tokio::task::spawn_blocking(crate::link::stop).await;
 }
 
 /// The narrow JSON boundary used by Flutter. Core access is cloned while the
@@ -107,10 +124,14 @@ pub async fn call(request: String) -> Result<String, String> {
             // the endpoint must disappear promptly on quit.
             #[cfg(not(any(target_os = "android", target_os = "ios")))]
             {
-                let _ = tokio::task::spawn_blocking(crate::link::stop).await;
+                stop_link().await;
                 crate::link::push_event(serde_json::json!({"kind": "closed"}));
             }
             let _guard = LIFECYCLE.get_or_init(|| RwLock::new(())).write().await;
+            // An initialize already holding the lifecycle lock may finish
+            // between the first stop and acquiring it. Drain that startup too.
+            #[cfg(not(any(target_os = "android", target_os = "ios")))]
+            stop_link().await;
             let current = { core_slot().lock().await.take() };
             if let Some(core) = current {
                 core.shutdown().await;
@@ -139,6 +160,8 @@ async fn initialize(request: Value) -> Result<Value, String> {
         .ok_or_else(|| "Initialization requires a device name".to_string())?;
     let previous = { core_slot().lock().await.take() };
     if let Some(previous) = previous {
+        #[cfg(not(any(target_os = "android", target_os = "ios")))]
+        stop_link().await;
         previous.shutdown().await;
     }
     let data_dir = PathBuf::from(data_dir);
@@ -153,7 +176,9 @@ async fn initialize(request: Value) -> Result<Value, String> {
         let settings = crate::link::LinkSettings::from_request(request.get("link"));
         let link_core = core.clone();
         // Off the startup path: the manifest write and bind run on a blocking task.
-        tokio::task::spawn_blocking(move || crate::link::start(&link_core, &settings));
+        let startup =
+            tokio::task::spawn_blocking(move || crate::link::start(&link_core, &settings));
+        *LINK_STARTUP.get_or_init(|| Mutex::new(None)).lock().await = Some(startup);
     }
     let status = serde_json::to_value(core.status().await?)
         .map_err(|_| "Could not encode device status".to_string())?;
