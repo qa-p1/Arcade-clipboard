@@ -118,6 +118,15 @@ pub async fn call(request: String) -> Result<String, String> {
                 .ok_or_else(|| "Clipboard core is not initialized".to_string())?;
             serde_json::json!({"answered": crate::link::finish_pick(&core, request, item, error).await})
         }
+        // The UI's 30 s long-poll only reads a revision counter. Holding the
+        // lifecycle lock across it made shutdown wait for the poll to time out
+        // (so quitting always hit the UI's 4 s exit timeout); without it,
+        // shutdown runs at once and its final revision bump wakes the poll.
+        "wait_for_change" => {
+            let core = { core_slot().lock().await.clone() }
+                .ok_or_else(|| "Clipboard core is not initialized".to_string())?;
+            core.request(value).await?
+        }
         "version" => serde_json::json!({"version": env!("CARGO_PKG_VERSION")}),
         "shutdown" => {
             // Before the lifecycle lock, which waits for pending long-polls:
