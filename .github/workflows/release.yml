@@ -1,0 +1,174 @@
+name: Desktop releases
+
+# Windows/macOS: build only (CI defined, not run here).
+# Stable tags must match the version in Cargo.toml and pubspec.yaml.
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: Stable requires a v<version> tag; main produces nightly
+        type: choice
+        options: [nightly, stable]
+        default: nightly
+
+permissions:
+  contents: read
+
+env:
+  CARGO_BUILD_JOBS: '3'
+  CMAKE_BUILD_PARALLEL_LEVEL: '3'
+  RUSTUP_TOOLCHAIN: '1.98.1'
+
+defaults:
+  run:
+    shell: bash
+    working-directory: App dev/Arcade-clipboard
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  version:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      channel: ${{ steps.version.outputs.channel }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          path: App dev/Arcade-clipboard
+      - id: version
+        env:
+          REQUESTED_CHANNEL: ${{ inputs.channel }}
+        run: |
+          python3 - <<'PYTHON'
+          import os, pathlib, re, tomllib
+          version = tomllib.loads(pathlib.Path('Cargo.toml').read_text())['workspace']['package']['version']
+          flutter = re.search(r'^version: ([^+\n]+)', pathlib.Path('apps/flutter_app/pubspec.yaml').read_text(), re.M).group(1)
+          assert flutter == version, 'Rust and Flutter versions must match'
+          ref = os.environ['GITHUB_REF']
+          stable = ref.startswith('refs/tags/v') and os.environ.get('REQUESTED_CHANNEL') != 'nightly'
+          if os.environ.get('REQUESTED_CHANNEL') == 'stable' and not stable:
+              raise SystemExit('Stable releases require a v<version> tag')
+          if stable:
+              assert ref.removeprefix('refs/tags/v') == version, 'Tag must match the app version'
+          else:
+              version += '-nightly.' + os.environ['GITHUB_RUN_NUMBER'] + '.' + os.environ['GITHUB_SHA'][:7]
+          channel = 'stable' if stable else 'nightly'
+          tag = 'v' + version if stable else 'nightly'
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
+              out.write(f'version={version}\nchannel={channel}\ntag={tag}\n')
+          PYTHON
+
+  packages:
+    needs: version
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-24.04, platform: linux}
+          - {os: windows-latest, platform: windows}
+          - {os: macos-latest, platform: macos}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          path: App dev/Arcade-clipboard
+      - name: Check out the frozen Link dependency
+        id: link-checkout
+        continue-on-error: true
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          repository: ${{ vars.ARCADE_LINK_REPOSITORY || 'qa-p1/Arcade-link' }}
+          ref: ${{ vars.ARCADE_LINK_REF || '539fa9174f88c3f95a9d84f41253ec2630f72021' }}
+          path: Rust/Arcade-link
+      - name: Validate the configured Link checkout
+        env:
+          LINK_CHECKOUT_OUTCOME: ${{ steps.link-checkout.outcome }}
+        run: |
+          if [ "$LINK_CHECKOUT_OUTCOME" != success ] || ! test -f '../../Rust/Arcade-link/crates/arcade-link/Cargo.toml'; then
+            echo '::error::Arcade-link is not available. The owner must publish it, then set ARCADE_LINK_REPOSITORY and ARCADE_LINK_REF to a repository/ref containing the frozen v1 crate. See docs/releases.md.'
+            exit 1
+          fi
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+        with:
+          flutter-version: '3.47.2'
+          channel: stable
+          cache: true
+      - name: Install Rust
+        run: rustup toolchain install 1.98.1 --profile minimal
+      - name: Install Linux build dependencies
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libkeybinder-3.0-dev libdbus-1-dev libsecret-1-dev
+      - name: Install Inno Setup
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup --no-progress -y }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build desktop app and Rust core
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: bash scripts/dev.sh "build-$PLATFORM"
+      - name: Package tarball, Inno installer, or dmg
+        env:
+          RELEASE_VERSION: ${{ needs.version.outputs.version }}
+          PLATFORM: ${{ matrix.platform }}
+        run: python3 scripts/package-desktop.py --version "$RELEASE_VERSION" --platform "$PLATFORM"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: release-${{ matrix.platform }}
+          path: App dev/Arcade-clipboard/dist/packages/*
+          if-no-files-found: error
+
+  publish:
+    needs: [version, packages]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          path: App dev/Arcade-clipboard
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          merge-multiple: true
+          path: App dev/Arcade-clipboard/dist/packages
+      - name: Write shared release manifest and checksums
+        env:
+          RELEASE_VERSION: ${{ needs.version.outputs.version }}
+          CHANNEL: ${{ needs.version.outputs.channel }}
+          TAG: ${{ needs.version.outputs.tag }}
+        run: |
+          python3 scripts/arcade-release.py --id arcade.clipboard --version "$RELEASE_VERSION" --channel "$CHANNEL" \
+            --windows-installer inno --notes "https://github.com/$GITHUB_REPOSITORY/releases/tag/$TAG" dist/packages
+          (cd dist/packages && sha256sum -c SHA256SUMS.txt)
+      - name: Publish stable or nightly
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.version.outputs.tag }}
+          CHANNEL: ${{ needs.version.outputs.channel }}
+          RELEASE_VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          if [ "$CHANNEL" = nightly ]; then
+            if gh release view "$TAG" >/dev/null 2>&1; then
+              gh release delete "$TAG" --cleanup-tag --yes
+            fi
+            gh release create "$TAG" dist/packages/* --target "$GITHUB_SHA" --prerelease --latest=false \
+              --title "Arcade Clipboard $RELEASE_VERSION" --notes "Development build. Windows/macOS runtime behavior remains unverified."
+          elif gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/packages/* --clobber
+          else
+            gh release create "$TAG" dist/packages/* --target "$GITHUB_SHA" --latest --generate-notes \
+              --title "Arcade Clipboard $RELEASE_VERSION"
+          fi

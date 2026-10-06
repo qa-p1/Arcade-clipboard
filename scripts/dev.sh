@@ -3,8 +3,36 @@ set -euo pipefail
 arcade_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$arcade_root"
 source scripts/dev-env.sh
+export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-3}"
+export CMAKE_BUILD_PARALLEL_LEVEL="${CMAKE_BUILD_PARALLEL_LEVEL:-3}"
 command -v cargo >/dev/null || { echo 'Install Rust stable first.' >&2; exit 1; }
 case "${1:-help}" in
+  format)
+    cargo fmt --all
+    shift
+    (cd apps/flutter_app && dart format "$@")
+    ;;
+  rust-test)
+    cargo test --workspace --locked
+    ;;
+  rust-check)
+    cargo fmt --all --check
+    cargo clippy --workspace --all-targets --locked -- -D warnings
+    rustfmt --edition 2021 --check core/rust/src/core_helpers.rs
+    ;;
+  flutter-test)
+    (cd apps/flutter_app && flutter test)
+    ;;
+  flutter-check)
+    (cd apps/flutter_app && flutter analyze)
+    ;;
+  build-windows)
+    (cd apps/flutter_app && flutter pub get --enforce-lockfile && flutter build windows --release)
+    ;;
+  build-macos)
+    (cd apps/flutter_app && flutter pub get --enforce-lockfile && flutter build macos --release)
+    bash scripts/build-macos-core.sh
+    ;;
   test)
     cargo test --workspace --locked
     (cd apps/flutter_app && flutter test)
@@ -61,6 +89,6 @@ case "${1:-help}" in
     exec flutter run -d linux
     ;;
   *)
-    echo 'Usage: bash scripts/dev.sh {test|check|relay|driver|smoke|generate|desktop|build-linux|build-ios|native-test}'
+    echo 'Usage: bash scripts/dev.sh {format|test|check|rust-test|rust-check|flutter-test|flutter-check|relay|driver|smoke|generate|desktop|build-linux|build-windows|build-macos|build-ios|native-test}'
     ;;
 esac

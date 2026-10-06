@@ -12,6 +12,14 @@ concurrency:
   group: iphone-${{ github.ref }}
   cancel-in-progress: true
 
+defaults:
+  run:
+    shell: bash
+    working-directory: App dev/Arcade-clipboard
+
+env:
+  CARGO_BUILD_JOBS: '3'
+
 jobs:
   unsigned-iphone:
     runs-on: macos-15
@@ -20,8 +28,25 @@ jobs:
       RUSTUP_TOOLCHAIN: '1.98.1'
       ARCADE_BUILD_NUMBER: ${{ github.run_number }}
     steps:
-      - name: Check out source
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          path: App dev/Arcade-clipboard
+      - name: Check out the frozen Link dependency
+        id: link-checkout
+        continue-on-error: true
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          repository: ${{ vars.ARCADE_LINK_REPOSITORY || 'qa-p1/Arcade-link' }}
+          ref: ${{ vars.ARCADE_LINK_REF || '539fa9174f88c3f95a9d84f41253ec2630f72021' }}
+          path: Rust/Arcade-link
+      - name: Validate the configured Link checkout
+        env:
+          LINK_CHECKOUT_OUTCOME: ${{ steps.link-checkout.outcome }}
+        run: |
+          if [ "$LINK_CHECKOUT_OUTCOME" != success ] || ! test -f '../../Rust/Arcade-link/crates/arcade-link/Cargo.toml'; then
+            echo '::error::Arcade-link is not available. The owner must publish it, then set ARCADE_LINK_REPOSITORY and ARCADE_LINK_REF to a repository/ref containing the frozen v1 crate. See docs/releases.md.'
+            exit 1
+          fi
 
       - name: Select the newest stable Xcode
         run: |
@@ -77,8 +102,8 @@ jobs:
         with:
           name: Arcade-Clipboard-iPhone-unsigned
           path: |
-            dist/Arcade-Clipboard-iOS-unsigned.ipa
-            dist/Arcade-Clipboard-iOS-unsigned.ipa.sha256
-            dist/iPhone-installation.md
+            App dev/Arcade-clipboard/dist/Arcade-Clipboard-iOS-unsigned.ipa
+            App dev/Arcade-clipboard/dist/Arcade-Clipboard-iOS-unsigned.ipa.sha256
+            App dev/Arcade-clipboard/dist/iPhone-installation.md
           if-no-files-found: error
           retention-days: 14

@@ -3,6 +3,8 @@ set -euo pipefail
 arcade_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$arcade_root"
 source scripts/dev-env.sh
+export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-3}"
+export CMAKE_BUILD_PARALLEL_LEVEL="${CMAKE_BUILD_PARALLEL_LEVEL:-3}"
 if ! pkg-config --exists keybinder-3.0 && [[ -f .tools/native/usr/lib/pkgconfig/keybinder-3.0.pc ]]; then
   export PKG_CONFIG_PATH="$arcade_root/.tools/native/usr/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
 fi
@@ -40,6 +42,7 @@ for file in [bundle / 'clipboard', *sorted((bundle / 'lib').glob('*.so*'))]:
     'Other Wayland desktops provide a clipboard picker with copy fallback.\n'
 )
 PY
+cp scripts/install-linux.sh "$arcade_bundle/install.sh"
 mkdir -p dist
 tar -C "$arcade_bundle" -czf dist/Arcade-Clipboard-linux-x64.tar.gz .
 sha256sum dist/Arcade-Clipboard-linux-x64.tar.gz > dist/Arcade-Clipboard-linux-x64.tar.gz.sha256

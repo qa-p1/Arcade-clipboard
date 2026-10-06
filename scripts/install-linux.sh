@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 arcade_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-arcade_bundle="$arcade_root/apps/flutter_app/build/linux/x64/release/bundle"
+arcade_script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -x "$arcade_script_dir/clipboard" ]]; then
+  arcade_bundle="$arcade_script_dir"
+else
+  arcade_bundle="${1:-$arcade_root/apps/flutter_app/build/linux/x64/release/bundle}"
+fi
 arcade_install="${XDG_DATA_HOME:-$HOME/.local/share}/arcade-clipboard"
 arcade_desktop_dir="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
 [[ -x "$arcade_bundle/clipboard" ]] || { echo 'Run bash scripts/dev.sh build-linux first.' >&2; exit 1; }

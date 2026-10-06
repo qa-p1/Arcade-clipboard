@@ -2,6 +2,8 @@
 set -euo pipefail
 arcade_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$arcade_root"
+source scripts/dev-env.sh
+export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-3}"
 cargo build --release --locked -p arcade_core
 arcade_app="$arcade_root/apps/flutter_app/build/macos/Build/Products/${1:-Release}/Arcade Clipboard.app"
 [[ -d "$arcade_app" ]] || { echo 'Build the Flutter macOS app first.' >&2; exit 1; }

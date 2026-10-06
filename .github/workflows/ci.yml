@@ -1,4 +1,4 @@
-name: Core and Linux build
+name: Core and desktop builds
 
 on:
   push:
@@ -13,6 +13,15 @@ concurrency:
   group: checks-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  CARGO_BUILD_JOBS: '3'
+  CMAKE_BUILD_PARALLEL_LEVEL: '3'
+
+defaults:
+  run:
+    shell: bash
+    working-directory: App dev/Arcade-clipboard
+
 jobs:
   rust:
     runs-on: ubuntu-24.04
@@ -20,23 +29,57 @@ jobs:
     env:
       RUSTUP_TOOLCHAIN: '1.98.1'
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          path: App dev/Arcade-clipboard
+      - name: Check out the frozen Link dependency
+        id: link-checkout
+        continue-on-error: true
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          repository: ${{ vars.ARCADE_LINK_REPOSITORY || 'qa-p1/Arcade-link' }}
+          ref: ${{ vars.ARCADE_LINK_REF || '539fa9174f88c3f95a9d84f41253ec2630f72021' }}
+          path: Rust/Arcade-link
+      - name: Validate the configured Link checkout
+        env:
+          LINK_CHECKOUT_OUTCOME: ${{ steps.link-checkout.outcome }}
+        run: |
+          if [ "$LINK_CHECKOUT_OUTCOME" != success ] || ! test -f '../../Rust/Arcade-link/crates/arcade-link/Cargo.toml'; then
+            echo '::error::Arcade-link is not available. The owner must publish it, then set ARCADE_LINK_REPOSITORY and ARCADE_LINK_REF to a repository/ref containing the frozen v1 crate. See docs/releases.md.'
+            exit 1
+          fi
       - name: Install Rust and native dependencies
         run: |
           rustup toolchain install 1.98.1 --profile minimal --component rustfmt --component clippy
           sudo apt-get update
           sudo apt-get install -y pkg-config libdbus-1-dev libsecret-1-dev
-      - run: cargo fmt --all --check
-      - run: rustfmt --edition 2021 --check core/rust/src/core_helpers.rs
-      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
-      - run: cargo test --workspace --locked
+      - run: bash scripts/dev.sh rust-check
+      - run: bash scripts/dev.sh rust-test
   linux:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:
       RUSTUP_TOOLCHAIN: '1.98.1'
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          path: App dev/Arcade-clipboard
+      - name: Check out the frozen Link dependency
+        id: link-checkout
+        continue-on-error: true
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          repository: ${{ vars.ARCADE_LINK_REPOSITORY || 'qa-p1/Arcade-link' }}
+          ref: ${{ vars.ARCADE_LINK_REF || '539fa9174f88c3f95a9d84f41253ec2630f72021' }}
+          path: Rust/Arcade-link
+      - name: Validate the configured Link checkout
+        env:
+          LINK_CHECKOUT_OUTCOME: ${{ steps.link-checkout.outcome }}
+        run: |
+          if [ "$LINK_CHECKOUT_OUTCOME" != success ] || ! test -f '../../Rust/Arcade-link/crates/arcade-link/Cargo.toml'; then
+            echo '::error::Arcade-link is not available. The owner must publish it, then set ARCADE_LINK_REPOSITORY and ARCADE_LINK_REF to a repository/ref containing the frozen v1 crate. See docs/releases.md.'
+            exit 1
+          fi
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           flutter-version: '3.47.2'
@@ -47,20 +90,103 @@ jobs:
           rustup toolchain install 1.98.1 --profile minimal
           sudo apt-get update
           sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libkeybinder-3.0-dev libdbus-1-dev libsecret-1-dev
-      - name: Resolve locked Dart dependencies
-        run: flutter pub get --enforce-lockfile
-        working-directory: apps/flutter_app
-      - run: flutter analyze
-        working-directory: apps/flutter_app
-      - run: flutter test
-        working-directory: apps/flutter_app
+      - run: bash scripts/dev.sh flutter-check
+      - run: bash scripts/dev.sh flutter-test
       - name: Build and package Linux release
         run: bash scripts/build-linux.sh
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: Arcade-Clipboard-linux-x64
           path: |
-            dist/Arcade-Clipboard-linux-x64.tar.gz
-            dist/Arcade-Clipboard-linux-x64.tar.gz.sha256
+            App dev/Arcade-clipboard/dist/Arcade-Clipboard-linux-x64.tar.gz
+            App dev/Arcade-clipboard/dist/Arcade-Clipboard-linux-x64.tar.gz.sha256
+          if-no-files-found: error
+          retention-days: 14
+
+  windows:
+    name: windows desktop — build only (CI defined, not run here)
+    runs-on: windows-latest
+    timeout-minutes: 60
+    env:
+      RUSTUP_TOOLCHAIN: '1.98.1'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          path: App dev/Arcade-clipboard
+      - name: Check out the frozen Link dependency
+        id: link-checkout
+        continue-on-error: true
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          repository: ${{ vars.ARCADE_LINK_REPOSITORY || 'qa-p1/Arcade-link' }}
+          ref: ${{ vars.ARCADE_LINK_REF || '539fa9174f88c3f95a9d84f41253ec2630f72021' }}
+          path: Rust/Arcade-link
+      - name: Validate the configured Link checkout
+        env:
+          LINK_CHECKOUT_OUTCOME: ${{ steps.link-checkout.outcome }}
+        run: |
+          if [ "$LINK_CHECKOUT_OUTCOME" != success ] || ! test -f '../../Rust/Arcade-link/crates/arcade-link/Cargo.toml'; then
+            echo '::error::Arcade-link is not available. The owner must publish it, then set ARCADE_LINK_REPOSITORY and ARCADE_LINK_REF to a repository/ref containing the frozen v1 crate. See docs/releases.md.'
+            exit 1
+          fi
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+        with:
+          flutter-version: '3.47.2'
+          channel: stable
+          cache: true
+      - name: Install Rust
+        run: rustup toolchain install 1.98.1 --profile minimal
+      - name: Test Rust core and build the Flutter desktop app with its core
+        run: |
+          bash scripts/dev.sh rust-test
+          bash scripts/dev.sh build-windows
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Arcade-Clipboard-windows-build-only
+          path: App dev/Arcade-clipboard/apps/flutter_app/build/windows/x64/runner/Release/
+          if-no-files-found: error
+          retention-days: 14
+
+  macos:
+    name: macos desktop — build only (CI defined, not run here)
+    runs-on: macos-latest
+    timeout-minutes: 60
+    env:
+      RUSTUP_TOOLCHAIN: '1.98.1'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          path: App dev/Arcade-clipboard
+      - name: Check out the frozen Link dependency
+        id: link-checkout
+        continue-on-error: true
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          repository: ${{ vars.ARCADE_LINK_REPOSITORY || 'qa-p1/Arcade-link' }}
+          ref: ${{ vars.ARCADE_LINK_REF || '539fa9174f88c3f95a9d84f41253ec2630f72021' }}
+          path: Rust/Arcade-link
+      - name: Validate the configured Link checkout
+        env:
+          LINK_CHECKOUT_OUTCOME: ${{ steps.link-checkout.outcome }}
+        run: |
+          if [ "$LINK_CHECKOUT_OUTCOME" != success ] || ! test -f '../../Rust/Arcade-link/crates/arcade-link/Cargo.toml'; then
+            echo '::error::Arcade-link is not available. The owner must publish it, then set ARCADE_LINK_REPOSITORY and ARCADE_LINK_REF to a repository/ref containing the frozen v1 crate. See docs/releases.md.'
+            exit 1
+          fi
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+        with:
+          flutter-version: '3.47.2'
+          channel: stable
+          cache: true
+      - name: Install Rust
+        run: rustup toolchain install 1.98.1 --profile minimal
+      - name: Test Rust core and build the Flutter desktop app with its core
+        run: |
+          bash scripts/dev.sh rust-test
+          bash scripts/dev.sh build-macos
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Arcade-Clipboard-macos-build-only
+          path: App dev/Arcade-clipboard/apps/flutter_app/build/macos/Build/Products/Release/Arcade Clipboard.app/
           if-no-files-found: error
           retention-days: 14
