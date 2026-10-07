@@ -19,9 +19,8 @@ then set repository Actions variables:
 
 A failed/missing checkout ends the job with a message identifying those variables
 and the owner action. This is expected until the shared repository is published.
-The same setup supports the existing iPhone workflow. Before pushing, follow the
-plan's separate owner action to replace local path dependencies with a tagged
-git dependency and local development patch.
+The same setup supports the existing iPhone workflow. The relative dependency
+stays in place; publishing Link and configuring/enabling CI are owner actions.
 
 ## Packages and installation
 

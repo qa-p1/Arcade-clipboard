@@ -5,7 +5,7 @@ The Rust core, the encryption and the sync protocol are the same everywhere. Wha
 | | Automatic capture | Global shortcut | Paste into previous app | Background sync | Tested on |
 | --- | --- | --- | --- | --- | --- |
 | Linux, Hyprland | Yes | Yes | Yes | Yes | Real hardware, end to end |
-| Linux, X11 | Yes | Yes | Yes, with `xdotool` | Yes | Build only |
+| Linux, X11 | Yes | Yes | Yes, with `xdotool` | Yes | Capture, picker and quit tested in headless Xvfb; native paste not run |
 | Linux, other Wayland | With data-control (not GNOME) | Bind `clipboard --overlay` | No, copies for Ctrl+V | Yes | Build only |
 | iPhone, iPad | No (iOS does not allow it) | Share sheet and keyboard | Keyboard inserts text | Only while the app is open | Not yet run on a device |
 | Android | No | Share target and keyboard | Keyboard inserts text | While the app runs | Build only |

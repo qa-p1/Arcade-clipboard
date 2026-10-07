@@ -77,8 +77,28 @@ python3 ../../Rust/Arcade-link/tools/e2e.py --only clipboard
 
 It verifies text, URL, PNG and multi-file additions, stored history kinds,
 the 16 MiB limit and standard error messages, no-mesh availability, Private
-mode, devices, picker selection, Escape and caller cancellation. The test
-driver creates the mesh before starting the bundle; no live desktop is used.
+mode, devices, picker selection, Escape and caller cancellation. It also runs
+the real Look/Lens/Box photo flow, imports real Box text results, injects
+consumer failures, and checks driver shutdown, `app.quit` and `--quit` with
+peers registered. `app.status` reports the instance's original launch mode as
+`status.mode` (`background` or `foreground`). The test driver creates the mesh
+before starting the bundle; no live desktop is used.
+
+The normal Linux bundle has a separate capture check, with no test build flags:
+
+```sh
+CARGO_BUILD_JOBS=3 bash scripts/build-linux.sh
+ARCADE_E2E_SHOTS=../../Rust/Arcade-link/.orch/shots \
+  python3 ../../Rust/Arcade-link/tools/e2e.py run -- python3 tests/linux_bundle_acceptance.py
+python3 ../../Rust/Arcade-link/tools/e2e.py --only clipboard_ui
+python3 ../../Rust/Arcade-link/tools/e2e.py --only failure
+```
+
+The capture check copies synthetic text and an image through GTK, verifies
+both history entries, opens the picker with the default global shortcut,
+and quits. It repeats alone and with Box, Lens, Look and Wheel present,
+capturing every step. The UI group covers menus by clip kind, picker shortcuts,
+Connected apps, the recorder's clash warning and the oversized-photo offer.
 
 ## Settings
 
