@@ -143,6 +143,20 @@ class _AppHomeState extends State<_AppHome> {
   _Section _section = _Section.clipboard;
 
   @override
+  void initState() {
+    super.initState();
+    widget.controller.settingsRequests.addListener(_openSettings);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.settingsRequests.removeListener(_openSettings);
+    super.dispose();
+  }
+
+  void _openSettings() => _select(_Section.settings);
+
+  @override
   Widget build(BuildContext context) {
     final controller = widget.controller;
     if (controller.loading) return const _LoadingView();

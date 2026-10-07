@@ -95,13 +95,23 @@ void ConnectWindow(LinuxLifecycle* state) {
 
 void ViewMapped(GtkWidget*, gpointer data) { ConnectWindow(static_cast<LinuxLifecycle*>(data)); }
 
+// The tray menu every Arcade app has: open, settings, restart and, below a
+// separator, quit. Item ids are 1..kMenuItems; id 4 is the separator.
+constexpr gint kMenuItems = 5;
+constexpr const char* kMenuLabels[] = {"", "Open Clipboard", "Open Settings", "Restart Arcade Clipboard", "",
+                                       "Quit Arcade Clipboard"};
+constexpr const char* kMenuActions[] = {nullptr, "showMainWindow", "showSettings", "restartRequested", nullptr,
+                                        "quitRequested"};
+
 GVariant* MenuProperties(gint id) {
   GVariantBuilder properties;
   g_variant_builder_init(&properties, G_VARIANT_TYPE("a{sv}"));
   if (id == 0) {
     g_variant_builder_add(&properties, "{sv}", "children-display", g_variant_new_string("submenu"));
-  } else {
-    g_variant_builder_add(&properties, "{sv}", "label", g_variant_new_string(id == 1 ? "Open Arcade Clipboard" : "Quit"));
+  } else if (id == 4) {
+    g_variant_builder_add(&properties, "{sv}", "type", g_variant_new_string("separator"));
+  } else if (id > 0 && id <= kMenuItems) {
+    g_variant_builder_add(&properties, "{sv}", "label", g_variant_new_string(kMenuLabels[id]));
     g_variant_builder_add(&properties, "{sv}", "enabled", g_variant_new_boolean(TRUE));
     g_variant_builder_add(&properties, "{sv}", "visible", g_variant_new_boolean(TRUE));
   }
@@ -112,23 +122,26 @@ GVariant* MenuLayout(gint id) {
   GVariantBuilder children;
   g_variant_builder_init(&children, G_VARIANT_TYPE("av"));
   if (id == 0) {
-    g_variant_builder_add(&children, "v", MenuLayout(1));
-    g_variant_builder_add(&children, "v", MenuLayout(2));
+    for (gint child = 1; child <= kMenuItems; ++child) g_variant_builder_add(&children, "v", MenuLayout(child));
   }
   return g_variant_new("(i@a{sv}@av)", id, MenuProperties(id), g_variant_builder_end(&children));
 }
 
 void MenuEvent(LinuxLifecycle* state, gint id, const gchar* event) {
-  if (g_strcmp0(event, "clicked") != 0) return;
-  if (id == 1) Invoke(state, "showMainWindow");
-  if (id == 2) Invoke(state, "quitRequested");
+  if (g_strcmp0(event, "clicked") != 0 || id < 1 || id > kMenuItems || kMenuActions[id] == nullptr) return;
+  Invoke(state, kMenuActions[id]);
 }
 
 void ItemMethod(GDBusConnection*, const gchar*, const gchar*, const gchar*, const gchar* method,
     GVariant*, GDBusMethodInvocation* invocation, gpointer data) {
   auto* state = static_cast<LinuxLifecycle*>(data);
-  if (g_strcmp0(method, "Activate") == 0 || g_strcmp0(method, "SecondaryActivate") == 0 ||
-      g_strcmp0(method, "ContextMenu") == 0) Invoke(state, "showMainWindow");
+  // A click opens Settings, as in every Arcade app; hosts that can't draw
+  // the menu ask for it with ContextMenu, so that opens the window.
+  if (g_strcmp0(method, "Activate") == 0) {
+    Invoke(state, "showSettings");
+  } else if (g_strcmp0(method, "SecondaryActivate") == 0 || g_strcmp0(method, "ContextMenu") == 0) {
+    Invoke(state, "showMainWindow");
+  }
   g_dbus_method_invocation_return_value(invocation, nullptr);
 }
 
@@ -159,7 +172,7 @@ void MenuMethod(GDBusConnection*, const gchar*, const gchar*, const gchar*, cons
   } else if (g_strcmp0(method, "GetGroupProperties") == 0) {
     GVariantBuilder groups;
     g_variant_builder_init(&groups, G_VARIANT_TYPE("a(ia{sv})"));
-    for (gint id = 0; id <= 2; ++id) g_variant_builder_add(&groups, "(i@a{sv})", id, MenuProperties(id));
+    for (gint id = 0; id <= kMenuItems; ++id) g_variant_builder_add(&groups, "(i@a{sv})", id, MenuProperties(id));
     g_dbus_method_invocation_return_value(invocation, g_variant_new("(@a(ia{sv}))", g_variant_builder_end(&groups)));
   } else if (g_strcmp0(method, "GetProperty") == 0) {
     gint id = 0;

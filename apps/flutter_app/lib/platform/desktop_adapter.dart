@@ -134,6 +134,27 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
 
   /// Runs application shutdown (core and desktop cleanup) before exit.
   Future<void> Function()? onQuit;
+
+  /// Shows the Settings page (the tray's Open Settings item and click).
+  void Function()? onOpenSettings;
+
+  /// Set on the successor started by [restart]: the old process id, which it
+  /// waits for before claiming the single instance (see main.dart, main.cc).
+  static const restartEnvironment = 'ARCADE_CLIPBOARD_RESTART_AFTER';
+
+  /// Starts a new background instance, then quits. Quitting without a
+  /// successor would silently remove the app, so a failed start keeps it.
+  Future<void> restart() async {
+    try {
+      await Process.start(Platform.resolvedExecutable, ['--background'],
+          environment: {restartEnvironment: '$pid'},
+          mode: ProcessStartMode.detached);
+    } catch (error) {
+      Diagnostics.log('lifecycle', 'restart failed: $error');
+      return;
+    }
+    await _quit();
+  }
   final List<StreamSubscription<ProcessSignal>> _exitSignals = [];
   bool _quitting = false;
 
@@ -298,6 +319,11 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
         await onClipboardChanged();
       } else if (action == 'quitRequested') {
         await _quit();
+      } else if (action == 'showSettings') {
+        await showMainWindow();
+        onOpenSettings?.call();
+      } else if (action == 'restartRequested') {
+        await restart();
       }
     });
     _initialized = true;

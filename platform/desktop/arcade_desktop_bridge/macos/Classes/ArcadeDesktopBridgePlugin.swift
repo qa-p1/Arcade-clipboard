@@ -240,11 +240,18 @@ public class ArcadeDesktopBridgePlugin: NSObject, FlutterPlugin {
       button.toolTip = "Arcade Clipboard"
     }
     let menu = NSMenu()
-    let open = NSMenuItem(title: "Open Arcade Clipboard", action: #selector(openMainWindow), keyEquivalent: "")
+    // The tray menu every Arcade app has.
+    let open = NSMenuItem(title: "Open Clipboard", action: #selector(openMainWindow), keyEquivalent: "")
     open.target = self
     menu.addItem(open)
+    let settings = NSMenuItem(title: "Open Settings", action: #selector(openSettings), keyEquivalent: ",")
+    settings.target = self
+    menu.addItem(settings)
+    let restart = NSMenuItem(title: "Restart Arcade Clipboard", action: #selector(restartApplication), keyEquivalent: "")
+    restart.target = self
+    menu.addItem(restart)
     menu.addItem(.separator())
-    let quit = NSMenuItem(title: "Quit", action: #selector(quitApplication), keyEquivalent: "q")
+    let quit = NSMenuItem(title: "Quit Arcade Clipboard", action: #selector(quitApplication), keyEquivalent: "q")
     quit.target = self
     menu.addItem(quit)
     item.menu = menu
@@ -252,6 +259,8 @@ public class ArcadeDesktopBridgePlugin: NSObject, FlutterPlugin {
   }
 
   @objc private func openMainWindow() { channel?.invokeMethod("showMainWindow", arguments: nil) }
+  @objc private func openSettings() { channel?.invokeMethod("showSettings", arguments: nil) }
+  @objc private func restartApplication() { channel?.invokeMethod("restartRequested", arguments: nil) }
   @objc private func quitApplication() { channel?.invokeMethod("quitRequested", arguments: nil) }
 
   private func activateTarget() -> Bool {

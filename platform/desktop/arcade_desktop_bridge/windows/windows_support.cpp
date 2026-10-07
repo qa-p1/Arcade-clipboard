@@ -413,19 +413,25 @@ std::optional<LRESULT> WindowsSupport::WindowProc(HWND window, UINT message, WPA
   if (message != kTrayMessage) return std::nullopt;
   const UINT event = LOWORD(lparam);
   if (event == NIN_SELECT || event == NIN_KEYSELECT || event == WM_LBUTTONUP || event == WM_LBUTTONDBLCLK) {
-    channel_->InvokeMethod("showMainWindow", nullptr);
+    // A click opens Settings, as in every Arcade app.
+    channel_->InvokeMethod("showSettings", nullptr);
   } else if (event == WM_CONTEXTMENU || event == WM_RBUTTONUP) {
     POINT point = {};
     GetCursorPos(&point);
     HMENU menu = CreatePopupMenu();
-    AppendMenuW(menu, MF_STRING, 1, L"Open Arcade Clipboard");
+    // The tray menu every Arcade app has.
+    AppendMenuW(menu, MF_STRING, 1, L"Open Clipboard");
+    AppendMenuW(menu, MF_STRING, 3, L"Open Settings");
+    AppendMenuW(menu, MF_STRING, 4, L"Restart Arcade Clipboard");
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-    AppendMenuW(menu, MF_STRING, 2, L"Quit");
+    AppendMenuW(menu, MF_STRING, 2, L"Quit Arcade Clipboard");
     SetForegroundWindow(window);
     const UINT selected = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_NONOTIFY | TPM_RIGHTBUTTON, point.x, point.y, 0, window, nullptr);
     DestroyMenu(menu);
     if (selected == 1) channel_->InvokeMethod("showMainWindow", nullptr);
     if (selected == 2) channel_->InvokeMethod("quitRequested", nullptr);
+    if (selected == 3) channel_->InvokeMethod("showSettings", nullptr);
+    if (selected == 4) channel_->InvokeMethod("restartRequested", nullptr);
     PostMessageW(window, WM_NULL, 0, 0);
   }
   return 0;

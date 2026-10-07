@@ -31,6 +31,9 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
 
   final CoreApi _core;
   final DesktopAdapter _desktop;
+
+  /// Bumped when the tray asks for the Settings page.
+  final ValueNotifier<int> settingsRequests = ValueNotifier(0);
   late final LinkService _link =
       LinkService(_core, startedInBackground: _startInBackground);
   final MobileShareBridge _mobile;
@@ -310,6 +313,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
           _desktopReady = true;
           _desktop.setRichCaptureHandler(_captureRichFromDesktop);
           _desktop.onQuit = shutdown;
+          _desktop.onOpenSettings = () => settingsRequests.value++;
           _link.onQuit = _desktop.quit;
           _link.onShow = _desktop.showMainWindow;
           _link.onPick = _openLinkPick;

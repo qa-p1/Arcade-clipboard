@@ -92,6 +92,8 @@ bindsym Ctrl+Shift+space exec ~/.local/share/arcade-clipboard/clipboard --overla
 
 **Keep running in the background** makes closing the window hide it to the tray instead of quitting. If there is no tray host, the window stays reachable and closing it quits the app. **Launch at login** writes `~/.config/autostart/arcade-clipboard.desktop`, which starts the installed app with `--background`.
 
+The tray icon opens Settings on click. Its menu is the one every Arcade app has: **Open Clipboard**, **Open Settings**, **Restart Arcade Clipboard** and, below a separator, **Quit Arcade Clipboard**. Restart starts a new background instance, which waits for the old one to exit, then quits.
+
 The app quits cleanly on the tray's Quit item, `SIGTERM` or `SIGINT`. It removes its Hyprland binding and stops the capture helper before exiting.
 
 ## Troubleshooting
