@@ -1107,8 +1107,10 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
     final active = await _runCommand('xdotool', ['getactivewindow']);
     final id = (active.stdout as String).trim();
     if (active.exitCode != 0 || !RegExp(r'^[0-9]+$').hasMatch(id)) {
-      throw const DesktopIntegrationException(
-          'Install xdotool to paste into the previously focused app.');
+      // X11 sessions without an EWMH window manager have no active-window
+      // property. The picker still works; selection can copy without paste.
+      Diagnostics.log('overlay', 'No X11 paste target; using copy fallback.');
+      return;
     }
     final className = await _runCommand('xdotool', ['getwindowclassname', id]);
     _x11TargetClass =

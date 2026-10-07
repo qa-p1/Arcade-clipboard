@@ -76,8 +76,20 @@ static FlMethodResponse* hkm_register(_HotkeyManagerLinuxPlugin* self,
 
   const char* identifier =
       fl_value_get_string(fl_value_lookup_string(args, "identifier"));
-  const int key_code =
+  int key_code =
       fl_value_get_int(fl_value_lookup_string(args, "keyCode"));
+  // uni_platform reverses Flutter's GTK map using the first matching keysym.
+  // For ordinary Space that selects KP_Space, which many keyboards lack.
+  // Use the physical key supplied in the same request to preserve the key
+  // the user actually chose, including Clipboard's default Ctrl+Shift+Space.
+  FlValue* key = fl_value_lookup_string(args, "key");
+  FlValue* usage = key != nullptr && fl_value_get_type(key) == FL_VALUE_TYPE_MAP
+                       ? fl_value_lookup_string(key, "usageCode")
+                       : nullptr;
+  if (usage != nullptr && fl_value_get_type(usage) == FL_VALUE_TYPE_INT &&
+      fl_value_get_int(usage) == 0x0007002c) {
+    key_code = GDK_KEY_space;
+  }
   std::vector<std::string> modifiers;
   for (gint i = 0; i < fl_value_get_length(modifiers_value); i++) {
     std::string keyModifier =
