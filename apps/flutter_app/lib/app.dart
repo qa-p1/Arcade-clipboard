@@ -2446,9 +2446,11 @@ class _MeshOverlayState extends State<MeshOverlay> {
                     const _KeyCap('Enter'),
                     const SizedBox(width: 6),
                     Text(
-                        widget.controller.desktopCapabilities?.paste == true
-                            ? 'Paste'
-                            : 'Copy',
+                        widget.controller.linkPickFor != null
+                            ? 'Choose'
+                            : widget.controller.desktopCapabilities?.paste == true
+                                ? 'Paste'
+                                : 'Copy',
                         style: theme.textTheme.labelSmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant)),
                     const SizedBox(width: 8),

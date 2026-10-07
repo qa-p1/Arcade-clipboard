@@ -96,6 +96,7 @@ def main():
                                   capture_output=True, text=True, timeout=10)
             assert quit.returncode == 0, quit.stderr
             process.wait(timeout=5)
+            quit_seconds = time.monotonic() - started
             assert process.returncode == 0, s.log("arcade.clipboard")
             assert not s.endpoint("arcade.clipboard").exists()
             assert not s.xdotool("search", "--onlyvisible", "--name", "Arcade Clipboard")
@@ -107,7 +108,7 @@ def main():
             assert len(rows) == 2 and {r["kind"] for r in rows} == {"text", "image"}, rows
             assert next(r["text"] for r in rows if r["kind"] == "text") == sample, rows
             print(f"PASS {variant}: native text/image copies, history, default picker shortcut, --quit "
-                  f"({time.monotonic() - started:.2f}s), persisted text/image clips", flush=True)
+                  f"({quit_seconds:.2f}s), persisted text/image clips", flush=True)
             for peer in list(s.procs):
                 s.kill(peer, signal.SIGTERM)
     finally:
