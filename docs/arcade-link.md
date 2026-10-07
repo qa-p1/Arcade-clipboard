@@ -30,6 +30,9 @@ Extracted text and Box results become new clips, using the existing capture,
 validation, encryption, dedup and device sync path. They never write the local
 system clipboard. Private mode denies these requests. Secret hints and Lens
 secret findings prevent importing a result into the mesh.
+Box's Format JSON returns `structured/json` with formatted text; Clipboard
+stores that specific result as a text clip. Other structured outputs remain
+metadata and are not imported.
 
 Discovery uses `SharedRegistry` with an OS directory watch. `link_offers`
 provides cached actions, `link_peers` provides settings rows; menu opening
@@ -108,7 +111,7 @@ that can clash on `PATH`).
 |---|---|---|---|---|---|
 | `clipboard.add`, `clipboard.devices` | tested | build only | build only (CI defined, not run here) | build only (CI defined, not run here) | not a participant |
 | `clipboard.pick` | tested (headless Xvfb) | build only | build only (CI defined, not run here) | build only (CI defined, not run here) | not a participant |
-| Item actions / progress / cancel | tested with mock peers (Xvfb) | build only | build only (CI defined, not run here) | build only (CI defined, not run here) | hidden |
+| Item actions / progress / cancel | real peers and failure mocks (Xvfb) | build only | build only (CI defined, not run here) | build only (CI defined, not run here) | hidden |
 
 Phones aren't Link participants: there are no local sockets between apps and
 they limit background work. They benefit anyway, because whatever a desktop

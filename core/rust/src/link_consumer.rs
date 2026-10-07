@@ -433,7 +433,17 @@ async fn run(
                 .unwrap_or(120_000)
                 .clamp(100, 300_000),
         );
-        let result = invoke_bounded(&manifest, &request, id, &cancel, timeout)?;
+        let mut result = invoke_bounded(&manifest, &request, id, &cancel, timeout)?;
+        // Box's JSON formatter returns structured/json with the formatted
+        // string inline. Clipboard stores that specific transform as text.
+        // Other structured results (including Lens findings) stay structured.
+        if peer == ids::BOX && action_id == "box:arcade.text.structured#format-json" {
+            for output in &mut result.outputs {
+                if output.kind == "structured/json" && output.text.is_some() {
+                    output.kind = "text/plain".into();
+                }
+            }
+        }
         Ok::<_, LinkError>((result, import, (handoff, stage_guard)))
     })
     .await
