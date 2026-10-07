@@ -15,7 +15,7 @@ class ArcadeDesktopBridge {
     _channel.setMethodCallHandler(handler == null
         ? null
         : (call) async {
-            if (call.method == 'showMainWindow' || call.method == 'quitRequested' || call.method == 'clipboardChanged') {
+            if (const {'showMainWindow', 'showSettings', 'restartRequested', 'quitRequested', 'clipboardChanged'}.contains(call.method)) {
               await handler(call.method);
             }
           });
