@@ -110,7 +110,8 @@ On iPhone, additionally:
 
 | Workflow | Trigger | Does |
 | --- | --- | --- |
-| **Core and Linux build** (`ci.yml`) | Push to `main`, pull requests | Rust formatting, Clippy and tests; Flutter analysis and tests; Linux release build, uploaded as `Arcade-Clipboard-linux-x64` |
+| **Core and desktop builds** (`ci.yml`) | Push to `main`, pull requests, manual | Rust formatting, Clippy and tests; Flutter analysis and tests; Linux release build, uploaded as `Arcade-Clipboard-linux-x64`; Windows and macOS desktop builds, each running the Rust core tests |
+| **Release** (`release.yml`) | Push to `main` (nightly), `v<version>` tags (stable), manual | Linux tarball, Windows Inno installer, macOS dmg, `arcade-release.json` and `SHA256SUMS.txt`. See [Releases](releases.md). |
 | **Build iPhone IPA** (`build-ios-ipa.yml`) | Manual | Builds the Rust core for iOS, builds the app and extensions without signing, validates and uploads the IPA. See [iPhone](ios.md). |
 
 Third-party actions are pinned to commit SHAs.

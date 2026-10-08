@@ -1,5 +1,7 @@
 Do not treat this as a prototype, hackathon demo, AI wrapper, or UI mockup.
 
+> Original product brief; its features are goals, not implementation claims. Current implementation and limits: [status](docs/STATUS.md).
+
 Build a genuinely useful, polished consumer application.
 
 PROJECT

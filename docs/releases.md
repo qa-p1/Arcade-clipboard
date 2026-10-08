@@ -3,8 +3,9 @@
 The release workflow defines stable (`v<version>` tags) and nightly (pushes to
 `main`) channels. A manual run can choose either channel; stable must run on a
 version tag matching both Cargo.toml and pubspec.yaml. Nothing is tagged, pushed
-or published by local development. Windows/macOS are **build only (CI defined,
-not run here)**; their builds, installers and runtime behavior remain unverified.
+or published by local development. CI builds the Windows and macOS desktop apps
+and runs the Rust core tests on them; their installers and interactive behavior
+are not yet verified.
 
 ## Shared Link dependency
 

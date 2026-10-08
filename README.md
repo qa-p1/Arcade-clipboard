@@ -36,7 +36,7 @@ Phones receive those clips through the mesh and do not participate in local Link
 | Linux, other Wayland | Automatic capture on compositors with data-control (KDE, Sway, niri, …). Bind `clipboard --overlay` to a shortcut; the chosen clip is copied and you press Ctrl+V. GNOME does not allow background capture. |
 | iPhone and iPad | Share extension, clipboard keyboard, sync while the app is open. Built as an unsigned IPA by GitHub Actions; see [iPhone](docs/ios.md). |
 | Android | Share target and clipboard keyboard. Builds, but is not yet tested on a device. |
-| Windows, macOS | Native integration is written but has not been built or tested on those systems. |
+| Windows, macOS | Native integration is written; CI builds the desktop app and runs the Rust core tests on both. It has not been run interactively on those systems. |
 
 Details and known limits are in [Platforms](docs/platforms.md).
 

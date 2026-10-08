@@ -129,9 +129,9 @@ that can clash on `PATH`).
 
 | | Linux X11 | Linux Wayland | Windows | macOS | iPhone, Android |
 |---|---|---|---|---|---|
-| `clipboard.add`, `clipboard.devices` | tested | build only | build only (CI defined, not run here) | build only (CI defined, not run here) | not a participant |
-| `clipboard.pick` | tested (headless Xvfb) | build only | build only (CI defined, not run here) | build only (CI defined, not run here) | not a participant |
-| Item actions / progress / cancel | real peers and failure mocks (Xvfb) | build only | build only (CI defined, not run here) | build only (CI defined, not run here) | hidden |
+| `clipboard.add`, `clipboard.devices` | tested | build only | CI-built; not run interactively | CI-built; not run interactively | not a participant |
+| `clipboard.pick` | tested (headless Xvfb) | build only | CI-built; not run interactively | CI-built; not run interactively | not a participant |
+| Item actions / progress / cancel | real peers and failure mocks (Xvfb) | build only | CI-built; not run interactively | CI-built; not run interactively | hidden |
 
 Phones aren't Link participants: there are no local sockets between apps and
 they limit background work. They benefit anyway, because whatever a desktop
