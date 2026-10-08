@@ -2,6 +2,7 @@
 
 #include <gdiplus.h>
 #include <objidl.h>
+#include <shlobj.h>
 
 #include <algorithm>
 #include <cstdio>

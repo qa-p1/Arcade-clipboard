@@ -297,10 +297,10 @@ public class ArcadeDesktopBridgePlugin: NSObject, FlutterPlugin {
     pasteDown.flags = .maskCommand
     pasteUp.flags = .maskCommand
     commandUp.flags = []
-    CGEventPost(tap: .cghidEventTap, event: commandDown)
-    CGEventPost(tap: .cghidEventTap, event: pasteDown)
-    CGEventPost(tap: .cghidEventTap, event: pasteUp)
-    CGEventPost(tap: .cghidEventTap, event: commandUp)
+    commandDown.post(tap: .cghidEventTap)
+    pasteDown.post(tap: .cghidEventTap)
+    pasteUp.post(tap: .cghidEventTap)
+    commandUp.post(tap: .cghidEventTap)
     return true
   }
 }
