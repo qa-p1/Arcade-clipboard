@@ -40,6 +40,8 @@ For running the app you also need a Secret Service provider and, on Wayland, `wl
 | `bash scripts/dev.sh native-test` | Pairing, sync and picker paste on a live Hyprland session |
 | `bash scripts/dev.sh relay` | Run the relay on `127.0.0.1:8787` |
 | `bash scripts/dev.sh generate` | Regenerate the Flutter–Rust bindings |
+| `bash scripts/dev.sh build-windows` | Build the Windows desktop bundle (Windows runner) |
+| `bash scripts/dev.sh build-macos` | Build the macOS desktop bundle (macOS runner) |
 | `bash scripts/dev.sh build-ios` | Build the unsigned IPA (macOS only) |
 
 ## Project structure
@@ -53,14 +55,18 @@ For running the app you also need a Secret Service provider and, on Wayland, `wl
 
 ## Running two instances
 
-To pair two profiles on one machine, give each its own data directory:
+Use [Arcade Link's isolated runner](https://github.com/qa-p1/Arcade-Link/blob/main/tools/e2e.py)
+for automated desktop checks: private D-Bus, Xvfb, temporary HOME/XDG and
+`ARCADE_HOME`, with the live Wayland session excluded. Use a distinct
+`ARCADE_DATA_DIR` for each profile inside that session. The override separates
+profile data and disables the single-instance check; it does not by itself
+isolate desktop shortcuts, clipboard access or the system keyring.
 
-```bash
-ARCADE_DATA_DIR=/tmp/arcade-a apps/flutter_app/build/linux/x64/release/bundle/clipboard
-ARCADE_DATA_DIR=/tmp/arcade-b apps/flutter_app/build/linux/x64/release/bundle/clipboard
-```
-
-Each profile has its own identity in the keyring and its own database. Setting `ARCADE_DATA_DIR` also turns off the single-instance check. Change the second instance's shortcut so the two do not conflict.
+For a deliberate manual pairing test, use two disposable profiles and choose
+different shortcuts. `native-test` is explicitly a live Hyprland test; run it
+only when testing the real session is intended. Keep every test environment
+override scoped to the command. Never add temporary paths to shell profiles,
+compositor configuration or persistent environment files.
 
 ## Debugging
 
