@@ -79,6 +79,7 @@ Devices on the same network find each other automatically. To sync across networ
 | [Security](docs/security.md) | Threat model, cryptography, key storage, what is not protected |
 | [Relay deployment](docs/relay-deployment.md) | Hosting the relay with Docker, Caddy and Cloudflare |
 | [Development](docs/development.md) | Building from source, tests, CI, debugging |
+| [Status](docs/STATUS.md) | What is implemented and verified, and the remaining limits |
 
 ## Limitations
 
