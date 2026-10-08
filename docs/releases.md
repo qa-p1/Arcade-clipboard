@@ -15,7 +15,7 @@ then set repository Actions variables:
 
 - `ARCADE_LINK_REPOSITORY`: the shared repository (default `qa-p1/Arcade-link`).
 - `ARCADE_LINK_REF`: an immutable commit or tagged v1 release (default
-  `1ae6ffbf7c75076772723f763a3d2da030207379`).
+  `5e1b916b62beae60997ffe5fb2e9b31ac70b3f5e`).
 
 A failed/missing checkout ends the job with a message identifying those variables
 and the owner action. This is expected until the shared repository is published.
