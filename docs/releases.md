@@ -6,21 +6,13 @@ version tag matching both Cargo.toml and pubspec.yaml. Nothing is tagged, pushed
 or published by local development. Windows/macOS are **build only (CI defined,
 not run here)**; their builds, installers and runtime behavior remain unverified.
 
-## Shared Link dependency: owner action before CI
+## Shared Link dependency
 
-The relative Cargo dependency stays `../../Rust/Arcade-link/crates/arcade-link`.
-Workflows check out Clipboard at `App dev/Arcade-clipboard` and Link at
-`Rust/Arcade-link`, preserving that layout. The owner must publish Arcade-link,
-then set repository Actions variables:
-
-- `ARCADE_LINK_REPOSITORY`: the shared repository (default `qa-p1/Arcade-link`).
-- `ARCADE_LINK_REF`: an immutable commit or tagged v1 release (default
-  `5e1b916b62beae60997ffe5fb2e9b31ac70b3f5e`).
-
-A failed/missing checkout ends the job with a message identifying those variables
-and the owner action. This is expected until the shared repository is published.
-The same setup supports the existing iPhone workflow. The relative dependency
-stays in place; publishing Link and configuring/enabling CI are owner actions.
+The core takes Arcade Link as a git dependency pinned to a release tag
+(`qa-p1/Arcade-Link`, `v0.1.0`, in the workspace `Cargo.toml`), so no workflow
+needs a second checkout. To build against a local Link checkout, use the
+`[patch]` override described next to the dependency. Moving to a newer Link
+means changing the tag and refreshing `Cargo.lock`.
 
 ## Packages and installation
 

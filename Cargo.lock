@@ -98,6 +98,7 @@ checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
 [[package]]
 name = "arcade-link"
 version = "0.1.0"
+source = "git+https://github.com/qa-p1/Arcade-Link?tag=v0.1.0#337b85fe85fca3e68ec472a6337aa9ebd77fc7ef"
 dependencies = [
  "getrandom 0.4.3",
  "interprocess",

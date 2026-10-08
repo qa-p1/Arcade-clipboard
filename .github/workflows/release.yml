@@ -80,22 +80,6 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           path: App dev/Arcade-clipboard
-      - name: Check out the frozen Link dependency
-        id: link-checkout
-        continue-on-error: true
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
-        with:
-          repository: ${{ vars.ARCADE_LINK_REPOSITORY || 'qa-p1/Arcade-link' }}
-          ref: ${{ vars.ARCADE_LINK_REF || '5e1b916b62beae60997ffe5fb2e9b31ac70b3f5e' }}
-          path: Rust/Arcade-link
-      - name: Validate the configured Link checkout
-        env:
-          LINK_CHECKOUT_OUTCOME: ${{ steps.link-checkout.outcome }}
-        run: |
-          if [ "$LINK_CHECKOUT_OUTCOME" != success ] || ! test -f '../../Rust/Arcade-link/crates/arcade-link/Cargo.toml'; then
-            echo '::error::Arcade-link is not available. The owner must publish it, then set ARCADE_LINK_REPOSITORY and ARCADE_LINK_REF to a repository/ref containing the frozen v1 crate. See docs/releases.md.'
-            exit 1
-          fi
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
         with:
           flutter-version: '3.47.2'
