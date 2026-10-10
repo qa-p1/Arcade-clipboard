@@ -102,8 +102,8 @@ class _GlyphPainter extends CustomPainter {
         p.lineTo(14.25, 14.25);
         p.lineTo(1.75, 14.25);
         p.close();
-        p.addRRect(RRect.fromLTRBXY(3.25, 4.75, 6.75, 8.75, 0.75, 0.75));
-        p.addRRect(RRect.fromLTRBXY(8.75, 2, 12.75, 8.75, 0.75, 0.75));
+        p.addRRect(const RRect.fromLTRBXY(3.25, 4.75, 6.75, 8.75, 0.75, 0.75));
+        p.addRRect(const RRect.fromLTRBXY(8.75, 2, 12.75, 8.75, 0.75, 0.75));
       case 'arcade.find':
         canvas.drawCircle(const Offset(7, 7), 4.75, paint);
         p.moveTo(10.5, 10.5);
