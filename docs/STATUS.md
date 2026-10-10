@@ -1,8 +1,10 @@
 # Arcade Clipboard: status
 
 Verified 2026-10-08 on branch `arcade/link` (version 0.1.0, Arcade Link
-`v0.1.0`). This page records what is implemented and how it was checked;
-the other documents describe how it works.
+`v0.1.0`). On 2026-10-10 the Link pin moved to `v0.2.0`, which adds Arcade
+Shelf and Arcade Find to the shared app metadata (no protocol changes). This
+page records what is implemented and how it was checked; the other documents
+describe how it works.
 
 ## Implemented
 
@@ -15,7 +17,9 @@ the other documents describe how it works.
 - Arcade Link (desktop only): `clipboard.add` (Send to my devices),
   `clipboard.devices` and `clipboard.pick`; clip menus offering Quick Look,
   Extract text, Analyze with Lens, Pin, Format JSON, Clean text, Convert to PNG
-  and an opt-in Compress; the Connected apps page.
+  and an opt-in Compress; the Connected apps page, which also lists Arcade
+  Shelf and Arcade Find (glyphs and accents from Link `v0.2.0`) with a Get
+  link when they are not installed.
 
 ## Verification
 

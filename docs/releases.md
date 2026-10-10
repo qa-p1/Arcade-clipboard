@@ -10,7 +10,7 @@ are not yet verified.
 ## Shared Link dependency
 
 The core takes Arcade Link as a git dependency pinned to a release tag
-(`qa-p1/Arcade-Link`, `v0.1.0`, in the workspace `Cargo.toml`), so no workflow
+(`qa-p1/Arcade-Link`, `v0.2.0`, in the workspace `Cargo.toml`), so no workflow
 needs a second checkout. To build against a local Link checkout, use the
 `[patch]` override described next to the dependency. Moving to a newer Link
 means changing the tag and refreshing `Cargo.lock`.

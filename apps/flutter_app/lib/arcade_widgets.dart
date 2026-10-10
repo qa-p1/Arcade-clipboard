@@ -17,6 +17,8 @@ class ArcadeGlyph extends StatelessWidget {
     'arcade.look': Color(0xFF3B82F6),
     'arcade.wheel': Color(0xFFF59E0B),
     'arcade.tools': Color(0xFF64748B),
+    'arcade.shelf': Color(0xFF94A8FF),
+    'arcade.find': Color(0xFF22C55E),
   };
   @override
   Widget build(BuildContext context) => SizedBox(
@@ -94,6 +96,18 @@ class _GlyphPainter extends CustomPainter {
         p.lineTo(6.25, 8);
         p.moveTo(9.75, 8);
         p.lineTo(14.25, 8);
+      case 'arcade.shelf':
+        p.moveTo(1.75, 10.75);
+        p.lineTo(14.25, 10.75);
+        p.lineTo(14.25, 14.25);
+        p.lineTo(1.75, 14.25);
+        p.close();
+        p.addRRect(RRect.fromLTRBXY(3.25, 4.75, 6.75, 8.75, 0.75, 0.75));
+        p.addRRect(RRect.fromLTRBXY(8.75, 2, 12.75, 8.75, 0.75, 0.75));
+      case 'arcade.find':
+        canvas.drawCircle(const Offset(7, 7), 4.75, paint);
+        p.moveTo(10.5, 10.5);
+        p.lineTo(14.25, 14.25);
     }
     canvas.drawPath(p, paint);
   }
