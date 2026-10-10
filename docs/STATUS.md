@@ -6,6 +6,12 @@ Shelf and Arcade Find to the shared app metadata (no protocol changes). This
 page records what is implemented and how it was checked; the other documents
 describe how it works.
 
+Add to Shelf (Arcade Shelf's `shelf.add`) is offered for text, link, rich
+text, image and file clips. It is covered by Rust unit tests against a mock
+Shelf manifest; the Flutter app was not rebuilt for it (the menus render
+offers generically from the core's JSON) and no run against a real Shelf is
+recorded yet.
+
 ## Implemented
 
 - An end-to-end encrypted clipboard history shared by your devices: QR
@@ -16,8 +22,8 @@ describe how it works.
   extension and clipboard keyboard. Android: share target and keyboard.
 - Arcade Link (desktop only): `clipboard.add` (Send to my devices),
   `clipboard.devices` and `clipboard.pick`; clip menus offering Quick Look,
-  Extract text, Analyze with Lens, Pin, Format JSON, Clean text, Convert to PNG
-  and an opt-in Compress; the Connected apps page, which also lists Arcade
+  Extract text, Analyze with Lens, Pin, Format JSON, Clean text, Convert to PNG,
+  Add to Shelf and an opt-in Compress; the Connected apps page, which also lists Arcade
   Shelf and Arcade Find (glyphs and accents from Link `v0.2.0`) with a Get
   link when they are not installed.
 

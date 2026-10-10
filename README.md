@@ -19,7 +19,8 @@ Supported content: plain text (up to 32 KiB), links, HTML and RTF, PNG and JPEG 
 Desktop clip menus and the picker can **Quick Look** with Look, **Extract text**,
 **Analyze with Lens** or **Pin** an image, and **Format JSON**, **Clean text** or
 **Convert to PNG** with Box. Results join your clipboard history and devices;
-your system clipboard stays unchanged. An oversized copied photo can wait for
+your system clipboard stays unchanged. **Add to Shelf** keeps any clip on
+Arcade Shelf. An oversized copied photo can wait for
 an opt-in **Compress** before it syncs. Entries appear when the peer is installed,
 enabled and available; standalone behavior stays the same.
 

@@ -115,6 +115,9 @@ fn item_action(peer: &str, action: &Action) -> Option<(&'static str, bool, &'sta
         (ids::BOX, "box:arcade.image.compress#web-200kb") => Some(("Compress", true, "C")),
         (ids::BOX, "box:arcade.text.structured#format-json") => Some(("Format JSON", true, "J")),
         (ids::BOX, "box:arcade.text.clean#clean") => Some(("Clean text", true, "T")),
+        // Shelf keeps the clip: text inline, images and files as this
+        // request's handoff copies, which Shelf copies before it answers.
+        (ids::SHELF, "shelf.add") => Some(("Add to Shelf", false, "H")),
         _ => None,
     }
 }
@@ -733,5 +736,140 @@ mod tests {
         arcade_link::manifest::write_manifest(&locations, &lens).unwrap();
         registry.refresh();
         assert!(offers(&registry, &settings, "image").is_empty());
+    }
+
+    fn shelf(enabled: bool, available: bool) -> Manifest {
+        let mut shelf = Manifest::new(
+            ids::SHELF,
+            "0.1.0",
+            &std::env::current_exe().unwrap().to_string_lossy(),
+        );
+        shelf.settings.link_enabled = enabled;
+        let mut add = Action::new("shelf.add", "Add to Shelf", "add").accepts(&[
+            "file/*",
+            "file/*[]",
+            "folder/reference",
+            "text/plain",
+            "text/url",
+            "text/rich",
+        ]);
+        if !available {
+            add = add.unavailable("busy");
+        }
+        shelf.actions = vec![
+            add,
+            Action::new("shelf.show", "Show Shelf", "show").interactive(true),
+        ];
+        shelf
+    }
+
+    #[test]
+    fn shelf_offers_every_clip_kind_and_hides_when_off() {
+        let dir = tempfile::tempdir().unwrap();
+        let locations = Locations::under(dir.path());
+        let settings = LinkSettings::from_request(None);
+        let mut registry = arcade_link::Registry::load(&locations);
+        let kinds = ["text", "url", "rich_text", "image", "file", "files"];
+        let shelf_offers = |registry: &arcade_link::Registry, settings: &LinkSettings, kind| {
+            offers(registry, settings, kind)
+                .into_iter()
+                .filter(|o| o["peer"] == ids::SHELF)
+                .collect::<Vec<_>>()
+        };
+        for kind in kinds {
+            assert!(shelf_offers(&registry, &settings, kind).is_empty());
+        }
+        arcade_link::manifest::write_manifest(&locations, &shelf(true, true)).unwrap();
+        registry.refresh();
+        for kind in kinds {
+            let offers = shelf_offers(&registry, &settings, kind);
+            assert_eq!(offers.len(), 1, "{kind}");
+            assert_eq!(offers[0]["action"], "shelf.add");
+            assert_eq!(offers[0]["title"], "Add to Shelf");
+            assert_eq!(offers[0]["shortcut"], "H");
+            assert_eq!(offers[0]["import"], false);
+        }
+        let off = LinkSettings::from_request(Some(&json!({"disabled_peers": [ids::SHELF]})));
+        assert!(shelf_offers(&registry, &off, "text").is_empty());
+        arcade_link::manifest::write_manifest(&locations, &shelf(true, false)).unwrap();
+        registry.refresh();
+        assert!(shelf_offers(&registry, &settings, "image").is_empty());
+        arcade_link::manifest::write_manifest(&locations, &shelf(false, true)).unwrap();
+        registry.refresh();
+        assert!(shelf_offers(&registry, &settings, "file").is_empty());
+    }
+
+    #[test]
+    fn shelf_accepts_the_content_built_for_each_clip() {
+        let dir = tempfile::tempdir().unwrap();
+        let locations = Locations::under(dir.path());
+        let accepts = shelf(true, true).actions[0].accepts.clone();
+        let h = Handoff::create(&locations, ids::CLIPBOARD).unwrap();
+        let rep = |mime: &str, bytes: &[u8], name: Option<&str>| json!({"mime_type": mime, "data_base64": STANDARD.encode(bytes), "name": name});
+        let text = link::payload_content(
+            &json!({"kind": "text", "text": "hello", "representations": []}),
+            &h,
+        )
+        .unwrap();
+        assert_eq!(
+            (text.kind.as_str(), text.text.as_deref()),
+            ("text/plain", Some("hello"))
+        );
+        let url = link::payload_content(
+            &json!({"kind": "url", "text": "https://a.b", "representations": []}),
+            &h,
+        )
+        .unwrap();
+        assert_eq!(url.kind, "text/url");
+        let rich = link::payload_content(
+            &json!({"kind": "rich_text", "text": "hi", "representations": [
+                rep("text/plain", b"hi", None), rep("text/html", b"<b>hi</b>", None)]}),
+            &h,
+        )
+        .unwrap();
+        assert_eq!(
+            (rich.kind.as_str(), rich.html.as_deref()),
+            ("text/rich", Some("<b>hi</b>"))
+        );
+        let image = link::payload_content(
+            &json!({"kind": "image", "text": "", "representations": [
+                rep("image/png", b"\x89PNG\r\n\x1a\n", None)]}),
+            &h,
+        )
+        .unwrap();
+        assert_eq!(image.kind, "file/image");
+        let file = link::payload_content(
+            &json!({"kind": "file", "text": "", "representations": [
+                rep("application/octet-stream", b"a", Some("notes.txt"))]}),
+            &h,
+        )
+        .unwrap();
+        let files = link::payload_content(
+            &json!({"kind": "files", "text": "", "representations": [
+                rep("application/octet-stream", b"a", Some("a.pdf")),
+                rep("application/octet-stream", b"b", Some("b.zip"))]}),
+            &h,
+        )
+        .unwrap();
+        assert_eq!(files.paths.len(), 2);
+        for content in [&text, &url, &rich, &image, &file, &files] {
+            assert!(
+                arcade_link::content::accepts_content(&accepts, content),
+                "{}",
+                content.kind
+            );
+        }
+        // History holds bytes, not paths: Shelf receives Clipboard-owned
+        // handoff files under the Link handoff root and copies them.
+        for content in [&image, &file, &files] {
+            assert_eq!(content.owner.as_deref(), Some(ids::CLIPBOARD));
+            for path in content.all_paths() {
+                assert!(std::path::Path::new(path).starts_with(&locations.handoff));
+            }
+        }
+        assert_eq!(
+            std::path::Path::new(file.path.as_deref().unwrap()).file_name(),
+            Some(std::ffi::OsStr::new("notes.txt"))
+        );
     }
 }
