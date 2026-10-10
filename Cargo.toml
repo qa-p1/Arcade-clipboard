@@ -13,7 +13,7 @@ rust-version = "1.89"
 # against a local checkout instead, add to .cargo/config.toml (not committed):
 #   [patch."https://github.com/qa-p1/Arcade-Link"]
 #   arcade-link = { path = "<path to>/Arcade-link/crates/arcade-link" }
-arcade-link = { git = "https://github.com/qa-p1/Arcade-Link", tag = "v0.1.0", features = ["watch"] }
+arcade-link = { git = "https://github.com/qa-p1/Arcade-Link", tag = "v0.2.0", features = ["watch"] }
 
 [profile.release]
 lto = "thin"

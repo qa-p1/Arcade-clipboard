@@ -102,7 +102,8 @@ Connected apps, the recorder's clash warning and the oversized-photo offer.
 
 ## Settings
 
-Settings → **Connected apps** lists every desktop Arcade app, its version and
+Settings → **Connected apps** lists every desktop Arcade app Link knows
+(Box, Lens, Look, Wheel, Shelf and Find as of Link `v0.2.0`), its version and
 running/installed state, and **Use with Arcade Clipboard** toggles. **Get**
 invokes the registered manager's available `tools.install` with `options.app`;
 otherwise it opens that app's release page. Promotion appears only here.
