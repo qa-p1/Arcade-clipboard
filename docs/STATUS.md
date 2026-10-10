@@ -34,6 +34,7 @@ recorded yet.
 | `cargo test --workspace` (Rust core and relay) | 63 passed |
 | `flutter test` | 25 passed |
 | CI: Rust, Linux bundle, Windows and macOS desktop builds with Rust core tests | passing at `0f86bc1` |
+| Linux AppImage, local build | Built `Arcade-Clipboard-0.1.0-x86_64.AppImage`; `--version` and `--arcade-manifest` passed in Arcade Link's isolated e2e runner; `ldd` checked 11 ELF files with no missing libraries; size 14,760,440 bytes | 2026-10-11 |
 | Arcade Link e2e, `clipboard` and `clipboard_ui` groups and cross-app flows | all passing (74/74 ecosystem checks) |
 | Benchmark against the 2026-10-05 baseline | startup 187.8 → 193.3 ms (+2.9 %), idle RSS 264 → 265 MiB, idle CPU 0 |
 
@@ -44,6 +45,9 @@ on real hardware.
 
 - Windows and macOS build and pass the core tests in CI but have not been run
   interactively; their installers are not yet verified.
+- The AppImage has only had isolated command-line smoke checks, not a real
+  desktop install test. Its `--install` and `--uninstall` behavior is not
+  implemented yet; the release manifest arguments prepare for a separate port.
 - iPhone sync runs only while the app is open; the IPA is unsigned. Android
   builds but has not been run on a device.
 - Other Wayland compositors: capture needs data-control (not GNOME) and there

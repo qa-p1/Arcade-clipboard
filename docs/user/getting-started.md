@@ -12,11 +12,9 @@ Install from **Arcade Tools → Apps** to install, update, or remove Clipboard. 
 
 ### Linux
 
-Download and run the AppImage. On first launch, choose **Install** to add Clipboard to your app launcher, put it in **~/Applications/Arcade/**, add **arcade-clipboard** in **~/.local/bin**, and choose whether it starts at login. Choose **Just run it once** to use it without installing. If **~/.local/bin** is not on PATH, the installer shows the exact line for your shell.
+Download and run the AppImage. This release runs in place; it does not yet add a launcher entry, PATH command or login task, and its `--install` and `--uninstall` options are not implemented.
 
-You can also use the Linux tarball and **install-linux.sh** for one release. An unlocked Secret Service keyring such as GNOME Keyring or KWallet is needed for the device identity. Wayland capture needs **wl-clipboard**. On other Wayland desktops, you may need to bind **arcade-clipboard --overlay** yourself.
-
-To uninstall, run **arcade-clipboard --uninstall**, use the launcher’s **Uninstall** action, or remove it from Arcade Tools. Settings stay unless you choose to remove them.
+The Linux tarball and **install-linux.sh** remain available for one release. Extract the tarball and run `bash install-linux.sh` to copy Clipboard into your user data directory and add it to the app launcher. An unlocked Secret Service keyring such as GNOME Keyring or KWallet is needed for the device identity. Wayland capture needs **wl-clipboard**. On other Wayland desktops, you may need to bind **arcade-clipboard --overlay** yourself.
 
 ### Windows
 

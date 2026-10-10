@@ -16,12 +16,32 @@ Build dependencies are listed in [Development](development.md#linux-prerequisite
 
 ## Install and run
 
+Download the Linux AppImage and run it. It uses the system GTK and Secret
+Service provider and carries the Flutter bundle, Rust core and keybinder
+library. This release runs in place: it does not yet install a launcher entry,
+PATH command or login task, and it does not implement `--install` or
+`--uninstall`.
+
+The Linux tarball and `install-linux.sh` remain available for this transition
+release. Extract the tarball and run `bash install-linux.sh`; this copies the
+bundle into `~/.local/share/arcade-clipboard` and adds a per-user launcher
+entry. The tarball is planned to be dropped after this release.
+
+To build both release formats locally:
+
 ```bash
-bash scripts/dev.sh build-linux     # release bundle and dist/Arcade-Clipboard-linux-x64.tar.gz
-bash scripts/install-linux.sh       # copies it to ~/.local/share/arcade-clipboard
+bash scripts/dev.sh build-linux
+bash scripts/dev.sh build-appimage --version 0.1.0
 ```
 
-`install-linux.sh` adds a `dev.arcade.clipboard.desktop` entry so the app appears in your launcher. It does not edit shell or compositor configuration. To run the bundle without installing it, start `apps/flutter_app/build/linux/x64/release/bundle/clipboard`; keep the executable next to its `lib/` and `data/` directories.
+`build-linux` creates the release bundle and transition tarball. `build-appimage`
+assembles that bundle as `dist/Arcade-Clipboard-0.1.0-x86_64.AppImage`. The
+AppImage desktop entry keeps the `dev.arcade.clipboard` desktop ID and the
+`arcade.clipboard` Arcade ID.
+
+The legacy installer does not edit shell or compositor configuration. To run
+the release bundle directly, start `clipboard` or `arcade-clipboard` from its
+directory; keep the executable next to its `lib/` and `data/` directories.
 
 Only one instance runs at a time. Launching the app again brings the existing window forward.
 
