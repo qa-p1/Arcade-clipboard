@@ -22,7 +22,11 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     if args.platform == 'linux':
         source = ROOT / 'dist/Arcade-Clipboard-linux-x64.tar.gz'
+        appimage = ROOT / f'dist/Arcade-Clipboard-{args.version}-x86_64.AppImage'
+        if not appimage.is_file():
+            raise SystemExit('Build the Linux AppImage with bash scripts/dev.sh build-appimage --version VERSION first')
         shutil.copy2(source, out / f'Arcade-Clipboard_{args.version}_linux_x64.tar.gz')
+        shutil.copy2(appimage, out / appimage.name)
     elif args.platform == 'windows':
         source = ROOT / 'apps/flutter_app/build/windows/x64/runner/Release'
         if not (source / 'clipboard.exe').is_file() or not (source / 'arcade_core.dll').is_file():

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Arcade Clipboard
+Comment=Clipboard history for your devices
+Exec=AppRun
+Icon=dev.arcade.clipboard
+Terminal=false
+Categories=Utility;
+StartupWMClass=dev.arcade.clipboard
+X-Arcade-Id=arcade.clipboard

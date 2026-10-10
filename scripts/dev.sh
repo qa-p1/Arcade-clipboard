@@ -65,6 +65,10 @@ case "${1:-help}" in
   build-linux)
     exec bash scripts/build-linux.sh
     ;;
+  build-appimage)
+    shift
+    exec bash scripts/build-appimage.sh "$@"
+    ;;
   build-ios)
     exec bash scripts/build-ios-unsigned.sh
     ;;
@@ -89,6 +93,6 @@ case "${1:-help}" in
     exec flutter run -d linux
     ;;
   *)
-    echo 'Usage: bash scripts/dev.sh {format|test|check|rust-test|rust-check|flutter-test|flutter-check|relay|driver|smoke|generate|desktop|build-linux|build-windows|build-macos|build-ios|native-test}'
+    echo 'Usage: bash scripts/dev.sh {format|test|check|rust-test|rust-check|flutter-test|flutter-check|relay|driver|smoke|generate|desktop|build-linux|build-appimage|build-windows|build-macos|build-ios|native-test}'
     ;;
 esac
