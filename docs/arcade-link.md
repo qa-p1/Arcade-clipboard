@@ -1,7 +1,7 @@
 # Arcade Link
 
 On the desktop, Arcade Clipboard works with the other Arcade apps (Box, Lens,
-Look, Wheel) through [Arcade Link](https://github.com/qa-p1/Arcade-link).
+Look, Wheel, Shelf) through [Arcade Link](https://github.com/qa-p1/Arcade-link).
 Clipboard works exactly the same when no other Arcade app is installed.
 
 The Rust core owns the Link: it writes the manifest and listens from
@@ -25,6 +25,7 @@ Every entry shows the peer's glyph, ↗, and a preview of the selected clip.
 | Image | Extract text | Lens | E |
 | Image | Convert to PNG / Compress | Box | N / C |
 | Text / JSON (peer accepts `text/plain`) | Format JSON / Clean text | Box | J / T |
+| Text, link, rich text, image, file(s) | Add to Shelf | Shelf | H |
 
 Extracted text and Box results become new clips, using the existing capture,
 validation, encryption, dedup and device sync path. They never write the local
@@ -33,6 +34,16 @@ secret findings prevent importing a result into the mesh.
 Box's Format JSON returns `structured/json` with formatted text; Clipboard
 stores that specific result as a text clip. Other structured outputs remain
 metadata and are not imported.
+
+Add to Shelf sends the clip to Arcade Shelf's `shelf.add` (v1) and shows
+Shelf's reply ("Added 1 item to …") as a notice; nothing is imported back.
+Text, links and rich text travel as `text/plain`, `text/url` and `text/rich`
+(with its HTML), inline up to 256 KiB and otherwise as a handoff file. History
+stores images and files as bytes rather than paths, so they travel as this
+request's Clipboard-owned handoff files (`file/image`, `file/<kind>` or
+`file/<kind>[]`, keeping the original file names). Shelf copies owned handoff
+content into its own storage before it answers; Clipboard removes the handoff
+afterwards. Shelf's own global shortcut is Ctrl+Alt+S, so the picker key is H.
 
 Discovery uses `SharedRegistry` with an OS directory watch. `link_offers`
 provides cached actions, `link_peers` provides settings rows; menu opening
