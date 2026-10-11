@@ -17,9 +17,16 @@ use serde_json::{json, Value};
 use std::collections::{HashMap, VecDeque};
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, Mutex, OnceLock, Weak};
+use std::sync::{mpsc, Arc, Mutex, OnceLock, Weak};
+use std::time::Duration;
 use tokio::runtime::Handle;
 use tokio::sync::Notify;
+
+use crate::portable_settings::{self, PortableSettings};
+use arcade_link::app::{ImportResult, ShortcutSetResult};
+use arcade_link::manifest::{Docs, ManifestAdditions, ManifestDocument, MenuItem, MenuKind};
+use arcade_link::receipt::InstallMethod;
+use arcade_link::trayhost::{TrayHostWatcher, TrayState, WatcherConfig};
 
 /// The core's limit for a clip's text field; longer text also travels as a
 /// `text/plain` representation, as the desktop watcher does.
@@ -32,6 +39,7 @@ const MAX_PARTS: usize = 32;
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct LinkSettings {
     pub enabled: bool,
+    pub has_tray: bool,
     pub mode: &'static str,
     pub disabled_peers: Vec<String>,
     pub shortcut: Option<String>,
@@ -48,6 +56,10 @@ impl LinkSettings {
             },
             enabled: value
                 .get("enabled")
+                .and_then(Value::as_bool)
+                .unwrap_or(true),
+            has_tray: value
+                .get("has_tray")
                 .and_then(Value::as_bool)
                 .unwrap_or(true),
             disabled_peers: value
@@ -500,11 +512,219 @@ impl ClipboardHandler {
             data: None,
         }))
     }
+
+    fn menu_items(&self) -> Result<Vec<MenuItem>, LinkError> {
+        let core = self.core()?;
+        let settings = self
+            .runtime
+            .block_on(core.request(json!({"op": "settings"})))
+            .map_err(LinkError::unavailable)?;
+        let paused = settings["paused"].as_bool().unwrap_or(false);
+        Ok(menu_items(paused))
+    }
+
+    fn set_paused(&self, paused: bool) -> Result<(), LinkError> {
+        let _change = settings_change_lock()
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        let core = self.core()?;
+        let old = self
+            .runtime
+            .block_on(core.request(json!({"op": "settings"})))
+            .map_err(LinkError::unavailable)?;
+        self.runtime
+            .block_on(core.request(json!({
+                "op": "settings",
+                "values": {"paused": paused}
+            })))
+            .map_err(LinkError::unavailable)?;
+        if let Err(error) = refresh_document(&core, &self.runtime) {
+            let rollback = self.runtime.block_on(core.request(json!({
+                "op": "settings",
+                "values": {"paused": old["paused"].as_bool().unwrap_or(false)}
+            })));
+            let published = refresh_document(&core, &self.runtime);
+            if rollback.is_err() || published.is_err() {
+                return Err(LinkError::unavailable(format!(
+                    "{error}; restoring the previous Clipboard setting also failed"
+                )));
+            }
+            return Err(error);
+        }
+        Ok(())
+    }
+
+    fn export_settings(&self) -> Result<Vec<Content>, LinkError> {
+        let _change = settings_change_lock()
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        let core = self.core()?;
+        let settings = self
+            .runtime
+            .block_on(core.request(json!({"op": "settings"})))
+            .map_err(LinkError::unavailable)?;
+        portable_settings::export_file(&Locations::discover(), &settings)
+    }
+
+    fn import_settings(&self, inputs: &[Content]) -> Result<ImportResult, LinkError> {
+        let document = portable_settings::read_import(inputs)?;
+        let _change = settings_change_lock()
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        let core = self.core()?;
+        let previous = self
+            .runtime
+            .block_on(core.request(json!({"op": "settings"})))
+            .map_err(LinkError::unavailable)?;
+        let previous_portable = PortableSettings::from_core(&previous)?;
+        portable_settings::save_backup(core.data_dir(), &previous)
+            .map_err(portable_settings::io_error)?;
+        let apply = self.runtime.block_on(core.request(json!({
+            "op": "settings",
+            "values": document.core_values()
+        })));
+        if let Err(error) = apply {
+            let rollback = self.runtime.block_on(core.request(json!({
+                "op": "settings",
+                "values": previous_portable.core_values()
+            })));
+            return Err(LinkError::unavailable(if rollback.is_err() {
+                format!("{error}; restoring the previous settings also failed")
+            } else {
+                error
+            }));
+        }
+        if let Err(error) = refresh_document(&core, &self.runtime) {
+            let rollback = self.runtime.block_on(core.request(json!({
+                "op": "settings",
+                "values": previous_portable.core_values()
+            })));
+            let published = refresh_document(&core, &self.runtime);
+            if rollback.is_err() || published.is_err() {
+                return Err(LinkError::unavailable(format!(
+                    "{error}; restoring the previous settings or manifest also failed"
+                )));
+            }
+            return Err(error);
+        }
+        Ok(ImportResult {
+            imported: true,
+            restart_required: false,
+        })
+    }
+
+    fn set_shortcut(&self, id: &str, accelerator: &str) -> Result<ShortcutSetResult, LinkError> {
+        if id != "picker" {
+            return Err(LinkError::denied("unknown shortcut id"));
+        }
+        let normalized = arcade_link::accelerator::normalize(accelerator)
+            .map_err(|error| LinkError::denied(&error.to_string()))?;
+        if normalized.contains(' ') {
+            return Err(LinkError::unavailable(
+                "Clipboard's picker shortcut must be one chord",
+            ));
+        }
+        let request = NEXT_SHORTCUT_REQUEST.fetch_add(1, Ordering::Relaxed);
+        let (tx, rx) = mpsc::channel();
+        pending_shortcuts()
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+            .insert(request, tx);
+        push_event(
+            json!({"kind":"shortcut_set","request":request,"id":id,"accelerator":normalized}),
+        );
+        let response = rx.recv_timeout(Duration::from_secs(8));
+        pending_shortcuts()
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+            .remove(&request);
+        let response = response
+            .map_err(|_| LinkError::unavailable("Clipboard's shortcut UI did not answer"))?;
+        if let Some(error) = response.get("error").and_then(Value::as_str) {
+            return Err(LinkError::unavailable(error));
+        }
+        serde_json::from_value(response)
+            .map_err(|error| LinkError::unavailable(format!("invalid shortcut response: {error}")))
+    }
 }
 
 impl Handler for ClipboardHandler {
     fn status(&self) -> Value {
-        json!({"mode": self.mode})
+        let tray = tray_slot()
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .as_ref()
+            .map(TrayHostWatcher::state)
+            .unwrap_or(TrayState::Own);
+        json!({"mode": self.mode, "tray": tray.as_str()})
+    }
+
+    fn methods(&self) -> Vec<String> {
+        vec![
+            "app.settings".into(),
+            "app.restart".into(),
+            "app.menu".into(),
+            "app.menu.invoke".into(),
+            "app.shortcuts.set".into(),
+            "app.settings.export".into(),
+            "app.settings.import".into(),
+        ]
+    }
+
+    fn settings(&self) -> Result<(), LinkError> {
+        push_event(json!({"kind": "showSettings"}));
+        Ok(())
+    }
+
+    fn restart_ready(&self, mode: &str) -> Result<(), LinkError> {
+        if !matches!(mode, "normal" | "force") {
+            return Err(LinkError::denied("restart mode must be normal or force"));
+        }
+        if mode != "force"
+            && slot()
+                .lock()
+                .unwrap_or_else(|error| error.into_inner())
+                .as_ref()
+                .is_some_and(|presence| presence.busy())
+        {
+            return Err(LinkError::busy());
+        }
+        Ok(())
+    }
+
+    fn restart(&self, _mode: &str) -> Result<(), LinkError> {
+        push_event(json!({"kind": "restartRequested"}));
+        Ok(())
+    }
+
+    fn menu(&self) -> Result<Vec<MenuItem>, LinkError> {
+        self.menu_items()
+    }
+
+    fn menu_invoke(&self, id: &str) -> Result<(), LinkError> {
+        let core = self.core()?;
+        let settings = self
+            .runtime
+            .block_on(core.request(json!({"op": "settings"})))
+            .map_err(LinkError::unavailable)?;
+        let paused = settings["paused"].as_bool().unwrap_or(false);
+        let next = match id {
+            "private-mode" => !paused,
+            other => return Err(LinkError::denied(&format!("unknown menu item {other}"))),
+        };
+        self.set_paused(next)
+    }
+
+    fn shortcuts_set(&self, id: &str, accelerator: &str) -> Result<ShortcutSetResult, LinkError> {
+        self.set_shortcut(id, accelerator)
+    }
+
+    fn settings_export(&self) -> Result<Vec<Content>, LinkError> {
+        self.export_settings()
+    }
+
+    fn settings_import(&self, inputs: &[Content]) -> Result<ImportResult, LinkError> {
+        self.import_settings(inputs)
     }
 
     fn describe(&self) -> Vec<Action> {
@@ -534,29 +754,246 @@ impl Handler for ClipboardHandler {
 }
 
 static PRESENCE: OnceLock<Mutex<Option<Arc<Presence>>>> = OnceLock::new();
+static TRAY_WATCHER: OnceLock<Mutex<Option<TrayHostWatcher>>> = OnceLock::new();
+static LINK_SETTINGS: OnceLock<Mutex<Option<LinkSettings>>> = OnceLock::new();
+static SETTINGS_CHANGE: OnceLock<Mutex<()>> = OnceLock::new();
+static NEXT_SHORTCUT_REQUEST: AtomicU64 = AtomicU64::new(1);
+static PENDING_SHORTCUTS: OnceLock<Mutex<HashMap<u64, mpsc::Sender<Value>>>> = OnceLock::new();
 
 fn slot() -> &'static Mutex<Option<Arc<Presence>>> {
     PRESENCE.get_or_init(|| Mutex::new(None))
 }
 
+fn tray_slot() -> &'static Mutex<Option<TrayHostWatcher>> {
+    TRAY_WATCHER.get_or_init(|| Mutex::new(None))
+}
+
+fn settings_slot() -> &'static Mutex<Option<LinkSettings>> {
+    LINK_SETTINGS.get_or_init(|| Mutex::new(None))
+}
+
+fn settings_change_lock() -> &'static Mutex<()> {
+    SETTINGS_CHANGE.get_or_init(|| Mutex::new(()))
+}
+
+fn pending_shortcuts() -> &'static Mutex<HashMap<u64, mpsc::Sender<Value>>> {
+    PENDING_SHORTCUTS.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+pub(crate) fn finish_shortcut(request: u64, result: Value) -> bool {
+    pending_shortcuts()
+        .lock()
+        .unwrap_or_else(|error| error.into_inner())
+        .remove(&request)
+        .is_some_and(|sender| sender.send(result).is_ok())
+}
+
+/// Private mode pauses capture and sharing (Clipboard's one pause setting).
+fn menu_items(paused: bool) -> Vec<MenuItem> {
+    vec![MenuItem {
+        id: "private-mode".into(),
+        title: "Private mode".into(),
+        kind: MenuKind::Toggle,
+        checked: Some(paused),
+        enabled: true,
+        effects: vec!["persists".into()],
+    }]
+}
+
+fn manifest_document(
+    settings: &LinkSettings,
+    paused: bool,
+    locations: &Locations,
+    core: &Core,
+) -> ManifestDocument {
+    let additions = ManifestAdditions {
+        menu: menu_items(paused),
+        logs: Some(core.data_dir().join("logs").to_string_lossy().into_owned()),
+        docs: Some(Docs {
+            version: env!("CARGO_PKG_VERSION").into(),
+        }),
+        install: Some(install_method(locations)),
+        ..ManifestAdditions::default()
+    };
+    ManifestDocument {
+        manifest: manifest(settings),
+        additions,
+    }
+}
+
+fn install_method(locations: &Locations) -> InstallMethod {
+    if let Ok(Some(receipt)) = arcade_link::receipt::Store::new(locations).read(ids::CLIPBOARD) {
+        return receipt.method;
+    }
+    let executable_path = arcade_link::manifest::current_executable();
+    let executable = Path::new(&executable_path);
+    if std::env::var("ARCADE_DEV_BUILD").as_deref() == Ok("1")
+        || arcade_link::install::is_dev_build(executable)
+    {
+        return InstallMethod::Dev;
+    }
+    if std::env::var_os("APPIMAGE").is_some() && std::env::var_os("APPDIR").is_some() {
+        InstallMethod::Appimage
+    } else {
+        InstallMethod::Manual
+    }
+}
+
+/// Publish optional manifest fields and verify the atomic write. Presence's
+/// additive update API has no result, so a reader must never observe success
+/// when the cached menu or settings failed to reach the registry.
+fn refresh_document(core: &Arc<Core>, runtime: &Handle) -> Result<(), LinkError> {
+    let settings = settings_slot()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .clone()
+        .ok_or_else(|| LinkError::unavailable("Arcade Clipboard Link settings are unavailable"))?;
+    let values = runtime
+        .block_on(core.request(json!({"op": "settings"})))
+        .map_err(LinkError::unavailable)?;
+    let locations = Locations::discover();
+    let document = manifest_document(
+        &settings,
+        values["paused"].as_bool().unwrap_or(false),
+        &locations,
+        core,
+    );
+    let path = locations.manifest(ids::CLIPBOARD);
+    let previous = std::fs::read_to_string(&path)
+        .ok()
+        .and_then(|text| ManifestDocument::from_json(&text).ok());
+    let presence = slot()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .clone()
+        .ok_or_else(|| LinkError::unavailable("Arcade Clipboard Link is not running"))?;
+    presence.update_document(document.clone());
+    let verified = std::fs::read_to_string(&path)
+        .map_err(|e| LinkError::unavailable(format!("couldn't read the published manifest: {e}")))
+        .and_then(|text| ManifestDocument::from_json(&text).map_err(LinkError::unavailable))
+        .map(|written| {
+            let mut expected = document.clone();
+            expected.manifest.written_at = written.manifest.written_at.clone();
+            written == expected
+        });
+    if matches!(verified, Ok(true)) {
+        return Ok(());
+    }
+    let reason = match verified {
+        Ok(false) => "the published manifest differs from the requested settings".to_string(),
+        Err(error) => error.to_string(),
+        Ok(true) => unreachable!(),
+    };
+    if let Some(previous) = previous {
+        presence.update_document(previous.clone());
+        let rollback = std::fs::read_to_string(&path)
+            .ok()
+            .and_then(|text| ManifestDocument::from_json(&text).ok())
+            .is_some_and(|restored| {
+                let mut expected = previous;
+                expected.manifest.written_at = restored.manifest.written_at.clone();
+                restored == expected
+            });
+        if !rollback {
+            return Err(LinkError::unavailable(format!(
+                "{reason}; restoring the previous manifest also failed"
+            )));
+        }
+    }
+    Err(LinkError::unavailable(reason))
+}
+
 /// Writes the manifest and starts listening. Blocking: call it from a
 /// blocking task of the core's runtime (requests run on that runtime).
 pub(crate) fn start(core: &Arc<Core>, settings: &LinkSettings) {
+    *settings_slot().lock().unwrap_or_else(|e| e.into_inner()) = Some(settings.clone());
+    let runtime = Handle::current();
+    let locations = Locations::discover();
+    let core_settings = runtime
+        .block_on(core.request(json!({"op": "settings"})))
+        .unwrap_or_else(|_| json!({}));
     let handler = Arc::new(ClipboardHandler {
         mode: settings.mode,
         core: Arc::downgrade(core),
-        runtime: Handle::current(),
+        runtime: runtime.clone(),
     });
-    let presence = Presence::start(Locations::discover(), manifest(settings), handler);
+    let document = manifest_document(
+        settings,
+        core_settings["paused"].as_bool().unwrap_or(false),
+        &locations,
+        core,
+    );
+    let presence = Presence::start_document(locations.clone(), document, handler);
     *slot().lock().unwrap_or_else(|e| e.into_inner()) = Some(Arc::new(presence));
+
+    let watcher = TrayHostWatcher::start(
+        WatcherConfig {
+            locations,
+            app: arcade_link::PeerInfo {
+                id: ids::CLIPBOARD.into(),
+                version: env!("CARGO_PKG_VERSION").into(),
+            },
+            link_enabled: settings.enabled,
+            has_tray: settings.has_tray,
+        },
+        |state| {
+            push_event(json!({"kind": "tray_host", "hosted": state == TrayState::Hosted}));
+        },
+    );
+    match watcher {
+        Ok(watcher) => {
+            *tray_slot().lock().unwrap_or_else(|e| e.into_inner()) = Some(watcher);
+        }
+        Err(error) => {
+            push_event(json!({"kind": "tray_host", "hosted": false}));
+            eprintln!("arcade-clipboard: tray-host watch unavailable: {error}");
+        }
+    }
     crate::link_consumer::start(settings);
 }
 
 /// Applies changed settings (the Link switch, peers, the shortcut).
 pub(crate) fn configure(settings: &LinkSettings) {
+    let previous = settings_slot()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .replace(settings.clone());
     let presence = slot().lock().unwrap_or_else(|e| e.into_inner()).clone();
     if let Some(p) = presence {
         p.update(manifest(settings));
+    }
+    if previous
+        .as_ref()
+        .is_some_and(|old| old.has_tray != settings.has_tray)
+    {
+        if let Some(watcher) = tray_slot().lock().unwrap_or_else(|e| e.into_inner()).take() {
+            watcher.stop();
+        }
+        let locations = Locations::discover();
+        match TrayHostWatcher::start(
+            WatcherConfig {
+                locations,
+                app: arcade_link::PeerInfo {
+                    id: ids::CLIPBOARD.into(),
+                    version: env!("CARGO_PKG_VERSION").into(),
+                },
+                link_enabled: settings.enabled,
+                has_tray: settings.has_tray,
+            },
+            |state| push_event(json!({"kind":"tray_host","hosted":state == TrayState::Hosted})),
+        ) {
+            Ok(watcher) => *tray_slot().lock().unwrap_or_else(|e| e.into_inner()) = Some(watcher),
+            Err(error) => {
+                push_event(json!({"kind":"tray_host","hosted":false}));
+                eprintln!("arcade-clipboard: tray-host watch unavailable: {error}");
+            }
+        }
+    } else if let Some(watcher) = tray_slot()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .as_ref()
+    {
+        watcher.set_link_enabled(settings.enabled);
     }
     crate::link_consumer::configure(settings);
 }
@@ -565,6 +1002,9 @@ pub(crate) fn configure(settings: &LinkSettings) {
 /// Open picks end as cancelled.
 pub(crate) fn stop() {
     crate::link_consumer::stop();
+    if let Some(watcher) = tray_slot().lock().unwrap_or_else(|e| e.into_inner()).take() {
+        watcher.stop();
+    }
     if let Some(p) = slot().lock().unwrap_or_else(|e| e.into_inner()).take() {
         p.stop();
     }

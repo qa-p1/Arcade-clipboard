@@ -15,6 +15,7 @@ chacha20poly1305 = "0.10.1"
 ed25519-dalek = { version = "2.2.0", features = ["rand_core", "serde"] }
 flutter_rust_bridge = "=2.13.0"
 futures-util = "=0.3.31"
+fs2.workspace = true
 mdns-sd = "=0.21.4"
 keyring = { version = "3.6.3", default-features = false }
 rand = "0.8.5"

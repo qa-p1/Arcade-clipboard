@@ -15,7 +15,7 @@ class ArcadeDesktopBridge {
     _channel.setMethodCallHandler(handler == null
         ? null
         : (call) async {
-            if (const {'showMainWindow', 'showSettings', 'restartRequested', 'quitRequested', 'clipboardChanged'}.contains(call.method)) {
+            if (const {'showMainWindow', 'showSettings', 'restartRequested', 'quitRequested', 'clipboardChanged', 'privateModeRequested'}.contains(call.method)) {
               await handler(call.method);
             }
           });
@@ -37,6 +37,23 @@ class ArcadeDesktopBridge {
 
   Future<void> setBackgroundEnabled(bool enabled) =>
       _channel.invokeMethod<void>('setBackgroundEnabled', {'enabled': enabled});
+
+  /// Hides the tray icon while Arcade Tools hosts it; the icon object stays
+  /// alive so it reappears at once when Tools quits or crashes.
+  Future<void> setTrayHosted(bool hosted) =>
+      _channel.invokeMethod<void>('setTrayHosted', {'hosted': hosted});
+
+  /// macOS: the "Move to Applications?" alert. Returns the button index and
+  /// whether to add the terminal command.
+  Future<Map<String, Object?>> askMoveToApplications(
+          String title, String body, List<String> buttons) async =>
+      await _channel.invokeMapMethod<String, Object?>('askMoveToApplications',
+          {'title': title, 'body': body, 'buttons': buttons}) ??
+      const {};
+
+  /// macOS: opens the moved bundle, then quits this copy.
+  Future<void> relaunch(String path) =>
+      _channel.invokeMethod<void>('relaunch', {'path': path});
 
   Future<void> setLaunchAtLogin(bool enabled) =>
       _channel.invokeMethod<void>('setLaunchAtLogin', {'enabled': enabled});

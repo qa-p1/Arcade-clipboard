@@ -1,0 +1,20 @@
+[package]
+name = "arcade-clipboard-launcher"
+description = "AppImage entry point: the self-installer and --install/--uninstall/--repair, then Arcade Clipboard"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[[bin]]
+name = "arcade-clipboard-launcher"
+path = "src/main.rs"
+
+[dependencies]
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.140"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+arcade-link.workspace = true
+gtk = "0.18"

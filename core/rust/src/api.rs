@@ -56,6 +56,28 @@ pub async fn call(request: String) -> Result<String, String> {
             serde_json::to_value(crate::link::manifest(&settings))
                 .map_err(|_| "Could not encode the manifest".to_string())?
         }
+        #[cfg(target_os = "macos")]
+        "install_check" => {
+            let args: Vec<String> = value
+                .get("args")
+                .and_then(Value::as_array)
+                .map(|a| a.iter().filter_map(|v| v.as_str().map(str::to_string)).collect())
+                .unwrap_or_default();
+            tokio::task::spawn_blocking(move || crate::macos_install::check(&args))
+                .await
+                .map_err(|_| "Could not check the installation".to_string())??
+        }
+        #[cfg(target_os = "macos")]
+        "install_move" => {
+            let cli = value.get("install_cli").and_then(Value::as_bool).unwrap_or(false);
+            tokio::task::spawn_blocking(move || crate::macos_install::run(cli))
+                .await
+                .map_err(|_| "Could not move Arcade Clipboard".to_string())??
+        }
+        #[cfg(target_os = "macos")]
+        "install_dismiss" => tokio::task::spawn_blocking(crate::macos_install::dismiss)
+            .await
+            .map_err(|_| "Could not save the choice".to_string())??,
         #[cfg(not(any(target_os = "android", target_os = "ios")))]
         "link_quit_running" => serde_json::json!({"quit": crate::link::quit_running()}),
         #[cfg(not(any(target_os = "android", target_os = "ios")))]
@@ -68,6 +90,18 @@ pub async fn call(request: String) -> Result<String, String> {
         }
         #[cfg(not(any(target_os = "android", target_os = "ios")))]
         "link_wait" => crate::link::wait_event().await,
+        #[cfg(not(any(target_os = "android", target_os = "ios")))]
+        "link_shortcut_result" => {
+            let request = value
+                .get("request")
+                .and_then(Value::as_u64)
+                .ok_or_else(|| "Request is missing request".to_string())?;
+            let result = value
+                .get("result")
+                .cloned()
+                .ok_or_else(|| "Shortcut response is missing result".to_string())?;
+            serde_json::json!({"answered": crate::link::finish_shortcut(request, result)})
+        }
         #[cfg(not(any(target_os = "android", target_os = "ios")))]
         "link_diagnostics" => crate::link::diagnostics(),
         #[cfg(not(any(target_os = "android", target_os = "ios")))]

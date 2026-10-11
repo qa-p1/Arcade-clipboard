@@ -8,6 +8,7 @@ public class ArcadeDesktopBridgePlugin: NSObject, FlutterPlugin {
   private var targetApplication: NSRunningApplication?
   private var channel: FlutterMethodChannel?
   private var statusItem: NSStatusItem?
+  private var trayHosted = false
   private var clipboardTimer: Timer?
   private var clipboardRevision = NSPasteboard.general.changeCount
   private let maximumClipboardBytes = 32 * 1024 * 1024
@@ -52,6 +53,32 @@ public class ArcadeDesktopBridgePlugin: NSObject, FlutterPlugin {
     case "setBackgroundEnabled":
       let enabled = (call.arguments as? [String: Any])?["enabled"] as? Bool ?? false
       setBackgroundEnabled(enabled)
+      result(nil)
+    case "askMoveToApplications":
+      // NSAlert: the standard macOS first-run question (install standard §7.4).
+      let args = call.arguments as? [String: Any] ?? [:]
+      let alert = NSAlert()
+      alert.messageText = args["title"] as? String ?? ""
+      alert.informativeText = args["body"] as? String ?? ""
+      for title in args["buttons"] as? [String] ?? [] { alert.addButton(withTitle: title) }
+      let cli = NSButton(checkboxWithTitle: "Add the arcade-clipboard terminal command", target: nil, action: nil)
+      cli.state = .on
+      alert.accessoryView = cli
+      NSApp.activate(ignoringOtherApps: true)
+      let response = alert.runModal()
+      let index = response.rawValue - NSApplication.ModalResponse.alertFirstButtonReturn.rawValue
+      result(["button": index, "installCli": cli.state == .on])
+    case "relaunch":
+      let path = (call.arguments as? [String: Any])?["path"] as? String ?? ""
+      let configuration = NSWorkspace.OpenConfiguration()
+      configuration.createsNewApplicationInstance = true
+      NSWorkspace.shared.openApplication(at: URL(fileURLWithPath: path), configuration: configuration) { _, _ in
+        DispatchQueue.main.async { NSApp.terminate(nil) }
+      }
+      result(nil)
+    case "setTrayHosted":
+      trayHosted = (call.arguments as? [String: Any])?["hosted"] as? Bool ?? false
+      statusItem?.isVisible = !trayHosted
       result(nil)
     case "setLaunchAtLogin":
       guard #available(macOS 13.0, *) else {
@@ -251,16 +278,22 @@ public class ArcadeDesktopBridgePlugin: NSObject, FlutterPlugin {
     restart.target = self
     menu.addItem(restart)
     menu.addItem(.separator())
+    let privateMode = NSMenuItem(title: "Private mode on/off", action: #selector(togglePrivateMode), keyEquivalent: "")
+    privateMode.target = self
+    menu.addItem(privateMode)
+    menu.addItem(.separator())
     let quit = NSMenuItem(title: "Quit Arcade Clipboard", action: #selector(quitApplication), keyEquivalent: "q")
     quit.target = self
     menu.addItem(quit)
     item.menu = menu
+    item.isVisible = !trayHosted
     statusItem = item
   }
 
   @objc private func openMainWindow() { channel?.invokeMethod("showMainWindow", arguments: nil) }
   @objc private func openSettings() { channel?.invokeMethod("showSettings", arguments: nil) }
   @objc private func restartApplication() { channel?.invokeMethod("restartRequested", arguments: nil) }
+  @objc private func togglePrivateMode() { channel?.invokeMethod("privateModeRequested", arguments: nil) }
   @objc private func quitApplication() { channel?.invokeMethod("quitRequested", arguments: nil) }
 
   private func activateTarget() -> Bool {

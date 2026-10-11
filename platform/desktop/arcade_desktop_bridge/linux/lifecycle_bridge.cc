@@ -18,6 +18,7 @@ struct LinuxLifecycle {
   gulong map_handler = 0;
   gulong close_handler = 0;
   bool background = false;
+  bool tray_hosted = false;
 };
 
 namespace {
@@ -95,20 +96,19 @@ void ConnectWindow(LinuxLifecycle* state) {
 
 void ViewMapped(GtkWidget*, gpointer data) { ConnectWindow(static_cast<LinuxLifecycle*>(data)); }
 
-// The tray menu every Arcade app has: open, settings, restart and, below a
-// separator, quit. Item ids are 1..kMenuItems; id 4 is the separator.
-constexpr gint kMenuItems = 5;
+// Open/settings/restart, Private mode, and quit.
+constexpr gint kMenuItems = 7;
 constexpr const char* kMenuLabels[] = {"", "Open Clipboard", "Open Settings", "Restart Arcade Clipboard", "",
-                                       "Quit Arcade Clipboard"};
+                                       "Private mode on/off", "", "Quit Arcade Clipboard"};
 constexpr const char* kMenuActions[] = {nullptr, "showMainWindow", "showSettings", "restartRequested", nullptr,
-                                        "quitRequested"};
+                                        "privateModeRequested", nullptr, "quitRequested"};
 
 GVariant* MenuProperties(gint id) {
   GVariantBuilder properties;
   g_variant_builder_init(&properties, G_VARIANT_TYPE("a{sv}"));
   if (id == 0) {
     g_variant_builder_add(&properties, "{sv}", "children-display", g_variant_new_string("submenu"));
-  } else if (id == 4) {
+  } else if (id == 4 || id == 6) {
     g_variant_builder_add(&properties, "{sv}", "type", g_variant_new_string("separator"));
   } else if (id > 0 && id <= kMenuItems) {
     g_variant_builder_add(&properties, "{sv}", "label", g_variant_new_string(kMenuLabels[id]));
@@ -153,7 +153,7 @@ GVariant* ItemProperty(GDBusConnection*, const gchar*, const gchar*, const gchar
   if (g_strcmp0(name, "Category") == 0) return g_variant_new_string("ApplicationStatus");
   if (g_strcmp0(name, "Id") == 0) return g_variant_new_string("arcade-clipboard");
   if (g_strcmp0(name, "Title") == 0) return g_variant_new_string("Arcade Clipboard");
-  if (g_strcmp0(name, "Status") == 0) return g_variant_new_string(state->background ? "Active" : "Passive");
+  if (g_strcmp0(name, "Status") == 0) return g_variant_new_string(state->background && !state->tray_hosted ? "Active" : "Passive");
   if (g_strcmp0(name, "IconName") == 0) return g_variant_new_string("edit-paste");
   if (g_strcmp0(name, "Menu") == 0) return g_variant_new_object_path("/Menu");
   if (g_strcmp0(name, "ItemIsMenu") == 0) return g_variant_new_boolean(FALSE);
@@ -307,6 +307,13 @@ bool Enabled(FlMethodCall* call) {
   return enabled != nullptr && fl_value_get_type(enabled) == FL_VALUE_TYPE_BOOL && fl_value_get_bool(enabled);
 }
 
+bool Hosted(FlMethodCall* call) {
+  FlValue* args = fl_method_call_get_args(call);
+  if (args == nullptr || fl_value_get_type(args) != FL_VALUE_TYPE_MAP) return false;
+  FlValue* hosted = fl_value_lookup_string(args, "hosted");
+  return hosted != nullptr && fl_value_get_type(hosted) == FL_VALUE_TYPE_BOOL && fl_value_get_bool(hosted);
+}
+
 bool PersistentPath(const std::string& path) {
   return !path.empty() && path.front() == '/' &&
       path.rfind("/tmp/", 0) != 0 && path.rfind("/run/", 0) != 0 &&
@@ -417,7 +424,16 @@ bool HandleLifecycleMethod(LinuxLifecycle* state, FlMethodCall* call) {
     if (enabled) RegisterItem(state);
     if (state->bus != nullptr && state->item_registration != 0) {
       g_dbus_connection_emit_signal(state->bus, nullptr, "/StatusNotifierItem", "org.kde.StatusNotifierItem",
-          "NewStatus", g_variant_new("(s)", enabled ? "Active" : "Passive"), nullptr);
+          "NewStatus", g_variant_new("(s)", enabled && !state->tray_hosted ? "Active" : "Passive"), nullptr);
+    }
+    Respond(call);
+    return true;
+  }
+  if (g_strcmp0(method, "setTrayHosted") == 0) {
+    state->tray_hosted = Hosted(call);
+    if (state->bus != nullptr && state->item_registration != 0) {
+      g_dbus_connection_emit_signal(state->bus, nullptr, "/StatusNotifierItem", "org.kde.StatusNotifierItem",
+          "NewStatus", g_variant_new("(s)", state->background && !state->tray_hosted ? "Active" : "Passive"), nullptr);
     }
     Respond(call);
     return true;

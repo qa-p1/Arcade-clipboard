@@ -16,8 +16,12 @@ mod discovery;
 mod link;
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 mod link_consumer;
+#[cfg(target_os = "macos")]
+mod macos_install;
 mod model;
 mod payload;
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+mod portable_settings;
 mod profile_lock;
 mod relay_transport;
 mod secret;

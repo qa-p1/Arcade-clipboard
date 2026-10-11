@@ -52,6 +52,9 @@ mkdir -p \
   "$appdir/usr/share/icons/hicolor/scalable/apps" \
   "$appdir/usr/share/doc/arcade-clipboard"
 cp -a "$bundle/." "$appdir/usr/lib/arcade-clipboard/"
+# The self-installer and --install/--uninstall/--repair entry point.
+cargo build --release --locked -p arcade-clipboard-launcher
+install -m 755 "$arcade_root/target/release/arcade-clipboard-launcher" "$appdir/usr/lib/arcade-clipboard/arcade-clipboard-launcher"
 install -m 644 packaging/linux/dev.arcade.clipboard.desktop "$appdir/dev.arcade.clipboard.desktop"
 install -m 644 packaging/linux/dev.arcade.clipboard.desktop "$appdir/usr/share/applications/dev.arcade.clipboard.desktop"
 
@@ -84,7 +87,7 @@ fi
 bundle="$appdir/usr/lib/arcade-clipboard"
 LD_LIBRARY_PATH="$bundle/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 export LD_LIBRARY_PATH
-exec "$bundle/arcade-clipboard" "$@"
+exec "$bundle/arcade-clipboard-launcher" "$@"
 APPRUN
 chmod 755 "$appdir/AppRun"
 

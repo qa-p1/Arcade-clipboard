@@ -395,7 +395,16 @@ bool WindowsSupport::SetBackground(bool enabled) {
   tray_.uVersion = NOTIFYICON_VERSION_4;
   Shell_NotifyIconW(NIM_SETVERSION, &tray_);
   background_ = true;
-  return true;
+  return SetTrayHosted(tray_hosted_);
+}
+
+bool WindowsSupport::SetTrayHosted(bool hosted) {
+  tray_hosted_ = hosted;
+  if (!background_) return true;
+  tray_.uFlags |= NIF_STATE;
+  tray_.dwStateMask = NIS_HIDDEN;
+  tray_.dwState = hosted ? NIS_HIDDEN : 0;
+  return Shell_NotifyIconW(NIM_MODIFY, &tray_) != FALSE;
 }
 
 std::optional<LRESULT> WindowsSupport::WindowProc(HWND window, UINT message, WPARAM, LPARAM lparam) {
@@ -425,6 +434,8 @@ std::optional<LRESULT> WindowsSupport::WindowProc(HWND window, UINT message, WPA
     AppendMenuW(menu, MF_STRING, 3, L"Open Settings");
     AppendMenuW(menu, MF_STRING, 4, L"Restart Arcade Clipboard");
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+    AppendMenuW(menu, MF_STRING, 5, L"Private mode on/off");
+    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(menu, MF_STRING, 2, L"Quit Arcade Clipboard");
     SetForegroundWindow(window);
     const UINT selected = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_NONOTIFY | TPM_RIGHTBUTTON, point.x, point.y, 0, window, nullptr);
@@ -433,6 +444,7 @@ std::optional<LRESULT> WindowsSupport::WindowProc(HWND window, UINT message, WPA
     if (selected == 2) channel_->InvokeMethod("quitRequested", nullptr);
     if (selected == 3) channel_->InvokeMethod("showSettings", nullptr);
     if (selected == 4) channel_->InvokeMethod("restartRequested", nullptr);
+    if (selected == 5) channel_->InvokeMethod("privateModeRequested", nullptr);
     PostMessageW(window, WM_NULL, 0, 0);
   }
   return 0;
@@ -472,6 +484,13 @@ bool WindowsSupport::Handle(const flutter::MethodCall<Value>& call,
     const bool success = call.method_name() == "setLaunchAtLogin" ? SetStartup(enabled) : SetBackground(enabled);
     if (success) result->Success();
     else result->Error("desktop_lifecycle_unavailable", "The desktop setting could not be applied. Install the app in a persistent folder and retry.");
+    return true;
+  }
+  if (call.method_name() == "setTrayHosted") {
+    const Value* value = arguments == nullptr ? nullptr : Lookup(*arguments, "hosted");
+    const auto* boolean = value == nullptr ? nullptr : std::get_if<bool>(value);
+    if (SetTrayHosted(boolean != nullptr && *boolean)) result->Success();
+    else result->Error("desktop_lifecycle_unavailable", "The tray icon visibility could not be updated.");
     return true;
   }
   return false;

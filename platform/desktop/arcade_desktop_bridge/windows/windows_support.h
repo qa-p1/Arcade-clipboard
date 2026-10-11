@@ -26,11 +26,13 @@ class WindowsSupport {
  private:
   std::optional<LRESULT> WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam);
   bool SetBackground(bool enabled);
+  bool SetTrayHosted(bool hosted);
   flutter::PluginRegistrarWindows* registrar_;
   flutter::MethodChannel<flutter::EncodableValue>* channel_;
   int delegate_id_ = -1;
   HWND window_ = nullptr;
   bool background_ = false;
+  bool tray_hosted_ = false;
   bool capture_enabled_ = false;
   NOTIFYICONDATAW tray_ = {};
   ULONG_PTR graphics_token_ = 0;
