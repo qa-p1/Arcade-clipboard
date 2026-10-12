@@ -72,7 +72,7 @@ where
     F: FnMut() -> Fut,
     Fut: std::future::Future<Output = bool>,
 {
-    tokio::time::timeout(Duration::from_secs(30), async {
+    tokio::time::timeout(Duration::from_secs(12), async {
         while !predicate().await {
             tokio::time::sleep(Duration::from_millis(20)).await;
         }

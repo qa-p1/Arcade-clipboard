@@ -6,6 +6,8 @@ First stable desktop release.
 
 - End-to-end encrypted clipboard history across your devices: QR pairing,
   LAN discovery and an optional relay, pins, Private mode.
+- Pairing preserves partially received approval frames when you confirm a
+  device, preventing intermittent failures to establish the shared mesh.
 - Arcade Link (desktop): Send to my devices, Choose a clip, device list, and
   clip actions offered by the other Arcade apps.
 - Arcade Tools hub (Link `v0.3.0`): settings, restart, a Private mode tray
