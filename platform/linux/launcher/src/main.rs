@@ -13,8 +13,10 @@ mod installer_ui;
 fn main() {
     use std::os::unix::process::CommandExt;
     let argv: Vec<String> = std::env::args().collect();
-    match argv.get(1).map(String::as_str) {
-        Some("--install" | "--uninstall" | "--repair" | "--integration-status") => match integration_command(&argv[1..]) {
+    if let Some("--install" | "--uninstall" | "--repair" | "--integration-status") =
+        argv.get(1).map(String::as_str)
+    {
+        match integration_command(&argv[1..]) {
             Ok(output) => {
                 if !output.is_empty() {
                     println!("{output}");
@@ -25,8 +27,7 @@ fn main() {
                 eprintln!("arcade-clipboard: {error}");
                 std::process::exit(1);
             }
-        },
-        _ => {}
+        }
     }
     if installer::first_run_prompt(&argv) {
         return;
@@ -50,7 +51,14 @@ fn integration_command(args: &[String]) -> Result<String, String> {
             "--silent" => silent = true,
             "--no-launch" => no_launch = true,
             "--remove-data" => remove_data = true,
-            "--channel" => channel = Some(it.next().filter(|c| !c.is_empty() && !c.starts_with('-')).ok_or("--channel needs a channel name")?.clone()),
+            "--channel" => {
+                channel = Some(
+                    it.next()
+                        .filter(|c| !c.is_empty() && !c.starts_with('-'))
+                        .ok_or("--channel needs a channel name")?
+                        .clone(),
+                )
+            }
             other => return Err(format!("unexpected argument {other:?} for {action}")),
         }
     }
@@ -64,7 +72,9 @@ fn integration_command(args: &[String]) -> Result<String, String> {
         return Err("--silent requires --install or --uninstall".into());
     }
     match action {
-        "--install" => installer::install_cli(silent, no_launch, channel.as_deref().unwrap_or("stable")),
+        "--install" => {
+            installer::install_cli(silent, no_launch, channel.as_deref().unwrap_or("stable"))
+        }
         "--uninstall" => installer::uninstall_cli(silent, remove_data),
         "--repair" => installer::repair_cli(),
         _ => installer::integration_status_cli(),

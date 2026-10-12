@@ -18,6 +18,11 @@ param(
     [string]$QuietUninstallArgs = '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART'
 )
 $ErrorActionPreference = 'Stop'
+# Installers only see an exit code; keep the reason next to the script.
+trap {
+    try { [IO.File]::WriteAllText((Join-Path $PSScriptRoot 'arcade-integration-error.log'), ($_ | Out-String)) } catch { }
+    exit 1
+}
 $root = Join-Path $env:LOCALAPPDATA 'Arcade'
 if ($env:ARCADE_HOME) { $root = [IO.Path]::GetFullPath($env:ARCADE_HOME) }
 $bin = Join-Path $root 'bin'
@@ -25,8 +30,9 @@ $receipts = Join-Path $root 'installs'
 $receiptPath = Join-Path $receipts ($Id + '.json')
 $shim = Join-Path $bin ($CliName + '.cmd')
 $utf8 = New-Object Text.UTF8Encoding($false)
-if ($Autostart -eq '-') { $Autostart = '' }
-if ($DesktopShortcut -eq '-') { $DesktopShortcut = '' }
+# 'none' marks an unchecked task; '-' is accepted from older includes.
+if ($Autostart -in @('none','-')) { $Autostart = '' }
+if ($DesktopShortcut -in @('none','-')) { $DesktopShortcut = '' }
 
 function Write-Atomic([string]$Path, [string]$Text, [bool]$Private = $false) {
     [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($Path)) | Out-Null
@@ -167,11 +173,38 @@ if ($Action -eq 'Install') {
         $receipt = Get-Content -Raw -LiteralPath $receiptPath -Encoding UTF8 | ConvertFrom-Json
         if ($receipt.id -ne $Id) { throw 'Receipt id differs from filename.' }
         if (-not $ExePath -or -not [string]::Equals($receipt.path, [IO.Path]::GetFullPath($ExePath), [StringComparison]::OrdinalIgnoreCase)) { exit 10 }
-        foreach ($entry in @($receipt.integration.cli, $receipt.integration.desktopEntry, $receipt.integration.desktopShortcut, $receipt.integration.autostart)) {
-            if ($entry -and [IO.File]::Exists($entry)) { [IO.File]::Delete($entry) }
+        $entry = $receipt.integration.cli
+        if ($entry -and [IO.File]::Exists($entry)) {
+            # A replaced shim is foreign even if its path is still recorded.
+            $expected = '@echo off' + "`r`n" + '"' + $receipt.path.Replace('%','%%') + '" %*' + "`r`n"
+            if ([IO.File]::ReadAllText($entry) -ceq $expected) { [IO.File]::Delete($entry) }
+            else { Write-Warning ('Preserving changed CLI shim: ' + $entry) }
         }
+        $shell = New-Object -ComObject WScript.Shell
+        try {
+            foreach ($entry in @($receipt.integration.desktopEntry, $receipt.integration.desktopShortcut, $receipt.integration.autostart)) {
+                if (-not $entry -or -not [IO.File]::Exists($entry)) { continue }
+                if (-not [IO.Path]::IsPathRooted($entry) -or [IO.Path]::GetExtension($entry) -ine '.lnk') {
+                    Write-Warning ('Preserving invalid shortcut path: ' + $entry)
+                    continue
+                }
+                $shortcut = $null
+                try {
+                    $shortcut = $shell.CreateShortcut($entry)
+                    if ([string]::Equals([IO.Path]::GetFullPath($shortcut.TargetPath), [IO.Path]::GetFullPath($receipt.path), [StringComparison]::OrdinalIgnoreCase)) {
+                        [IO.File]::Delete($entry)
+                        if ($entry -eq $receipt.integration.desktopEntry) {
+                            $parent = [IO.Path]::GetDirectoryName($entry)
+                            if ([IO.Directory]::GetFileSystemEntries($parent).Length -eq 0) { [IO.Directory]::Delete($parent) }
+                        }
+                    } else { Write-Warning ('Preserving changed shortcut: ' + $entry) }
+                } catch { Write-Warning ('Preserving unreadable shortcut: ' + $entry + ': ' + $_.Exception.Message) }
+                finally { if ($shortcut) { [Runtime.InteropServices.Marshal]::FinalReleaseComObject($shortcut) | Out-Null } }
+            }
+        } finally { [Runtime.InteropServices.Marshal]::FinalReleaseComObject($shell) | Out-Null }
         [IO.File]::Delete($receiptPath)
     } else { exit 10 } # No receipt means no proof of shared ownership.
     Update-UserPath $false
     [Microsoft.Win32.Registry]::CurrentUser.DeleteSubKeyTree('Software\Microsoft\Windows\CurrentVersion\Uninstall\' + $Id, $false)
+    exit 0
 }

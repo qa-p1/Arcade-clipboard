@@ -75,8 +75,8 @@ Var ArcadeIntegrationOutput
   WriteUninstaller "$INSTDIR\uninstall.exe"
   CreateDirectory "$SMPROGRAMS\${ARCADE_NAME}"
   CreateShortcut "$SMPROGRAMS\${ARCADE_NAME}\${ARCADE_NAME}.lnk" "$INSTDIR\${ARCADE_EXE}"
-  StrCpy $ArcadeStartup "-"
-  StrCpy $ArcadeDesktop "-"
+  StrCpy $ArcadeStartup "none"
+  StrCpy $ArcadeDesktop "none"
   ${If} ${SectionIsSelected} ${ArcadeDesktopTask}
     StrCpy $ArcadeDesktop "$DESKTOP\${ARCADE_NAME}.lnk"
   ${EndIf}
@@ -132,13 +132,8 @@ Var ArcadeIntegrationOutput
     SetErrorLevel $ArcadeExitCode
     Abort "Arcade uninstall integration failed."
   ${EndIf}
-  ${If} $ArcadeExitCode == 0
-    Delete "$DESKTOP\${ARCADE_NAME}.lnk"
-    Delete "$SMPROGRAMS\${ARCADE_NAME}\${ARCADE_NAME}.lnk"
-    RMDir "$SMPROGRAMS\${ARCADE_NAME}"
-    Delete "$SMSTARTUP\${ARCADE_NAME}.lnk"
-    DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${ARCADE_ID}"
-  ${EndIf}
+  ; The helper removes only receipt-recorded shortcuts whose current target
+  ; still matches this executable. Never guess unchecked task filenames.
   Delete "$INSTDIR\arcade-integration.ps1"
   Delete "$INSTDIR\arcade-integration-error.log"
 !macroend

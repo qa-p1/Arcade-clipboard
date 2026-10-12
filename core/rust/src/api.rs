@@ -61,7 +61,11 @@ pub async fn call(request: String) -> Result<String, String> {
             let args: Vec<String> = value
                 .get("args")
                 .and_then(Value::as_array)
-                .map(|a| a.iter().filter_map(|v| v.as_str().map(str::to_string)).collect())
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|v| v.as_str().map(str::to_string))
+                        .collect()
+                })
                 .unwrap_or_default();
             tokio::task::spawn_blocking(move || crate::macos_install::check(&args))
                 .await
@@ -69,7 +73,10 @@ pub async fn call(request: String) -> Result<String, String> {
         }
         #[cfg(target_os = "macos")]
         "install_move" => {
-            let cli = value.get("install_cli").and_then(Value::as_bool).unwrap_or(false);
+            let cli = value
+                .get("install_cli")
+                .and_then(Value::as_bool)
+                .unwrap_or(false);
             tokio::task::spawn_blocking(move || crate::macos_install::run(cli))
                 .await
                 .map_err(|_| "Could not move Arcade Clipboard".to_string())??
