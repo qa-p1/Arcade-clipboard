@@ -36,7 +36,7 @@ jobs:
         run: |
           rustup toolchain install 1.98.1 --profile minimal --component rustfmt --component clippy
           sudo apt-get update
-          sudo apt-get install -y pkg-config libdbus-1-dev libsecret-1-dev
+          sudo apt-get install -y pkg-config libdbus-1-dev libsecret-1-dev libgtk-3-dev
       - run: bash scripts/dev.sh rust-check
       - run: bash scripts/dev.sh rust-test
   linux:
@@ -73,7 +73,8 @@ jobs:
           release_version="$(python3 -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("Cargo.toml").read_text())["workspace"]["package"]["version"])')"
           appimage="$PWD/dist/Arcade-Clipboard-$release_version-x86_64.AppImage"
           env -u LD_LIBRARY_PATH xvfb-run -a env APPIMAGE_EXTRACT_AND_RUN=1 "$appimage" --version
-          env -u LD_LIBRARY_PATH xvfb-run -a env APPIMAGE_EXTRACT_AND_RUN=1 "$appimage" --arcade-manifest | python3 -c 'import json,sys; assert json.load(sys.stdin)["id"] == "arcade.clipboard"'
+          manifest="$(env -u LD_LIBRARY_PATH xvfb-run -a env APPIMAGE_EXTRACT_AND_RUN=1 "$appimage" --arcade-manifest)"
+          printf '%s' "$manifest" | python3 -c 'import json,sys; assert json.load(sys.stdin)["id"] == "arcade.clipboard"' || { printf 'stdout was:\n%s\n' "$manifest" | cat -A | head -40; exit 1; }
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: Arcade-Clipboard-linux-x64
