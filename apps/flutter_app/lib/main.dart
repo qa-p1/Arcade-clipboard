@@ -50,12 +50,23 @@ Future<bool> _running(int processId) async {
   }
 }
 
+/// Where `--version` and `--arcade-manifest` answer. The Linux runner moves
+/// engine logging off stdout and passes the real stdout as ARCADE_ANSWER_FD.
+IOSink _answerSink() {
+  final fd = Platform.environment['ARCADE_ANSWER_FD'];
+  if (Platform.isLinux && fd != null && int.tryParse(fd) != null) {
+    return File('/proc/self/fd/$fd').openWrite(mode: FileMode.writeOnlyAppend);
+  }
+  return stdout;
+}
+
 Future<int> _command(List<String> arguments) async {
   final core = RustCoreApi();
+  final out = _answerSink();
   try {
     if (arguments.contains('--version')) {
       final version = await core.invoke('version');
-      stdout.writeln('Arcade Clipboard ${version['version']}');
+      out.writeln('Arcade Clipboard ${version['version']}');
     } else if (arguments.contains('--arcade-manifest')) {
       final prefs = await SharedPreferences.getInstance();
       final manifest = await core.invoke('link_manifest', {
@@ -65,13 +76,14 @@ Future<int> _command(List<String> arguments) async {
           'shortcut': prefs.getString('mesh_shortcut') ?? _defaultShortcut(),
         },
       });
-      stdout.writeln(const JsonEncoder.withIndent('  ').convert(manifest));
+      out.writeln(const JsonEncoder.withIndent('  ').convert(manifest));
     } else {
       // The desktop single-instance channel (Linux D-Bus) handles --quit
       // before Dart runs when it can; this covers the rest over the Link.
       await core.invoke('link_quit_running');
     }
-    await stdout.flush();
+    await out.flush();
+    if (!identical(out, stdout)) await out.close();
     return 0;
   } catch (error) {
     stderr.writeln('Arcade Clipboard: $error');

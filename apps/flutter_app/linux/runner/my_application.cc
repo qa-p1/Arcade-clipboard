@@ -1,6 +1,7 @@
 #include "my_application.h"
 
 #include <flutter_linux/flutter_linux.h>
+#include <unistd.h>
 #ifdef GDK_WINDOWING_X11
 #include <gdk/gdkx.h>
 #endif
@@ -134,6 +135,14 @@ static gboolean my_application_local_command_line(GApplication* application,
   if (query) {
     self->start_hidden = TRUE;
     g_application_set_flags(application, G_APPLICATION_NON_UNIQUE);
+    // The engine logs to stdout (for example the Impeller backend line), so
+    // Dart writes the answer to a saved copy of stdout and engine output
+    // goes to stderr. A caller parsing --arcade-manifest gets only JSON.
+    int answer = dup(STDOUT_FILENO);
+    if (answer >= 0 && dup2(STDERR_FILENO, STDOUT_FILENO) >= 0) {
+      g_autofree gchar* fd = g_strdup_printf("%d", answer);
+      g_setenv("ARCADE_ANSWER_FD", fd, TRUE);
+    }
   }
 
   g_autoptr(GError) error = nullptr;
