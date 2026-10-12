@@ -55,7 +55,7 @@ Future<bool> _running(int processId) async {
 IOSink _answerSink() {
   final fd = Platform.environment['ARCADE_ANSWER_FD'];
   if (Platform.isLinux && fd != null && int.tryParse(fd) != null) {
-    return File('/proc/self/fd/$fd').openWrite(mode: FileMode.writeOnlyAppend);
+    return File('/proc/self/fd/$fd').openWrite(mode: FileMode.writeOnly);
   }
   return stdout;
 }
