@@ -1,0 +1,9 @@
+# Preserve the byte-level checksums of assets vendored from Arcade Link.
+packaging/windows/arcade.iss -text
+packaging/windows/arcade.nsh -text
+packaging/windows/arcade-integration.ps1 -text
+tools/validate_shortcuts.py -text
+spec/shortcuts.schema.json -text
+spec/vectors/shortcuts.json -text
+assets/strings/install.json -text
+scripts/arcade-release.py -text
