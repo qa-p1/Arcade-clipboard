@@ -77,6 +77,23 @@ import, then removes it. Returned picker files instead retain the existing
 
 Nothing exposes history contents unless you choose a clip in the picker.
 
+## Arcade Tools hub (Link v0.3.0)
+
+When Arcade Tools is installed it can manage Clipboard alongside the other
+apps. Clipboard answers the optional hub methods:
+
+| Method | What it does |
+|---|---|
+| `app.settings` | Opens Clipboard's settings window. |
+| `app.restart` | Restarts after Tools asks (`normal` waits for transfers, `force` doesn't). |
+| `app.menu`, `app.menu.invoke` | One tray item, **Private mode** (on/off), shown in Tools' combined tray menu. |
+| `app.shortcuts.set` | Rebinds the picker shortcut; on Hyprland it answers with the bind line to add, because Clipboard never edits your Hyprland config. |
+| `app.settings.export`, `app.settings.import` | An allowlisted handoff file: paused, history retention and maximum items. History, keys and devices never leave the encrypted store. Import keeps a backup of the previous values. |
+
+While Tools hosts the tray (`tray.host`), Clipboard hides its own tray icon
+and shows it again when Tools quits or stops hosting. The manifest adds the
+menu, the log folder, `docs/user` and how the copy was installed (`install`).
+
 ## Isolated verification
 
 The shared runner's `tools/e2e_checks/clipboard.py` group exercises the real
@@ -132,7 +149,17 @@ Clipboard's manifest lists no actions and nothing listens.
 arcade-clipboard --version
 arcade-clipboard --arcade-manifest   # the manifest (no side effects)
 arcade-clipboard --quit              # quits the running instance
+arcade-clipboard --install           # Linux AppImage: install this copy (--silent, --no-launch, --channel)
+arcade-clipboard --uninstall         # removes the installed copy (--remove-data)
+arcade-clipboard --repair            # rewrites launcher, icon and login entries
+arcade-clipboard --integration-status
 ```
+
+The Linux AppImage starts through a small launcher (`arcade-clipboard-launcher`)
+that runs these commands and, on a first start from a downloaded file, offers
+**Install**, **Just run it once** or **Don't ask again for this file** with the
+shared Arcade wording. On macOS, a copy outside Applications offers **Move to
+Applications**. Windows installs per user with the shared Arcade installer.
 
 On Linux, `arcade-clipboard` is installed next to `clipboard` (a generic name
 that can clash on `PATH`).

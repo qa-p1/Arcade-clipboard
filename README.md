@@ -21,7 +21,7 @@ The desktop app uses Flutter with a Rust core. The Rust core also runs the relay
 - [Architecture](docs/architecture.md): app, Rust core, native code, capture, and sync.
 - [Protocol](docs/protocol.md): pairing, wire format, item kinds, and convergence.
 - [Security](docs/security.md): threat model, key storage, and limits.
-- [Arcade Link](docs/arcade-link.md): desktop actions and peer behavior.
+- [Arcade Link](docs/arcade-link.md): desktop actions, peer behavior and the optional Arcade Tools hub (tray, shortcuts, settings backup, installation).
 - [Relay deployment](docs/relay-deployment.md): run a relay with Docker, Caddy, or Cloudflare.
 - [Platforms](docs/platforms.md): implementation and support details.
 - [iPhone setup](docs/ios.md): build and sign the iOS app and extensions.

@@ -27,6 +27,23 @@ recorded yet.
   Shelf and Arcade Find (glyphs and accents from Link `v0.2.0`) with a Get
   link when they are not installed.
 
+## Arcade Tools hub (2026-10-12, Link `v0.3.0`)
+
+- Hub methods: settings, restart, the Private mode tray item, picker
+  shortcut rebinding (Hyprland answers with a bind line), and allowlisted
+  settings export/import with a backup. Manifest additions: menu, logs, docs,
+  install method.
+- Tray hand-off: the Flutter tray hides while Tools hosts the tray and
+  returns when Tools stops (Linux, Windows and macOS bridges).
+- Install standard: the AppImage launcher (`arcade-clipboard-launcher`) adds
+  `--install`, `--uninstall`, `--repair`, `--integration-status` and the
+  first-run install dialog; macOS offers Move to Applications; Windows uses
+  the shared per-user installer (`arcade.iss`/`arcade.nsh` from Link `v0.3.0`).
+- Checked locally: `cargo fmt`, `cargo clippy -D warnings`, `cargo test
+  --workspace` in Link's isolated runner, `flutter analyze` and `flutter
+  test` (27 passed). The Linux bundle needs keybinder headers, so it is built
+  in CI.
+
 ## Verification
 
 | Check | Result |
