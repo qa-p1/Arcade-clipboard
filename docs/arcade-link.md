@@ -90,9 +90,15 @@ apps. Clipboard answers the optional hub methods:
 | `app.shortcuts.set` | Rebinds the picker shortcut; on Hyprland it answers with the bind line to add, because Clipboard never edits your Hyprland config. |
 | `app.settings.export`, `app.settings.import` | An allowlisted handoff file: paused, history retention and maximum items. History, keys and devices never leave the encrypted store. Import keeps a backup of the previous values. |
 
+`describe` lists these in `methods`, so Tools never calls one Clipboard lacks.
+
 While Tools hosts the tray (`tray.host`), Clipboard hides its own tray icon
-and shows it again when Tools quits or stops hosting. The manifest adds the
-menu, the log folder, `docs/user` and how the copy was installed (`install`).
+and shows it again when Tools quits or stops hosting (after a 5 s grace period
+when Tools announces a restart; a Clipboard started while Tools hosts waits at
+most 300 ms for Tools' answer). `app.status` reports `tray` as `own`, `hosted`
+or `none`. With "Connect with other Arcade apps" off, Clipboard always shows its
+own icon. The manifest adds the menu, the log folder, `docs/user` and how the
+copy was installed (`install`).
 
 ## Isolated verification
 
