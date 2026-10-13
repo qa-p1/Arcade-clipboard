@@ -92,8 +92,10 @@ apps. Clipboard answers the optional hub methods:
 
 `describe` lists these in `methods`, so Tools never calls one Clipboard lacks.
 
-While Tools hosts the tray (`tray.host`), Clipboard hides its own tray icon
-and shows it again when Tools quits or stops hosting (after a 5 s grace period
+While Tools hosts the tray (`tray.host`), Clipboard removes its own tray icon
+(on Linux it closes the D-Bus connection that carries its StatusNotifierItem,
+because hosts such as Caelestia and Waybar still show "Passive" items) and
+shows it again when Tools quits or stops hosting (after a 5 s grace period
 when Tools announces a restart; a Clipboard started while Tools hosts waits at
 most 300 ms for Tools' answer). `app.status` reports `tray` as `own`, `hosted`
 or `none`. With "Connect with other Arcade apps" off, Clipboard always shows its

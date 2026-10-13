@@ -223,7 +223,7 @@ GVariant* MenuProperty(GDBusConnection*, const gchar*, const gchar*, const gchar
 }
 
 void RegisterItem(LinuxLifecycle* state) {
-  if (state->bus == nullptr || !state->background) return;
+  if (state->bus == nullptr) return;
   g_dbus_connection_call(state->bus, kWatcher, "/StatusNotifierWatcher", kWatcher,
       "RegisterStatusNotifierItem", g_variant_new("(s)", g_dbus_connection_get_unique_name(state->bus)),
       nullptr, G_DBUS_CALL_FLAGS_NONE, 1500, nullptr, nullptr, nullptr);
@@ -233,23 +233,47 @@ void WatcherAppeared(GDBusConnection*, const gchar*, const gchar*, gpointer data
   RegisterItem(static_cast<LinuxLifecycle*>(data));
 }
 
-void WatcherVanished(GDBusConnection*, const gchar*, gpointer data) {
-  auto* state = static_cast<LinuxLifecycle*>(data);
-  // A shell restart should never strand an invisible application.
-  if (state->background && state->window != nullptr && !gtk_widget_get_visible(state->window)) {
+void ShowHiddenWindow(LinuxLifecycle* state) {
+  if (state->window != nullptr && !gtk_widget_get_visible(state->window)) {
     Invoke(state, "showMainWindow");
   }
 }
 
-bool EnableTray(LinuxLifecycle* state, std::string* error) {
+void WatcherVanished(GDBusConnection*, const gchar*, gpointer data) {
+  auto* state = static_cast<LinuxLifecycle*>(data);
+  // A shell restart should never strand an invisible application.
+  if (state->background) ShowHiddenWindow(state);
+}
+
+bool TrayVisible(const LinuxLifecycle* state) {
+  return state->background && !state->tray_hosted;
+}
+
+// Hosts such as Caelestia and Waybar still draw Passive items, and a watcher
+// forgets an item only when its bus name goes away. The item therefore lives
+// on a private connection that is closed while Arcade Tools hosts the icon.
+void CloseTray(LinuxLifecycle* state) {
+  if (state->watcher != 0) g_bus_unwatch_name(state->watcher);
+  state->watcher = 0;
+  if (state->bus != nullptr) {
+    if (state->item_registration != 0) g_dbus_connection_unregister_object(state->bus, state->item_registration);
+    if (state->menu_registration != 0) g_dbus_connection_unregister_object(state->bus, state->menu_registration);
+    g_dbus_connection_close_sync(state->bus, nullptr, nullptr);
+    g_clear_object(&state->bus);
+  }
+  state->item_registration = 0;
+  state->menu_registration = 0;
+}
+
+bool TrayHostAvailable(std::string* error) {
   GError* failure = nullptr;
-  if (state->bus == nullptr) state->bus = g_bus_get_sync(G_BUS_TYPE_SESSION, nullptr, &failure);
-  if (state->bus == nullptr) {
+  GDBusConnection* session = g_bus_get_sync(G_BUS_TYPE_SESSION, nullptr, &failure);
+  if (session == nullptr) {
     *error = "The desktop session bus is unavailable. Keep the app window open for sync.";
     g_clear_error(&failure);
     return false;
   }
-  GVariant* owner = g_dbus_connection_call_sync(state->bus, "org.freedesktop.DBus", "/org/freedesktop/DBus",
+  GVariant* owner = g_dbus_connection_call_sync(session, "org.freedesktop.DBus", "/org/freedesktop/DBus",
       "org.freedesktop.DBus", "NameHasOwner", g_variant_new("(s)", kWatcher), G_VARIANT_TYPE("(b)"),
       G_DBUS_CALL_FLAGS_NONE, 1000, nullptr, &failure);
   gboolean available = FALSE;
@@ -258,38 +282,60 @@ bool EnableTray(LinuxLifecycle* state, std::string* error) {
     g_variant_unref(owner);
   }
   g_clear_error(&failure);
+  g_object_unref(session);
   if (!available) {
     *error = "This desktop has no system tray host. Keep the app window open, or enable a StatusNotifier tray extension.";
     return false;
   }
-  if (state->item_registration == 0) {
-    static const GDBusInterfaceVTable item_vtable = {ItemMethod, ItemProperty, nullptr, {nullptr}};
-    static const GDBusInterfaceVTable menu_vtable = {MenuMethod, MenuProperty, nullptr, {nullptr}};
-    state->item_info = g_dbus_node_info_new_for_xml(kItemXml, &failure);
-    state->menu_info = g_dbus_node_info_new_for_xml(kMenuXml, &failure);
-    if (state->item_info == nullptr || state->menu_info == nullptr) {
-      *error = "The tray interface could not be created.";
-      g_clear_error(&failure);
-      return false;
-    }
-    state->item_registration = g_dbus_connection_register_object(state->bus, "/StatusNotifierItem",
-        state->item_info->interfaces[0], &item_vtable, state, nullptr, &failure);
-    state->menu_registration = g_dbus_connection_register_object(state->bus, "/Menu",
-        state->menu_info->interfaces[0], &menu_vtable, state, nullptr, &failure);
-    if (state->item_registration == 0 || state->menu_registration == 0) {
-      *error = "The system tray could not be registered.";
-      g_clear_error(&failure);
-      return false;
-    }
-    state->watcher = g_bus_watch_name_on_connection(state->bus, kWatcher, G_BUS_NAME_WATCHER_FLAGS_NONE,
-        WatcherAppeared, WatcherVanished, state, nullptr);
+  return true;
+}
+
+bool OpenTray(LinuxLifecycle* state, std::string* error) {
+  if (state->bus != nullptr) return true;
+  GError* failure = nullptr;
+  if (state->item_info == nullptr) state->item_info = g_dbus_node_info_new_for_xml(kItemXml, &failure);
+  g_clear_error(&failure);
+  if (state->menu_info == nullptr) state->menu_info = g_dbus_node_info_new_for_xml(kMenuXml, &failure);
+  g_clear_error(&failure);
+  if (state->item_info == nullptr || state->menu_info == nullptr) {
+    *error = "The tray interface could not be created.";
+    return false;
   }
+  gchar* address = g_dbus_address_get_for_bus_sync(G_BUS_TYPE_SESSION, nullptr, &failure);
+  if (address != nullptr) {
+    state->bus = g_dbus_connection_new_for_address_sync(address,
+        static_cast<GDBusConnectionFlags>(G_DBUS_CONNECTION_FLAGS_AUTHENTICATION_CLIENT |
+                                          G_DBUS_CONNECTION_FLAGS_MESSAGE_BUS_CONNECTION),
+        nullptr, nullptr, &failure);
+    g_free(address);
+  }
+  if (state->bus == nullptr) {
+    *error = "The desktop session bus is unavailable. Keep the app window open for sync.";
+    g_clear_error(&failure);
+    return false;
+  }
+  static const GDBusInterfaceVTable item_vtable = {ItemMethod, ItemProperty, nullptr, {nullptr}};
+  static const GDBusInterfaceVTable menu_vtable = {MenuMethod, MenuProperty, nullptr, {nullptr}};
+  state->item_registration = g_dbus_connection_register_object(state->bus, "/StatusNotifierItem",
+      state->item_info->interfaces[0], &item_vtable, state, nullptr, &failure);
+  g_clear_error(&failure);
+  state->menu_registration = g_dbus_connection_register_object(state->bus, "/Menu",
+      state->menu_info->interfaces[0], &menu_vtable, state, nullptr, &failure);
+  g_clear_error(&failure);
+  if (state->item_registration == 0 || state->menu_registration == 0) {
+    *error = "The system tray could not be registered.";
+    CloseTray(state);
+    return false;
+  }
+  state->watcher = g_bus_watch_name_on_connection(state->bus, kWatcher, G_BUS_NAME_WATCHER_FLAGS_NONE,
+      WatcherAppeared, WatcherVanished, state, nullptr);
   GVariant* registered = g_dbus_connection_call_sync(state->bus, kWatcher, "/StatusNotifierWatcher", kWatcher,
       "RegisterStatusNotifierItem", g_variant_new("(s)", g_dbus_connection_get_unique_name(state->bus)),
       nullptr, G_DBUS_CALL_FLAGS_NONE, 1500, nullptr, &failure);
   if (registered == nullptr) {
     *error = "The system tray did not accept the app. Keep the window open for sync.";
     g_clear_error(&failure);
+    CloseTray(state);
     return false;
   }
   g_variant_unref(registered);
@@ -416,24 +462,30 @@ bool HandleLifecycleMethod(LinuxLifecycle* state, FlMethodCall* call) {
   if (g_strcmp0(method, "setBackgroundEnabled") == 0) {
     const bool enabled = Enabled(call);
     std::string error;
-    if (enabled && !EnableTray(state, &error)) {
+    if (enabled && !TrayHostAvailable(&error)) {
       Fail(call, error);
       return true;
     }
+    const bool was = state->background;
     state->background = enabled;
-    if (enabled) RegisterItem(state);
-    if (state->bus != nullptr && state->item_registration != 0) {
-      g_dbus_connection_emit_signal(state->bus, nullptr, "/StatusNotifierItem", "org.kde.StatusNotifierItem",
-          "NewStatus", g_variant_new("(s)", enabled && !state->tray_hosted ? "Active" : "Passive"), nullptr);
+    if (TrayVisible(state) && !OpenTray(state, &error)) {
+      state->background = was;
+      Fail(call, error);
+      return true;
     }
+    if (!TrayVisible(state)) CloseTray(state);
     Respond(call);
     return true;
   }
   if (g_strcmp0(method, "setTrayHosted") == 0) {
     state->tray_hosted = Hosted(call);
-    if (state->bus != nullptr && state->item_registration != 0) {
-      g_dbus_connection_emit_signal(state->bus, nullptr, "/StatusNotifierItem", "org.kde.StatusNotifierItem",
-          "NewStatus", g_variant_new("(s)", state->background && !state->tray_hosted ? "Active" : "Passive"), nullptr);
+    std::string error;
+    if (!TrayVisible(state)) {
+      CloseTray(state);
+    } else if (!OpenTray(state, &error)) {
+      // Tools stopped hosting and the own icon failed: never stay invisible.
+      g_warning("arcade-clipboard: tray: %s", error.c_str());
+      ShowHiddenWindow(state);
     }
     Respond(call);
     return true;
@@ -466,12 +518,9 @@ void DestroyLinuxLifecycle(LinuxLifecycle* state) {
     if (state->map_handler != 0) g_signal_handler_disconnect(state->view, state->map_handler);
     g_object_remove_weak_pointer(G_OBJECT(state->view), reinterpret_cast<gpointer*>(&state->view));
   }
-  if (state->watcher != 0) g_bus_unwatch_name(state->watcher);
-  if (state->bus != nullptr && state->item_registration != 0) g_dbus_connection_unregister_object(state->bus, state->item_registration);
-  if (state->bus != nullptr && state->menu_registration != 0) g_dbus_connection_unregister_object(state->bus, state->menu_registration);
+  CloseTray(state);
   if (state->item_info != nullptr) g_dbus_node_info_unref(state->item_info);
   if (state->menu_info != nullptr) g_dbus_node_info_unref(state->menu_info);
-  g_clear_object(&state->bus);
   g_clear_object(&state->channel);
   delete state;
 }
