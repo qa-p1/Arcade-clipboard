@@ -116,11 +116,39 @@ On iPhone, additionally:
 
 | Workflow | Trigger | Does |
 | --- | --- | --- |
-| **Core and desktop builds** (`ci.yml`) | Push to `main`, pull requests, manual | Rust formatting, Clippy and tests; Flutter analysis and tests; Linux release build, uploaded as `Arcade-Clipboard-linux-x64`; Windows and macOS desktop builds, each running the Rust core tests |
+| **Core and desktop builds** (`ci.yml`) | Push to `main`, pull requests, manual | Rust formatting, Clippy and tests; Flutter analysis and tests; Linux release build and AppImage smoke, uploaded as `Arcade-Clipboard-linux-x64`; Windows/macOS builds and installer smoke checks, each running the Rust core tests (CI only, not a real desktop) |
 | **Release** (`release.yml`) | Push to `main` (nightly), `v<version>` tags (stable), manual | Linux tarball, Windows Inno installer, macOS dmg, `arcade-release.json` and `SHA256SUMS.txt`. See [Releases](releases.md). |
 | **Build iPhone IPA** (`build-ios-ipa.yml`) | Manual | Builds the Rust core for iOS, builds the app and extensions without signing, validates and uploads the IPA. See [iPhone](ios.md). |
 
 Third-party actions are pinned to commit SHAs.
+
+Branch CI packages Windows and macOS with the same
+`python3 scripts/package-desktop.py --version <Cargo.toml version> --platform windows|macos`
+used by releases. It uploads the setup exe as `Arcade-Clipboard-windows-installer`
+and the dmg as `Arcade-Clipboard-macos-dmg`; release asset names and publishing
+are unchanged.
+
+- **Windows:** installs Inno Setup, then runs
+  `scripts/test-windows-installer.ps1`. It checks `/SILENT`/`/VERYSILENT`,
+  `/MERGETASKS` startup selection and deselection, per-user receipts, CLI and
+  launcher shortcuts, Apps & features version/publisher, isolated PATH,
+  installed CLI answers and uninstall cleanup. A successor install marked as
+  managed by Tools must survive uninstalling the old copy (the helper returns
+  10 for foreign ownership; Inno removes the old copy with exit 0). The
+  manifest fixture comes from `--arcade-manifest`; the test starts no resident.
+- **macOS:** runs `bash scripts/verify-dmg.sh <image.dmg> <version>`, mounts the
+  dmg read-only and runs `--install --silent --no-launch` in temporary HOME,
+  XDG and `ARCADE_HOME`. The installed bundle must be under
+  `$ARCADE_HOME/Applications/Arcade Clipboard.app`, match the packaged binary
+  and core, write a `macos-bundle` receipt and CLI symlink, and answer version
+  and integration status. No shell profile may be written.
+
+Both scripts refuse to run outside their GitHub Actions OS runner. Windows
+shortcuts and Apps & features are checked on the disposable CI account; the
+shared helper puts test PATH entries in an isolated registry key rather than
+the account's login environment. This coverage is **CI only, not a real
+desktop**. It does not verify interactive startup, clipboard permissions,
+macOS uninstall/repair or Gatekeeper, and its first branch CI result is pending.
 
 ## Other platforms
 

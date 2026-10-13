@@ -15,7 +15,9 @@ void main(List<String> arguments) async {
   // The standard Arcade flags answer and exit without opening any UI.
   if (arguments.contains('--version') ||
       arguments.contains('--arcade-manifest') ||
-      arguments.contains('--quit')) {
+      arguments.contains('--quit') ||
+      arguments.contains('--integration-status') ||
+      (Platform.isMacOS && arguments.contains('--install'))) {
     exit(await _command(arguments));
   }
   runApp(ArcadeApp(
@@ -77,6 +79,21 @@ Future<int> _command(List<String> arguments) async {
         },
       });
       out.writeln(const JsonEncoder.withIndent('  ').convert(manifest));
+    } else if (arguments.contains('--integration-status')) {
+      final status = await core.invoke('install_status');
+      out.writeln(const JsonEncoder.withIndent('  ').convert(status));
+    } else if (Platform.isMacOS && arguments.contains('--install')) {
+      final installed =
+          await core.invoke('install_move', {'install_cli': true});
+      out.writeln(const JsonEncoder.withIndent('  ').convert(installed));
+      if (!arguments.contains('--no-launch')) {
+        final result =
+            await Process.run('/usr/bin/open', [installed['launch'] as String]);
+        if (result.exitCode != 0) {
+          throw StateError(
+              'Could not open the installed app: ${result.stderr}');
+        }
+      }
     } else {
       // The desktop single-instance channel (Linux D-Bus) handles --quit
       // before Dart runs when it can; this covers the rest over the Link.

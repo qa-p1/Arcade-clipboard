@@ -91,7 +91,7 @@ jobs:
           retention-days: 14
 
   windows:
-    name: windows desktop — build only (CI defined, not run here)
+    name: Windows build and installer smoke (CI only, not a real desktop)
     runs-on: windows-latest
     timeout-minutes: 60
     env:
@@ -107,20 +107,43 @@ jobs:
           cache: true
       - name: Install Rust
         run: rustup toolchain install 1.98.1 --profile minimal
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path -LiteralPath $iscc)) {
+            choco install innosetup --no-progress -y
+            if ($LASTEXITCODE -ne 0) { throw 'Inno Setup installation failed' }
+          }
+          if (-not (Test-Path -LiteralPath $iscc)) { throw 'Inno Setup compiler is missing' }
       - name: Test Rust core and build the Flutter desktop app with its core
         run: |
           python3 scripts/check-docs.py
           bash scripts/dev.sh rust-test
           bash scripts/dev.sh build-windows
+      - name: Package Windows Inno installer
+        id: windows-package
+        run: |
+          release_version="$(python3 -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("Cargo.toml").read_text())["workspace"]["package"]["version"])')"
+          python3 scripts/package-desktop.py --version "$release_version" --platform windows
+          printf 'version=%s\n' "$release_version" >> "$GITHUB_OUTPUT"
+      - name: Test Windows installation and uninstallation (CI only, not a real desktop)
+        shell: pwsh
+        env:
+          INSTALLER_VERSION: ${{ steps.windows-package.outputs.version }}
+        run: |
+          pwsh -NoProfile -File scripts/test-windows-installer.ps1 -Version $env:INSTALLER_VERSION
+          if ($LASTEXITCODE -ne 0) { throw 'Windows installer lifecycle checks failed' }
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
         with:
-          name: Arcade-Clipboard-windows-build-only
-          path: App dev/Arcade-clipboard/apps/flutter_app/build/windows/x64/runner/Release/
+          name: Arcade-Clipboard-windows-installer
+          path: App dev/Arcade-clipboard/dist/packages/Arcade-Clipboard_*_windows_x64-setup.exe
           if-no-files-found: error
           retention-days: 14
 
   macos:
-    name: macos desktop — build only (CI defined, not run here)
+    name: macOS build and DMG install smoke (CI only, not a real desktop)
     runs-on: macos-latest
     timeout-minutes: 60
     env:
@@ -141,9 +164,17 @@ jobs:
           python3 scripts/check-docs.py
           bash scripts/dev.sh rust-test
           bash scripts/dev.sh build-macos
+      - name: Package and smoke-test macOS DMG (CI only, not a real desktop)
+        run: |
+          release_version="$(python3 -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("Cargo.toml").read_text())["workspace"]["package"]["version"])')"
+          python3 scripts/package-desktop.py --version "$release_version" --platform macos
+          images=(dist/packages/Arcade-Clipboard_*_macos_*.dmg)
+          [[ ${#images[@]} -eq 1 && -f "${images[0]}" ]]
+          bash scripts/verify-dmg.sh "${images[0]}" "$release_version"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
         with:
-          name: Arcade-Clipboard-macos-build-only
-          path: App dev/Arcade-clipboard/apps/flutter_app/build/macos/Build/Products/Release/Arcade Clipboard.app/
+          name: Arcade-Clipboard-macos-dmg
+          path: App dev/Arcade-clipboard/dist/packages/Arcade-Clipboard_*_macos_*.dmg
           if-no-files-found: error
           retention-days: 14

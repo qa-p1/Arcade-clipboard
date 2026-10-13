@@ -56,6 +56,20 @@ pub async fn call(request: String) -> Result<String, String> {
             serde_json::to_value(crate::link::manifest(&settings))
                 .map_err(|_| "Could not encode the manifest".to_string())?
         }
+        #[cfg(not(any(target_os = "android", target_os = "ios")))]
+        "install_status" => tokio::task::spawn_blocking(|| {
+            let environment =
+                arcade_link::install::Environment::discover().map_err(|e| e.to_string())?;
+            let status = arcade_link::install::integration_status(
+                &environment,
+                arcade_link::ids::CLIPBOARD,
+                &std::env::var("SHELL").unwrap_or_default(),
+            )
+            .map_err(|e| e.to_string())?;
+            serde_json::to_value(status).map_err(|e| e.to_string())
+        })
+        .await
+        .map_err(|_| "Could not read the installation status".to_string())??,
         #[cfg(target_os = "macos")]
         "install_check" => {
             let args: Vec<String> = value
