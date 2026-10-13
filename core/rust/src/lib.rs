@@ -27,6 +27,8 @@ mod relay_transport;
 mod secret;
 mod store;
 mod transport;
+#[cfg(any(target_os = "windows", test))]
+mod windows_login;
 
 pub use core::Core;
 

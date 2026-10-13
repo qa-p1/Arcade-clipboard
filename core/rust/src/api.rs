@@ -70,6 +70,33 @@ pub async fn call(request: String) -> Result<String, String> {
         })
         .await
         .map_err(|_| "Could not read the installation status".to_string())??,
+        #[cfg(target_os = "windows")]
+        "windows_login_status" => {
+            let status = tokio::task::spawn_blocking(crate::windows_login::current_status)
+                .await
+                .map_err(|_| "Could not read the login setting".to_string())?
+                .map_err(|e| e.to_string())?;
+            match status {
+                crate::windows_login::Status::Portable => {
+                    serde_json::json!({"installed": false, "enabled": false})
+                }
+                crate::windows_login::Status::Installed { enabled } => {
+                    serde_json::json!({"installed": true, "enabled": enabled})
+                }
+            }
+        }
+        #[cfg(target_os = "windows")]
+        "windows_login_set" => {
+            let enabled = value
+                .get("enabled")
+                .and_then(Value::as_bool)
+                .ok_or_else(|| "Request is missing enabled".to_string())?;
+            tokio::task::spawn_blocking(move || crate::windows_login::set_current(enabled))
+                .await
+                .map_err(|_| "Could not update the login setting".to_string())?
+                .map_err(|e| e.to_string())?;
+            serde_json::json!({})
+        }
         #[cfg(target_os = "macos")]
         "install_check" => {
             let args: Vec<String> = value

@@ -339,7 +339,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
             await _link.firstTrayAnswer
                 .timeout(const Duration(milliseconds: 300), onTimeout: () {});
             await _desktop.setBackgroundEnabled(_backgroundEnabled);
-            _launchAtLogin = await _desktop.launchAtLoginEnabled();
+            _launchAtLogin = await _readLaunchAtLogin();
             if (_startInBackground && _backgroundEnabled) {
               await _desktop.hideMainWindow();
             }
@@ -821,9 +821,30 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       });
 
   Future<void> setLaunchAtLogin(bool enabled) async => _perform(() async {
-        await _desktop.setLaunchAtLogin(enabled);
-        _launchAtLogin = await _desktop.launchAtLoginEnabled();
+        if (await _windowsInstalled()) {
+          // Remove the portable Run value first so the installer's Startup
+          // shortcut and the Run value never both start Clipboard.
+          await _desktop.setLaunchAtLogin(false);
+          await _core.invoke('windows_login_set', {'enabled': enabled});
+        } else {
+          await _desktop.setLaunchAtLogin(enabled);
+        }
+        _launchAtLogin = await _readLaunchAtLogin();
       });
+
+  /// On Windows an installation receipt selects the installer's Startup
+  /// shortcut; portable copies keep the bridge's Run value.
+  Future<bool> _windowsInstalled() async =>
+      Platform.isWindows &&
+      (await _core.invoke('windows_login_status'))['installed'] == true;
+
+  Future<bool> _readLaunchAtLogin() async {
+    if (Platform.isWindows) {
+      final login = await _core.invoke('windows_login_status');
+      if (login['installed'] == true) return login['enabled'] == true;
+    }
+    return _desktop.launchAtLoginEnabled();
+  }
 
   Future<void> addText(String text) async => _perform(() async {
         if (!hasMesh) {
