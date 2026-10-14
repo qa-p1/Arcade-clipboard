@@ -154,9 +154,10 @@ pub fn run_with_channel(install_cli: bool, channel: Option<&str>) -> Result<Valu
     let runtime = Runtime::discover().map_err(|e| e.to_string())?;
     let source = macos::bundle_for(&runtime.executable)
         .ok_or("Arcade Clipboard isn't running from an app bundle")?;
-    let root = environment.home.join("Applications");
-    std::fs::create_dir_all(&root).map_err(|e| e.to_string())?;
-    let target = root.join(source.file_name().ok_or("bundle has no name")?);
+    let existing = environment.receipts().read(ID).map_err(|e| e.to_string())?;
+    let target = bundle_destination(&environment, existing.as_ref()).map_err(|e| e.to_string())?;
+    let root = target.parent().ok_or("bundle has no parent")?;
+    std::fs::create_dir_all(root).map_err(|e| e.to_string())?;
     let owned = environment
         .receipts()
         .read(ID)
@@ -206,6 +207,27 @@ impl Drop for Stage {
     fn drop(&mut self) {
         let _ = std::fs::remove_dir_all(&self.0);
     }
+}
+
+fn bundle_destination(
+    environment: &Environment,
+    receipt: Option<&Receipt>,
+) -> std::io::Result<PathBuf> {
+    let name = "Arcade Clipboard.app";
+    if let Some(receipt) = receipt.filter(|r| r.method == InstallMethod::MacosBundle) {
+        receipt.validate_native_paths()?;
+        if receipt.path.file_name().is_some_and(|n| n == name)
+            && receipt.path.parent().is_some_and(|p| {
+                p == environment.home.join("Applications") || p == Path::new("/Applications")
+            })
+        {
+            return Ok(receipt.path.clone());
+        }
+        return Err(std::io::Error::other(
+            "the recorded bundle is outside its Applications folder",
+        ));
+    }
+    Ok(environment.home.join("Applications").join(name))
 }
 
 fn bundle_cli(environment: &Environment, receipt: &Receipt) -> Option<PathBuf> {
@@ -339,6 +361,29 @@ pub fn dismiss() -> Result<Value, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn updates_keep_the_adopted_applications_folder() {
+        let root = tempfile::tempdir().unwrap();
+        let environment = Environment::under(root.path());
+        assert_eq!(
+            bundle_destination(&environment, None).unwrap(),
+            environment.home.join("Applications/Arcade Clipboard.app")
+        );
+        let mut old = receipt(
+            &environment,
+            Path::new("/Applications/Arcade Clipboard.app"),
+            None,
+            None,
+        )
+        .unwrap();
+        assert_eq!(
+            bundle_destination(&environment, Some(&old)).unwrap(),
+            old.path
+        );
+        old.path = environment.home.join("Downloads/Arcade Clipboard.app");
+        assert!(bundle_destination(&environment, Some(&old)).is_err());
+    }
 
     fn bundle(environment: &Environment, name: &str) -> (PathBuf, Runtime) {
         let bundle = environment

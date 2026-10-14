@@ -53,7 +53,7 @@ recorded yet.
 | `cargo test --workspace` (Rust core and relay) | 63 passed |
 | `flutter test` | 25 passed |
 | CI: Rust, Linux bundle, Windows and macOS desktop builds with Rust core tests | passing at `0f86bc1` |
-| Branch CI: Windows Inno installer and macOS dmg lifecycle checks | Defined on `arcade/tools-hub`; first run pending. CI only, not a real desktop. |
+| Branch CI: Windows Inno installer and macOS dmg lifecycle checks | Passed at `119d3c2`: [run 38526545948](https://github.com/qa-p1/Arcade-clipboard/actions/runs/38526545948). CI only, not a real desktop. |
 | Installer changes, local Linux validation (2026-10-13) | 73 Rust tests and 27 Flutter tests passed; Rust formatting/Clippy, Flutter analysis, docs/checksums, YAML, Bash/ShellCheck and PowerShell parsing passed. No Windows/macOS installer was run locally. |
 | Linux AppImage, local build | Built `Arcade-Clipboard-0.1.0-x86_64.AppImage`; `--version` and `--arcade-manifest` passed in Arcade Link's isolated e2e runner; `ldd` checked 11 ELF files with no missing libraries; size 14,760,440 bytes | 2026-10-11 |
 | Arcade Link e2e, `clipboard` and `clipboard_ui` groups and cross-app flows | all passing (74/74 ecosystem checks) |
@@ -83,7 +83,7 @@ release workflow's existing `scripts/package-desktop.py`. These checks are
 
 - Windows and macOS build and pass the core tests in recorded CI, but have not
   been run interactively. Installer coverage is now defined in branch CI;
-  its first result is pending. macOS installer uninstall/repair, Gatekeeper
+  it passed at `119d3c2`. macOS installer uninstall/repair, Gatekeeper
   and a real desktop session remain unverified by these checks.
 - The AppImage has only had isolated command-line smoke checks, not a real
   desktop install test. Its `--install` and `--uninstall` behavior is not

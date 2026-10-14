@@ -2,8 +2,8 @@
 # CI only, not a real desktop: Clipboard's DMG lifecycle with an isolated home.
 set -euo pipefail
 
-if [[ $# -ne 2 ]]; then
-  echo "usage: $0 <image.dmg> <version>" >&2
+if [[ $# -lt 2 || $# -gt 3 ]]; then
+  echo "usage: $0 <image.dmg> <bundle-version> [release-version]" >&2
   exit 2
 fi
 [[ "${GITHUB_ACTIONS:-}" == true && "$(uname -s)" == Darwin ]] || {
@@ -13,6 +13,7 @@ fi
 : "${RUNNER_TEMP:?macOS CI runner temporary directory is required}"
 image=$(cd "$(dirname "$1")" && pwd)/$(basename "$1")
 version=$2
+release_version=${3:-$version}
 root=$(mktemp -d "$RUNNER_TEMP/clipboard-dmg.XXXXXX")
 mount="$root/mount"
 mounted=0
@@ -36,6 +37,8 @@ source_app="$mount/Arcade Clipboard.app"
 plutil -lint "$source_app/Contents/Info.plist"
 executable=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$source_app/Contents/Info.plist")
 [[ -x "$source_app/Contents/MacOS/$executable" ]]
+lipo -verify_arch arm64 x86_64 "$source_app/Contents/MacOS/$executable"
+lipo -verify_arch arm64 x86_64 "$source_app/Contents/Frameworks/libarcade_core.dylib"
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$source_app/Contents/Info.plist")" == "$version" ]]
 run_cli() {
   python3 - "$@" <<'PY'
@@ -53,7 +56,7 @@ cmp "$source_app/Contents/Frameworks/libarcade_core.dylib" "$installed/Contents/
 plutil -lint "$installed/Contents/Info.plist"
 run_cli "$installed/Contents/MacOS/$executable" --version > "$root/version.txt"
 run_cli "$installed/Contents/MacOS/$executable" --integration-status > "$root/status.json"
-python3 - "$ARCADE_HOME/installs/arcade.clipboard.json" "$installed" "$version" "$executable" "$root" <<'PY'
+python3 - "$ARCADE_HOME/installs/arcade.clipboard.json" "$installed" "$release_version" "$executable" "$root" <<'PY'
 import json
 from pathlib import Path
 import sys

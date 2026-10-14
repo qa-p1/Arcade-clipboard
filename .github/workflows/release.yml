@@ -91,7 +91,11 @@ jobs:
           channel: stable
           cache: true
       - name: Install Rust
-        run: rustup toolchain install 1.98.1 --profile minimal
+        run: |
+          rustup toolchain install 1.98.1 --profile minimal
+          if [[ "$RUNNER_OS" == macOS ]]; then
+            rustup target add aarch64-apple-darwin x86_64-apple-darwin
+          fi
       - name: Install Linux build dependencies
         if: matrix.platform == 'linux'
         run: |
@@ -118,6 +122,13 @@ jobs:
           RELEASE_VERSION: ${{ needs.version.outputs.version }}
           PLATFORM: ${{ matrix.platform }}
         run: python3 scripts/package-desktop.py --version "$RELEASE_VERSION" --platform "$PLATFORM"
+      - name: Smoke-test the release DMG before upload
+        if: matrix.platform == 'macos'
+        env:
+          RELEASE_VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          bundle_version="$(python3 -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("Cargo.toml").read_text())["workspace"]["package"]["version"])')"
+          bash scripts/verify-dmg.sh "dist/packages/Arcade-Clipboard_${RELEASE_VERSION}_macos_universal.dmg" "$bundle_version" "$RELEASE_VERSION"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: release-${{ matrix.platform }}

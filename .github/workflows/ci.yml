@@ -179,7 +179,9 @@ jobs:
           channel: stable
           cache: true
       - name: Install Rust
-        run: rustup toolchain install 1.98.1 --profile minimal
+        run: |
+          rustup toolchain install 1.98.1 --profile minimal
+          rustup target add aarch64-apple-darwin x86_64-apple-darwin
       - name: Test Rust core and build the Flutter desktop app with its core
         run: |
           python3 scripts/check-docs.py
