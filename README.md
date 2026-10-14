@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="apps/flutter_app/assets/arcade/arcade.clipboard.svg" width="96" alt="Arcade Clipboard logo">
+  <img src="assets/logo.png" width="112" alt="Arcade Clipboard icon">
 </p>
 
 <h1 align="center">Arcade Clipboard</h1>
