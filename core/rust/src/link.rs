@@ -132,12 +132,21 @@ fn events() -> &'static Events {
 
 pub(crate) fn push_event(event: Value) {
     let mut queue = events().queue.lock().unwrap_or_else(|e| e.into_inner());
-    if event["kind"] == "registry_changed" || event["kind"] == "invoke_progress" {
+    enqueue_event(&mut queue, event);
+    drop(queue);
+    events().ready.notify_one();
+}
+
+fn enqueue_event(queue: &mut VecDeque<Value>, event: Value) {
+    // Tray ownership is current state, not an action to replay. A busy UI must
+    // not re-register an icon for an old Own event after Tools hosts it again.
+    if event["kind"] == "registry_changed"
+        || event["kind"] == "invoke_progress"
+        || event["kind"] == "tray_host"
+    {
         queue.retain(|old| old["kind"] != event["kind"] || old["request"] != event["request"]);
     }
     queue.push_back(event);
-    drop(queue);
-    events().ready.notify_one();
 }
 
 /// Waits for the next UI request. No timeout: an idle wait costs nothing.
@@ -1045,6 +1054,26 @@ pub(crate) fn quit_running() -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn busy_ui_receives_current_tray_ownership_without_replaying_old_icons() {
+        let mut queue = VecDeque::new();
+        enqueue_event(&mut queue, json!({"kind": "pick", "request": 7}));
+        for _ in 0..40 {
+            enqueue_event(&mut queue, json!({"kind": "tray_host", "hosted": false}));
+            enqueue_event(&mut queue, json!({"kind": "tray_host", "hosted": true}));
+        }
+        enqueue_event(&mut queue, json!({"kind": "quit"}));
+        assert_eq!(queue.len(), 3);
+        assert_eq!(queue.pop_front().unwrap()["request"], 7);
+        assert_eq!(
+            queue.pop_front().unwrap(),
+            json!({"kind": "tray_host", "hosted": true})
+        );
+        assert_eq!(queue.pop_front().unwrap()["kind"], "quit");
+        enqueue_event(&mut queue, json!({"kind": "tray_host", "hosted": false}));
+        assert_eq!(queue.pop_front().unwrap()["hosted"], false);
+    }
 
     const PNG: &[u8] = &[
         0x89, b'P', b'N', b'G', b'\r', b'\n', 0x1a, b'\n', 0, 0, 0, 13, b'I', b'H', b'D', b'R', 0,
