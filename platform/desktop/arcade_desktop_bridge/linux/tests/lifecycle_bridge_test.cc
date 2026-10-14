@@ -13,6 +13,56 @@ struct ItemProbe {
   WatcherProbe* watcher;
 };
 
+void CheckAutostart() {
+  assert(g_strcmp0(g_getenv("ARCADE_E2E_INNER"), "1") == 0);
+  const gchar* root = g_getenv("ARCADE_E2E_ROOT");
+  assert(root != nullptr);
+  const std::string image = std::string(root) + "/Clipboard test.AppImage";
+  assert(g_file_set_contents(image.c_str(), "appimage", -1, nullptr));
+  const gchar* old_appimage = g_getenv("APPIMAGE");
+  const std::string previous_appimage = old_appimage == nullptr ? "" : old_appimage;
+  g_setenv("APPIMAGE", image.c_str(), TRUE);
+  assert(AutostartExecutable() == image);
+  const std::string path = AutostartPath();
+  assert(path.rfind(std::string(g_getenv("ARCADE_HOME")) + "/", 0) == 0);
+  assert(!PersistentPath(image) && InstallPathAllowed(image));
+  assert(!InstallPathAllowed("/tmp/other-session/Clipboard.AppImage"));
+  std::string error;
+  assert(SetAutostart(true, &error));
+  assert(LaunchAtLoginEnabled());
+  g_autoptr(GKeyFile) entry = g_key_file_new();
+  assert(g_key_file_load_from_file(entry, path.c_str(), G_KEY_FILE_NONE, nullptr));
+  gchar* command = g_key_file_get_string(entry, "Desktop Entry", "Exec", nullptr);
+  assert(command != nullptr && command == DesktopExecQuote(image));
+  g_free(command);
+  assert(SetAutostart(false, &error));
+  assert(!LaunchAtLoginEnabled() && !g_file_test(path.c_str(), G_FILE_TEST_EXISTS));
+
+  // The shared Link installer owns its entry with X-Arcade-Id, not our old marker.
+  const char* shared = "[Desktop Entry]\nType=Application\nX-Arcade-Id=arcade.clipboard\nExec=/opt/Clipboard --background\n";
+  assert(g_file_set_contents(path.c_str(), shared, -1, nullptr));
+  assert(LaunchAtLoginEnabled());
+  assert(SetAutostart(true, &error));
+  assert(SetAutostart(false, &error));
+  const char* legacy = "[Desktop Entry]\nX-ArcadeClipboard-Managed=true\n";
+  assert(g_file_set_contents(path.c_str(), legacy, -1, nullptr));
+  assert(LaunchAtLoginEnabled() && SetAutostart(false, &error));
+  const char* foreign = "[Desktop Entry]\nX-Arcade-Id=arcade.other\nX-ArcadeClipboard-Managed=true\n";
+  assert(g_file_set_contents(path.c_str(), foreign, -1, nullptr));
+  assert(!LaunchAtLoginEnabled());
+  assert(!SetAutostart(true, &error) && !SetAutostart(false, &error));
+  gchar* contents = nullptr;
+  assert(g_file_get_contents(path.c_str(), &contents, nullptr, nullptr));
+  assert(g_strcmp0(contents, foreign) == 0);
+  g_free(contents);
+  assert(unlink(path.c_str()) == 0);
+  g_setenv("APPIMAGE", "/tmp/other-session/Clipboard.AppImage", TRUE);
+  assert(!SetAutostart(true, &error));
+  if (previous_appimage.empty()) g_unsetenv("APPIMAGE");
+  else g_setenv("APPIMAGE", previous_appimage.c_str(), TRUE);
+  unlink(image.c_str());
+}
+
 void ItemRead(GObject* source, GAsyncResult* result, gpointer data) {
   auto* probe = static_cast<ItemProbe*>(data);
   GError* error = nullptr;
@@ -134,6 +184,7 @@ int main() {
   g_free(loaded);
   g_free(serialized);
   g_key_file_unref(config);
+  CheckAutostart();
   CheckTrayRegistration();
   return 0;
 }

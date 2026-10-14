@@ -17,7 +17,10 @@ pub const ME: &str = arcade_link::ids::CLIPBOARD;
 pub const NAME: &str = "Arcade Clipboard";
 pub const CLI_NAME: &str = "arcade-clipboard";
 pub const DESKTOP_ID: &str = "dev.arcade.clipboard";
-pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+pub const VERSION: &str = match option_env!("ARCADE_RELEASE_VERSION") {
+    Some(version) if !version.is_empty() => version,
+    _ => env!("CARGO_PKG_VERSION"),
+};
 
 pub fn app_info() -> AppInfo {
     AppInfo {
@@ -574,6 +577,7 @@ mod tests {
             install_cli: false,
         };
         let receipt = install_copy(&env, &runtime, &opts).unwrap();
+        assert_eq!(receipt.version, VERSION);
         assert!(receipt.path.is_file());
         let desktop =
             fs::read_to_string(receipt.integration.desktop_entry.as_ref().unwrap()).unwrap();

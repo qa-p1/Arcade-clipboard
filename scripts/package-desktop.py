@@ -43,6 +43,7 @@ def main():
             shutil.rmtree(stage)
         stage.mkdir()
         shutil.copytree(source, stage / source.name, symlinks=True)
+        (stage / 'Applications').symlink_to('/Applications', target_is_directory=True)
         (stage / 'INSTALL.txt').write_text('Copy Arcade Clipboard.app to ~/Applications.\nOpen it yourself; this build is not notarized.\n')
         arch = 'arm64' if platform.machine().lower() in ('arm64', 'aarch64') else 'x64'
         subprocess.run(['hdiutil', 'create', '-volname', 'Arcade Clipboard', '-srcfolder', str(stage),

@@ -355,6 +355,10 @@ bool OpenTray(LinuxLifecycle* state, std::string* error) {
 }
 
 std::string AutostartPath() {
+  const gchar* arcade_home = g_getenv("ARCADE_HOME");
+  if (arcade_home != nullptr && *arcade_home != '\0') {
+    return std::string(arcade_home) + "/.config/autostart/arcade-clipboard.desktop";
+  }
   return std::string(g_get_user_config_dir()) + "/autostart/arcade-clipboard.desktop";
 }
 
@@ -378,6 +382,45 @@ bool PersistentPath(const std::string& path) {
       path.rfind("/var/tmp/", 0) != 0 && path.find("/.cache/") == std::string::npos;
 }
 
+bool InstallPathAllowed(const std::string& path) {
+  if (PersistentPath(path)) return true;
+  // Link's e2e runner is the only lifecycle test environment allowed here.
+  const gchar* root = g_getenv("ARCADE_E2E_ROOT");
+  if (g_strcmp0(g_getenv("ARCADE_E2E_INNER"), "1") != 0 || root == nullptr || *root != '/') return false;
+  const std::string prefix = std::string(root) + "/";
+  return path.rfind(prefix, 0) == 0 && path.find("/../") == std::string::npos;
+}
+
+std::string AutostartExecutable() {
+  const gchar* appimage = g_getenv("APPIMAGE");
+  if (appimage != nullptr && *appimage != '\0') return appimage;
+  gchar* executable = g_file_read_link("/proc/self/exe", nullptr);
+  const std::string path = executable == nullptr ? "" : executable;
+  g_free(executable);
+  return path;
+}
+
+bool AutostartOwned(const gchar* contents, gsize length) {
+  if (contents == nullptr) return false;
+  g_autoptr(GKeyFile) entry = g_key_file_new();
+  if (!g_key_file_load_from_data(entry, contents, length, G_KEY_FILE_NONE, nullptr)) return false;
+  gchar* id = g_key_file_get_string(entry, "Desktop Entry", "X-Arcade-Id", nullptr);
+  const bool owned = id != nullptr
+      ? g_strcmp0(id, "arcade.clipboard") == 0
+      : g_key_file_get_boolean(entry, "Desktop Entry", "X-ArcadeClipboard-Managed", nullptr);
+  g_free(id);
+  return owned;
+}
+
+bool LaunchAtLoginEnabled() {
+  gchar* contents = nullptr;
+  gsize length = 0;
+  const bool loaded = g_file_get_contents(AutostartPath().c_str(), &contents, &length, nullptr);
+  const bool enabled = loaded && AutostartOwned(contents, length);
+  g_free(contents);
+  return enabled;
+}
+
 std::string DesktopExecQuote(const std::string& path) {
   std::string value = "\"";
   for (const char character : path) {
@@ -394,9 +437,13 @@ bool SetAutostart(bool enabled, std::string* error) {
   gsize previous_length = 0;
   GError* failure = nullptr;
   const bool exists = g_file_test(path.c_str(), G_FILE_TEST_EXISTS);
+  if (g_file_test(path.c_str(), G_FILE_TEST_IS_SYMLINK)) {
+    *error = "An existing login entry is a symbolic link and could not be safely updated.";
+    return false;
+  }
   if (exists) {
     if (!g_file_get_contents(path.c_str(), &previous, &previous_length, &failure) ||
-        g_strstr_len(previous, static_cast<gssize>(previous_length), "X-ArcadeClipboard-Managed=true") == nullptr) {
+        !AutostartOwned(previous, previous_length)) {
       *error = "An existing login entry could not be safely updated. Remove or rename arcade-clipboard.desktop first.";
       g_free(previous);
       g_clear_error(&failure);
@@ -417,11 +464,9 @@ bool SetAutostart(bool enabled, std::string* error) {
     }
     return true;
   }
-  gchar* executable = g_file_read_link("/proc/self/exe", &failure);
-  const std::string executable_path = executable == nullptr ? "" : executable;
-  g_free(executable);
-  g_clear_error(&failure);
-  if (!PersistentPath(executable_path) || !PersistentPath(path)) {
+  const std::string executable_path = AutostartExecutable();
+  if (!InstallPathAllowed(executable_path) || !InstallPathAllowed(path) ||
+      !g_file_test(executable_path.c_str(), G_FILE_TEST_IS_REGULAR)) {
     *error = "Launch at login requires the app to be installed in a persistent folder.";
     return false;
   }
@@ -441,6 +486,7 @@ bool SetAutostart(bool enabled, std::string* error) {
   g_key_file_set_boolean(validation, "Desktop Entry", "Terminal", FALSE);
   g_key_file_set_boolean(validation, "Desktop Entry", "X-GNOME-Autostart-enabled", TRUE);
   g_key_file_set_boolean(validation, "Desktop Entry", "X-ArcadeClipboard-Managed", TRUE);
+  g_key_file_set_string(validation, "Desktop Entry", "X-Arcade-Id", "arcade.clipboard");
   gsize length = 0;
   gchar* contents = g_key_file_to_data(validation, &length, &failure);
   const bool valid = contents != nullptr && g_key_file_load_from_data(validation, contents, length, G_KEY_FILE_NONE, &failure);
@@ -509,11 +555,7 @@ bool HandleLifecycleMethod(LinuxLifecycle* state, FlMethodCall* call) {
     return true;
   }
   if (g_strcmp0(method, "launchAtLoginEnabled") == 0) {
-    gchar* contents = nullptr;
-    const bool loaded = g_file_get_contents(AutostartPath().c_str(), &contents, nullptr, nullptr);
-    const bool enabled = loaded && g_strstr_len(contents, -1, "X-ArcadeClipboard-Managed=true") != nullptr;
-    g_free(contents);
-    g_autoptr(FlValue) value = fl_value_new_bool(enabled);
+    g_autoptr(FlValue) value = fl_value_new_bool(LaunchAtLoginEnabled());
     Respond(call, value);
     return true;
   }

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:arcade_desktop_bridge/arcade_desktop_bridge.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -8,16 +9,13 @@ import 'app.dart';
 import 'platform/desktop_adapter.dart';
 import 'services/app_controller.dart';
 import 'services/core_api.dart';
+import 'services/desktop_commands.dart';
 
 void main(List<String> arguments) async {
   WidgetsFlutterBinding.ensureInitialized();
   await _waitForPredecessor();
   // The standard Arcade flags answer and exit without opening any UI.
-  if (arguments.contains('--version') ||
-      arguments.contains('--arcade-manifest') ||
-      arguments.contains('--quit') ||
-      arguments.contains('--integration-status') ||
-      (Platform.isMacOS && arguments.contains('--install'))) {
+  if (isHeadlessCommand(arguments, isMacOS: Platform.isMacOS)) {
     exit(await _command(arguments));
   }
   runApp(ArcadeApp(
@@ -82,11 +80,12 @@ Future<int> _command(List<String> arguments) async {
     } else if (arguments.contains('--integration-status')) {
       final status = await core.invoke('install_status');
       out.writeln(const JsonEncoder.withIndent('  ').convert(status));
-    } else if (Platform.isMacOS && arguments.contains('--install')) {
-      final installed =
-          await core.invoke('install_move', {'install_cli': true});
+    } else if (Platform.isMacOS &&
+        arguments.any(const {'--install', '--uninstall', '--repair'}.contains)) {
+      final installed = await runMacosInstallCommand(arguments,
+          core: core, bridge: ArcadeDesktopBridge());
       out.writeln(const JsonEncoder.withIndent('  ').convert(installed));
-      if (!arguments.contains('--no-launch')) {
+      if (arguments.contains('--install') && !arguments.contains('--no-launch')) {
         final result =
             await Process.run('/usr/bin/open', [installed['launch'] as String]);
         if (result.exitCode != 0) {

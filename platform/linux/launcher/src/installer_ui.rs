@@ -8,7 +8,7 @@ use crate::installer::{self, DialogState, Options, ME, NAME};
 use arcade_link::install::{strings, Detection, Environment, Runtime};
 use arcade_link::receipt::ManagedBy;
 
-const VERSION: &str = env!("CARGO_PKG_VERSION");
+const VERSION: &str = crate::installer::VERSION;
 
 #[derive(Debug, Clone)]
 pub enum Outcome {

@@ -84,7 +84,7 @@ impl LinkSettings {
 pub(crate) fn manifest(settings: &LinkSettings) -> Manifest {
     let mut m = Manifest::new(
         ids::CLIPBOARD,
-        env!("CARGO_PKG_VERSION"),
+        crate::VERSION,
         &arcade_link::manifest::current_executable(),
     );
     m.launch.background = vec!["--background".into()];

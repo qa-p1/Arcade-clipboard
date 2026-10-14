@@ -55,6 +55,9 @@ class ArcadeDesktopBridge {
   Future<void> relaunch(String path) =>
       _channel.invokeMethod<void>('relaunch', {'path': path});
 
+  Future<bool> confirmUninstall(bool removeData) async =>
+      await _channel.invokeMethod<bool>('confirmUninstall', {'removeData': removeData}) ?? false;
+
   Future<void> setLaunchAtLogin(bool enabled) =>
       _channel.invokeMethod<void>('setLaunchAtLogin', {'enabled': enabled});
 

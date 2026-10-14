@@ -70,6 +70,18 @@ pub async fn call(request: String) -> Result<String, String> {
         })
         .await
         .map_err(|_| "Could not read the installation status".to_string())??,
+        #[cfg(target_os = "linux")]
+        "linux_login_record" => {
+            let enabled = value
+                .get("enabled")
+                .and_then(Value::as_bool)
+                .ok_or_else(|| "Request is missing enabled".to_string())?;
+            tokio::task::spawn_blocking(move || crate::linux_login::record_current(enabled))
+                .await
+                .map_err(|_| "Could not record the login setting".to_string())?
+                .map_err(|e| e.to_string())?;
+            serde_json::json!({})
+        }
         #[cfg(target_os = "windows")]
         "windows_login_status" => {
             let status = tokio::task::spawn_blocking(crate::windows_login::current_status)
@@ -118,10 +130,31 @@ pub async fn call(request: String) -> Result<String, String> {
                 .get("install_cli")
                 .and_then(Value::as_bool)
                 .unwrap_or(false);
-            tokio::task::spawn_blocking(move || crate::macos_install::run(cli))
-                .await
-                .map_err(|_| "Could not move Arcade Clipboard".to_string())??
+            let channel = value
+                .get("channel")
+                .and_then(Value::as_str)
+                .map(str::to_owned);
+            tokio::task::spawn_blocking(move || match channel {
+                Some(channel) => crate::macos_install::run_with_channel(cli, Some(&channel)),
+                None => crate::macos_install::run(cli),
+            })
+            .await
+            .map_err(|_| "Could not move Arcade Clipboard".to_string())??
         }
+        #[cfg(target_os = "macos")]
+        "install_uninstall" => {
+            let remove_data = value
+                .get("remove_data")
+                .and_then(Value::as_bool)
+                .unwrap_or(false);
+            tokio::task::spawn_blocking(move || crate::macos_install::uninstall(remove_data))
+                .await
+                .map_err(|_| "Could not uninstall Arcade Clipboard".to_string())??
+        }
+        #[cfg(target_os = "macos")]
+        "install_repair" => tokio::task::spawn_blocking(crate::macos_install::repair)
+            .await
+            .map_err(|_| "Could not repair Arcade Clipboard".to_string())??,
         #[cfg(target_os = "macos")]
         "install_dismiss" => tokio::task::spawn_blocking(crate::macos_install::dismiss)
             .await
@@ -209,7 +242,7 @@ pub async fn call(request: String) -> Result<String, String> {
                 .ok_or_else(|| "Clipboard core is not initialized".to_string())?;
             core.request(value).await?
         }
-        "version" => serde_json::json!({"version": env!("CARGO_PKG_VERSION")}),
+        "version" => serde_json::json!({"version": crate::VERSION}),
         "shutdown" => {
             // Before the lifecycle lock, which waits for pending long-polls:
             // the endpoint must disappear promptly on quit.

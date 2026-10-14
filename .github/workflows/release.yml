@@ -32,6 +32,9 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
   version:
     runs-on: ubuntu-24.04
     outputs:
@@ -67,6 +70,8 @@ jobs:
 
   packages:
     needs: version
+    env:
+      ARCADE_RELEASE_VERSION: ${{ needs.version.outputs.version }}
     strategy:
       fail-fast: false
       matrix:
@@ -120,7 +125,7 @@ jobs:
           if-no-files-found: error
 
   publish:
-    needs: [version, packages]
+    needs: [ci, version, packages]
     runs-on: ubuntu-24.04
     permissions:
       contents: write

@@ -16,7 +16,9 @@ mod discovery;
 mod link;
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 mod link_consumer;
-#[cfg(target_os = "macos")]
+#[cfg(target_os = "linux")]
+mod linux_login;
+#[cfg(any(target_os = "macos", all(test, unix)))]
 mod macos_install;
 mod model;
 mod payload;
@@ -31,6 +33,11 @@ mod transport;
 mod windows_login;
 
 pub use core::Core;
+
+pub(crate) const VERSION: &str = match option_env!("ARCADE_RELEASE_VERSION") {
+    Some(version) if !version.is_empty() => version,
+    _ => env!("CARGO_PKG_VERSION"),
+};
 
 #[cfg(test)]
 mod integration_tests;

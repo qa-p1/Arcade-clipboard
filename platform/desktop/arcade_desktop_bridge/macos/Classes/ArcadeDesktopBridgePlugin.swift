@@ -68,6 +68,17 @@ public class ArcadeDesktopBridgePlugin: NSObject, FlutterPlugin {
       let response = alert.runModal()
       let index = response.rawValue - NSApplication.ModalResponse.alertFirstButtonReturn.rawValue
       result(["button": index, "installCli": cli.state == .on])
+    case "confirmUninstall":
+      let removeData = (call.arguments as? [String: Any])?["removeData"] as? Bool ?? false
+      let alert = NSAlert()
+      alert.messageText = "Uninstall Arcade Clipboard?"
+      alert.informativeText = removeData
+        ? "This removes the app, its integration entries, settings and data. Device keys remain in the system keychain."
+        : "This removes the app and its integration entries. Your settings and data will be kept."
+      alert.addButton(withTitle: "Uninstall")
+      alert.addButton(withTitle: "Cancel")
+      NSApp.activate(ignoringOtherApps: true)
+      result(alert.runModal() == .alertFirstButtonReturn)
     case "relaunch":
       let path = (call.arguments as? [String: Any])?["path"] as? String ?? ""
       let configuration = NSWorkspace.OpenConfiguration()

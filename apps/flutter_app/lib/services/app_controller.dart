@@ -827,7 +827,16 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
           await _desktop.setLaunchAtLogin(false);
           await _core.invoke('windows_login_set', {'enabled': enabled});
         } else {
+          final previous = await _desktop.launchAtLoginEnabled();
           await _desktop.setLaunchAtLogin(enabled);
+          if (Platform.isLinux) {
+            try {
+              await _core.invoke('linux_login_record', {'enabled': enabled});
+            } catch (_) {
+              await _desktop.setLaunchAtLogin(previous);
+              rethrow;
+            }
+          }
         }
         _launchAtLogin = await _readLaunchAtLogin();
       });
