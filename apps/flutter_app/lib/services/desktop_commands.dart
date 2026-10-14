@@ -9,7 +9,8 @@ bool isHeadlessCommand(List<String> arguments, {required bool isMacOS}) =>
       '--quit',
       '--integration-status',
     }.contains) ||
-    (isMacOS && arguments.any(const {'--install', '--uninstall', '--repair'}.contains));
+    (isMacOS &&
+        arguments.any(const {'--install', '--uninstall', '--repair'}.contains));
 
 /// These commands run before the resident app opens its profile or window.
 Future<Map<String, dynamic>> runMacosInstallCommand(

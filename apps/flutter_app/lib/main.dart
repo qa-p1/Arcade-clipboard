@@ -81,11 +81,13 @@ Future<int> _command(List<String> arguments) async {
       final status = await core.invoke('install_status');
       out.writeln(const JsonEncoder.withIndent('  ').convert(status));
     } else if (Platform.isMacOS &&
-        arguments.any(const {'--install', '--uninstall', '--repair'}.contains)) {
+        arguments
+            .any(const {'--install', '--uninstall', '--repair'}.contains)) {
       final installed = await runMacosInstallCommand(arguments,
           core: core, bridge: ArcadeDesktopBridge());
       out.writeln(const JsonEncoder.withIndent('  ').convert(installed));
-      if (arguments.contains('--install') && !arguments.contains('--no-launch')) {
+      if (arguments.contains('--install') &&
+          !arguments.contains('--no-launch')) {
         final result =
             await Process.run('/usr/bin/open', [installed['launch'] as String]);
         if (result.exitCode != 0) {
