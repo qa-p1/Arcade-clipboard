@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:arcade_desktop_bridge/arcade_desktop_bridge.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -8,14 +9,13 @@ import 'app.dart';
 import 'platform/desktop_adapter.dart';
 import 'services/app_controller.dart';
 import 'services/core_api.dart';
+import 'services/desktop_commands.dart';
 
 void main(List<String> arguments) async {
   WidgetsFlutterBinding.ensureInitialized();
   await _waitForPredecessor();
   // The standard Arcade flags answer and exit without opening any UI.
-  if (arguments.contains('--version') ||
-      arguments.contains('--arcade-manifest') ||
-      arguments.contains('--quit')) {
+  if (isHeadlessCommand(arguments, isMacOS: Platform.isMacOS)) {
     exit(await _command(arguments));
   }
   runApp(ArcadeApp(
@@ -50,12 +50,23 @@ Future<bool> _running(int processId) async {
   }
 }
 
+/// Where `--version` and `--arcade-manifest` answer. The Linux runner moves
+/// engine logging off stdout and passes the real stdout as ARCADE_ANSWER_FD.
+IOSink _answerSink() {
+  final fd = Platform.environment['ARCADE_ANSWER_FD'];
+  if (Platform.isLinux && fd != null && int.tryParse(fd) != null) {
+    return File('/proc/self/fd/$fd').openWrite(mode: FileMode.writeOnly);
+  }
+  return stdout;
+}
+
 Future<int> _command(List<String> arguments) async {
   final core = RustCoreApi();
+  final out = _answerSink();
   try {
     if (arguments.contains('--version')) {
       final version = await core.invoke('version');
-      stdout.writeln('Arcade Clipboard ${version['version']}');
+      out.writeln('Arcade Clipboard ${version['version']}');
     } else if (arguments.contains('--arcade-manifest')) {
       final prefs = await SharedPreferences.getInstance();
       final manifest = await core.invoke('link_manifest', {
@@ -65,13 +76,32 @@ Future<int> _command(List<String> arguments) async {
           'shortcut': prefs.getString('mesh_shortcut') ?? _defaultShortcut(),
         },
       });
-      stdout.writeln(const JsonEncoder.withIndent('  ').convert(manifest));
+      out.writeln(const JsonEncoder.withIndent('  ').convert(manifest));
+    } else if (arguments.contains('--integration-status')) {
+      final status = await core.invoke('install_status');
+      out.writeln(const JsonEncoder.withIndent('  ').convert(status));
+    } else if (Platform.isMacOS &&
+        arguments
+            .any(const {'--install', '--uninstall', '--repair'}.contains)) {
+      final installed = await runMacosInstallCommand(arguments,
+          core: core, bridge: ArcadeDesktopBridge());
+      out.writeln(const JsonEncoder.withIndent('  ').convert(installed));
+      if (arguments.contains('--install') &&
+          !arguments.contains('--no-launch')) {
+        final result =
+            await Process.run('/usr/bin/open', [installed['launch'] as String]);
+        if (result.exitCode != 0) {
+          throw StateError(
+              'Could not open the installed app: ${result.stderr}');
+        }
+      }
     } else {
       // The desktop single-instance channel (Linux D-Bus) handles --quit
       // before Dart runs when it can; this covers the rest over the Link.
       await core.invoke('link_quit_running');
     }
-    await stdout.flush();
+    await out.flush();
+    if (!identical(out, stdout)) await out.close();
     return 0;
   } catch (error) {
     stderr.writeln('Arcade Clipboard: $error');

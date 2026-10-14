@@ -1,19 +1,17 @@
 [workspace]
-members = ["core/rust", "services/relay", "tests/driver"]
+members = ["core/rust", "services/relay", "tests/driver", "platform/linux/launcher"]
 resolver = "2"
 
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
-rust-version = "1.89"
+rust-version = "1.88"
 
 [workspace.dependencies]
-# Arcade Link (the shared protocol), pinned to a release tag. To build
-# against a local checkout instead, add to .cargo/config.toml (not committed):
-#   [patch."https://github.com/qa-p1/Arcade-Link"]
-#   arcade-link = { path = "<path to>/Arcade-link/crates/arcade-link" }
-arcade-link = { git = "https://github.com/qa-p1/Arcade-Link", tag = "v0.2.0", features = ["watch"] }
+# Arcade Link shared protocol, installer and tray-host runtime.
+arcade-link = { git = "https://github.com/qa-p1/Arcade-Link", tag = "v0.3.0", features = ["watch", "install", "trayhost"] }
+fs2 = "0.4.3"
 
 [profile.release]
 lto = "thin"

@@ -104,7 +104,7 @@ fn encrypt(state: &mut TransportState, message: &WireMessage) -> Result<Vec<u8>,
     Ok(output)
 }
 
-fn decrypt(state: &mut TransportState, frame: &[u8]) -> Result<WireMessage, String> {
+pub(crate) fn decrypt(state: &mut TransportState, frame: &[u8]) -> Result<WireMessage, String> {
     let mut output = vec![0u8; MAX_FRAME_BYTES];
     let len = state
         .read_message(frame, &mut output)

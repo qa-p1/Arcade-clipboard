@@ -62,6 +62,22 @@ class LinkService {
   /// The caller gave up on a pick (the picker should close).
   Future<void> Function(int request)? onPickCancelled;
 
+  /// Arcade Tools started or stopped hosting this app's tray icon.
+  Future<void> Function(bool hosted)? onTrayHost;
+
+  /// `app.shortcuts.set`: apply [accelerator] and return the Link result
+  /// (`applied`, `via`, `hint`); throw to report an error.
+  Future<Map<String, Object?>> Function(String accelerator)? onShortcutSet;
+  Future<void> Function()? onSettings;
+  Future<void> Function()? onRestart;
+
+  final Completer<void> _firstTrayAnswer = Completer<void>();
+
+  /// Completes on the first tray-host answer, so the app's own icon never
+  /// flashes while Tools hosts it. Callers cap the wait at 300 ms.
+  Future<void> get firstTrayAnswer =>
+      supported ? _firstTrayAnswer.future : Future<void>.value();
+
   static bool get supported =>
       Platform.isLinux || Platform.isWindows || Platform.isMacOS;
 
@@ -140,6 +156,16 @@ class LinkService {
               event['caller_name'] as String? ?? 'another app');
         case 'pick_cancelled':
           await onPickCancelled?.call(event['request'] as int);
+        case 'tray_host':
+          if (!_firstTrayAnswer.isCompleted) _firstTrayAnswer.complete();
+          await onTrayHost?.call(event['hosted'] == true);
+        case 'showSettings':
+          await onSettings?.call();
+        case 'restartRequested':
+          await onRestart?.call();
+        case 'shortcut_set':
+          unawaited(_answerShortcut(
+              event['request'] as int, event['accelerator'] as String? ?? ''));
         case 'closed':
           close();
           return;
@@ -161,6 +187,23 @@ class LinkService {
             _earlyDone[id] = event;
           }
       }
+    }
+  }
+
+  Future<void> _answerShortcut(int request, String accelerator) async {
+    Map<String, Object?> result;
+    try {
+      final handler = onShortcutSet;
+      if (handler == null) throw StateError('Shortcuts are not available.');
+      result = await handler(accelerator);
+    } catch (exception) {
+      result = {'error': '$exception'};
+    }
+    try {
+      await _core.invoke(
+          'link_shortcut_result', {'request': request, 'result': result});
+    } catch (exception) {
+      Diagnostics.log('link', 'shortcut answer failed: $exception');
     }
   }
 

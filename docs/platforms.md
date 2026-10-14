@@ -45,7 +45,7 @@ To build: install the Android SDK and NDK plus the Rust Android targets, run `py
 
 ## Windows
 
-The Windows plugin uses the native clipboard listener for capture and supports text, HTML, RTF, images and files. The shortcut defaults to **Ctrl+Alt+V**. Before pasting, the app checks that the remembered window still belongs to the same process, then restores focus and sends Ctrl+V. It includes a tray icon and launch at login. Build with `bash scripts/dev.sh build-windows` on Windows; CMake compiles and bundles the Rust library. The `windows-latest` CI job builds it and runs the Rust core tests.
+The Windows plugin uses the native clipboard listener for capture and supports text, HTML, RTF, images and files. The shortcut defaults to **Ctrl+Alt+V**. Before pasting, the app checks that the remembered window still belongs to the same process, then restores focus and sends Ctrl+V. It includes a tray icon and launch at login: an installed copy toggles the installer's Startup shortcut and records it in its receipt; a portable copy uses the `ArcadeClipboard` Run value. Build with `bash scripts/dev.sh build-windows` on Windows; CMake compiles and bundles the Rust library. The `windows-latest` CI job builds it and runs the Rust core tests.
 
 ## macOS
 

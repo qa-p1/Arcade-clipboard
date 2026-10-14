@@ -310,14 +310,29 @@ async fn exchange_pairing_approval<S: tokio::io::AsyncRead + tokio::io::AsyncWri
     mut decision: watch::Receiver<Option<bool>>,
     expires_at: i64,
 ) -> Result<bool, String> {
+    let remaining = expires_at.saturating_sub(store::now_ms());
+    if remaining <= 0 {
+        return Ok(false);
+    }
+    let (mut reader, mut writer) = tokio::io::split(stream);
+    // read_exact is not cancellation safe. Keep one frame read alive while
+    // local consent changes, and decrypt only after the full frame arrives.
+    // Splitting the socket lets us send consent without dropping that read.
+    let incoming = transport::read_frame(&mut reader);
+    let deadline = tokio::time::sleep(Duration::from_millis(remaining as u64));
+    tokio::pin!(incoming, deadline);
     let mut local_approved = false;
     let mut remote_approved = false;
     loop {
         let local = *decision.borrow_and_update();
         if let Some(accepted) = local {
             if !local_approved {
-                transport::send_secure(stream, secure, &WireMessage::PairDecision { accepted })
-                    .await?;
+                transport::send_secure(
+                    &mut writer,
+                    secure,
+                    &WireMessage::PairDecision { accepted },
+                )
+                .await?;
                 if !accepted {
                     return Ok(false);
                 }
@@ -327,23 +342,18 @@ async fn exchange_pairing_approval<S: tokio::io::AsyncRead + tokio::io::AsyncWri
         if local_approved && remote_approved {
             return Ok(true);
         }
-        let remaining = expires_at.saturating_sub(store::now_ms());
-        if remaining <= 0 {
-            return Ok(false);
-        }
         tokio::select! {
             changed = decision.changed(), if !local_approved => {
                 if changed.is_err() { return Ok(false); }
             }
-            incoming = tokio::time::timeout(Duration::from_millis(remaining as u64), transport::read_secure(stream, secure)), if !remote_approved => {
-                match incoming {
-                    Ok(Ok(WireMessage::PairDecision { accepted: true })) => remote_approved = true,
-                    Ok(Ok(WireMessage::PairDecision { accepted: false })) | Err(_) => return Ok(false),
-                    Ok(Err(error)) => return Err(error),
+            frame = &mut incoming, if !remote_approved => {
+                match transport::decrypt(secure, &frame?)? {
+                    WireMessage::PairDecision { accepted: true } => remote_approved = true,
+                    WireMessage::PairDecision { accepted: false } => return Ok(false),
                     _ => return Err("Unexpected message before pairing approval".into()),
                 }
             }
-            _ = tokio::time::sleep(Duration::from_millis(remaining as u64)) => return Ok(false),
+            _ = &mut deadline => return Ok(false),
         }
     }
 }
@@ -751,6 +761,90 @@ impl Core {
             }
         }
         self.touch();
+    }
+}
+
+#[cfg(test)]
+mod pairing_approval_tests {
+    use super::*;
+    use tokio::io::AsyncWriteExt;
+
+    #[tokio::test]
+    async fn local_confirmation_preserves_a_partially_read_approval_frame() {
+        // Exercise cancellation during both the length prefix and ciphertext.
+        for partial in [2, 12] {
+            let local = IdentityMaterial::generate().unwrap();
+            let remote = IdentityMaterial::generate().unwrap();
+            let initiator = crypto::build_handshake(
+                &local.static_private,
+                Some(&[7; 32]),
+                b"approval-test",
+                true,
+            )
+            .unwrap();
+            let responder = crypto::build_handshake(
+                &remote.static_private,
+                Some(&[7; 32]),
+                b"approval-test",
+                false,
+            )
+            .unwrap();
+            let (mut local_stream, mut remote_stream) = tokio::io::duplex(2048);
+            let (local_session, remote_session) = tokio::join!(
+                transport::noise_handshake(&mut local_stream, initiator),
+                transport::noise_handshake(&mut remote_stream, responder),
+            );
+            let (mut local_secure, _, _) = local_session.unwrap();
+            let (mut remote_secure, _, _) = remote_session.unwrap();
+            let mut approval = Vec::new();
+            transport::send_secure(
+                &mut approval,
+                &mut remote_secure,
+                &WireMessage::PairDecision { accepted: true },
+            )
+            .await
+            .unwrap();
+            remote_stream.write_all(&approval[..partial]).await.unwrap();
+            let (decision, updates) = watch::channel(None);
+            let mut exchange = Box::pin(exchange_pairing_approval(
+                &mut local_stream,
+                &mut local_secure,
+                updates,
+                store::now_ms() + 5_000,
+            ));
+
+            // Poll until the available prefix has been consumed, then approve
+            // locally while the rest of the remote frame is still withheld.
+            assert!(futures_util::poll!(exchange.as_mut()).is_pending());
+            decision.send_replace(Some(true));
+            assert!(futures_util::poll!(exchange.as_mut()).is_pending());
+            assert!(matches!(
+                transport::read_secure(&mut remote_stream, &mut remote_secure)
+                    .await
+                    .unwrap(),
+                WireMessage::PairDecision { accepted: true }
+            ));
+            remote_stream.write_all(&approval[partial..]).await.unwrap();
+            let result = tokio::time::timeout(Duration::from_secs(1), exchange)
+                .await
+                .expect("approval frame stalled after local confirmation");
+            assert_eq!(result, Ok(true), "frame split at byte {partial}");
+
+            // Approval must leave the next encrypted protocol frame intact.
+            transport::send_secure(
+                &mut remote_stream,
+                &mut remote_secure,
+                &WireMessage::Ping { sent_at: 19 },
+            )
+            .await
+            .unwrap();
+            assert!(matches!(
+                transport::read_secure(&mut local_stream, &mut local_secure)
+                    .await
+                    .unwrap(),
+                WireMessage::Ping { sent_at: 19 }
+            ));
+        }
     }
 }
 

@@ -57,6 +57,109 @@ pub async fn call(request: String) -> Result<String, String> {
                 .map_err(|_| "Could not encode the manifest".to_string())?
         }
         #[cfg(not(any(target_os = "android", target_os = "ios")))]
+        "install_status" => tokio::task::spawn_blocking(|| {
+            let environment =
+                arcade_link::install::Environment::discover().map_err(|e| e.to_string())?;
+            let status = arcade_link::install::integration_status(
+                &environment,
+                arcade_link::ids::CLIPBOARD,
+                &std::env::var("SHELL").unwrap_or_default(),
+            )
+            .map_err(|e| e.to_string())?;
+            serde_json::to_value(status).map_err(|e| e.to_string())
+        })
+        .await
+        .map_err(|_| "Could not read the installation status".to_string())??,
+        #[cfg(target_os = "linux")]
+        "linux_login_record" => {
+            let enabled = value
+                .get("enabled")
+                .and_then(Value::as_bool)
+                .ok_or_else(|| "Request is missing enabled".to_string())?;
+            tokio::task::spawn_blocking(move || crate::linux_login::record_current(enabled))
+                .await
+                .map_err(|_| "Could not record the login setting".to_string())?
+                .map_err(|e| e.to_string())?;
+            serde_json::json!({})
+        }
+        #[cfg(target_os = "windows")]
+        "windows_login_status" => {
+            let status = tokio::task::spawn_blocking(crate::windows_login::current_status)
+                .await
+                .map_err(|_| "Could not read the login setting".to_string())?
+                .map_err(|e| e.to_string())?;
+            match status {
+                crate::windows_login::Status::Portable => {
+                    serde_json::json!({"installed": false, "enabled": false})
+                }
+                crate::windows_login::Status::Installed { enabled } => {
+                    serde_json::json!({"installed": true, "enabled": enabled})
+                }
+            }
+        }
+        #[cfg(target_os = "windows")]
+        "windows_login_set" => {
+            let enabled = value
+                .get("enabled")
+                .and_then(Value::as_bool)
+                .ok_or_else(|| "Request is missing enabled".to_string())?;
+            tokio::task::spawn_blocking(move || crate::windows_login::set_current(enabled))
+                .await
+                .map_err(|_| "Could not update the login setting".to_string())?
+                .map_err(|e| e.to_string())?;
+            serde_json::json!({})
+        }
+        #[cfg(target_os = "macos")]
+        "install_check" => {
+            let args: Vec<String> = value
+                .get("args")
+                .and_then(Value::as_array)
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|v| v.as_str().map(str::to_string))
+                        .collect()
+                })
+                .unwrap_or_default();
+            tokio::task::spawn_blocking(move || crate::macos_install::check(&args))
+                .await
+                .map_err(|_| "Could not check the installation".to_string())??
+        }
+        #[cfg(target_os = "macos")]
+        "install_move" => {
+            let cli = value
+                .get("install_cli")
+                .and_then(Value::as_bool)
+                .unwrap_or(false);
+            let channel = value
+                .get("channel")
+                .and_then(Value::as_str)
+                .map(str::to_owned);
+            tokio::task::spawn_blocking(move || match channel {
+                Some(channel) => crate::macos_install::run_with_channel(cli, Some(&channel)),
+                None => crate::macos_install::run(cli),
+            })
+            .await
+            .map_err(|_| "Could not move Arcade Clipboard".to_string())??
+        }
+        #[cfg(target_os = "macos")]
+        "install_uninstall" => {
+            let remove_data = value
+                .get("remove_data")
+                .and_then(Value::as_bool)
+                .unwrap_or(false);
+            tokio::task::spawn_blocking(move || crate::macos_install::uninstall(remove_data))
+                .await
+                .map_err(|_| "Could not uninstall Arcade Clipboard".to_string())??
+        }
+        #[cfg(target_os = "macos")]
+        "install_repair" => tokio::task::spawn_blocking(crate::macos_install::repair)
+            .await
+            .map_err(|_| "Could not repair Arcade Clipboard".to_string())??,
+        #[cfg(target_os = "macos")]
+        "install_dismiss" => tokio::task::spawn_blocking(crate::macos_install::dismiss)
+            .await
+            .map_err(|_| "Could not save the choice".to_string())??,
+        #[cfg(not(any(target_os = "android", target_os = "ios")))]
         "link_quit_running" => serde_json::json!({"quit": crate::link::quit_running()}),
         #[cfg(not(any(target_os = "android", target_os = "ios")))]
         "link_configure" => {
@@ -68,6 +171,18 @@ pub async fn call(request: String) -> Result<String, String> {
         }
         #[cfg(not(any(target_os = "android", target_os = "ios")))]
         "link_wait" => crate::link::wait_event().await,
+        #[cfg(not(any(target_os = "android", target_os = "ios")))]
+        "link_shortcut_result" => {
+            let request = value
+                .get("request")
+                .and_then(Value::as_u64)
+                .ok_or_else(|| "Request is missing request".to_string())?;
+            let result = value
+                .get("result")
+                .cloned()
+                .ok_or_else(|| "Shortcut response is missing result".to_string())?;
+            serde_json::json!({"answered": crate::link::finish_shortcut(request, result)})
+        }
         #[cfg(not(any(target_os = "android", target_os = "ios")))]
         "link_diagnostics" => crate::link::diagnostics(),
         #[cfg(not(any(target_os = "android", target_os = "ios")))]
@@ -127,7 +242,7 @@ pub async fn call(request: String) -> Result<String, String> {
                 .ok_or_else(|| "Clipboard core is not initialized".to_string())?;
             core.request(value).await?
         }
-        "version" => serde_json::json!({"version": env!("CARGO_PKG_VERSION")}),
+        "version" => serde_json::json!({"version": crate::VERSION}),
         "shutdown" => {
             // Before the lifecycle lock, which waits for pending long-polls:
             // the endpoint must disappear promptly on quit.

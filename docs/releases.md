@@ -4,13 +4,13 @@ The release workflow defines stable (`v<version>` tags) and nightly (pushes to
 `main`) channels. A manual run can choose either channel; stable must run on a
 version tag matching both Cargo.toml and pubspec.yaml. Nothing is tagged, pushed
 or published by local development. CI builds the Windows and macOS desktop apps
-and runs the Rust core tests on them; their installers and interactive behavior
-are not yet verified.
+and runs the Rust core tests on them; their installers run install, repair and uninstall smoke checks in disposable CI
+profiles. Interactive behavior on Windows and macOS has not been verified.
 
 ## Shared Link dependency
 
 The core takes Arcade Link as a git dependency pinned to a release tag
-(`qa-p1/Arcade-Link`, `v0.2.0`, in the workspace `Cargo.toml`), so no workflow
+(`qa-p1/Arcade-Link`, `v0.3.0`, in the workspace `Cargo.toml`), so no workflow
 needs a second checkout. To build against a local Link checkout, use the
 `[patch]` override described next to the dependency. Moving to a newer Link
 means changing the tag and refreshing `Cargo.lock`.
@@ -19,24 +19,31 @@ means changing the tag and refreshing `Cargo.lock`.
 
 | Platform | Asset | Install |
 | --- | --- | --- |
-| Linux x64 | `Arcade-Clipboard_<version>_linux_x64.tar.gz`, kind `tarball` | Extract it into a new directory and run `bash install.sh`; it copies the full bundle into your XDG data directory and writes a per-user desktop entry. |
+| Linux x64 | `Arcade-Clipboard-<version>-x86_64.AppImage`, kind `appimage` | Run the AppImage and choose Install, or use `--install --silent --no-launch`. The launcher, CLI, icons and receipt are written together. `--repair` restores them; `--uninstall` keeps data unless `--remove-data` is specified. |
+| Linux x64 (transition release only) | `Arcade-Clipboard_<version>_linux_x64.tar.gz`, kind `tarball` | Extract it and run `bash install-linux.sh`; it copies the full bundle into your XDG data directory and writes a per-user desktop entry. This asset is planned to be removed after one release. |
 | Windows x64 | `Arcade-Clipboard_<version>_windows_x64-setup.exe`, kind `inno` | Run the per-user installer. For silent use: `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CURRENTUSER`. |
-| macOS | `Arcade-Clipboard_<version>_macos_<arch>.dmg`, kind `dmg` | Mount the image and copy Arcade Clipboard.app to `~/Applications`. This build is not notarized; no quarantine or OS security controls are changed automatically. |
+| macOS | `Arcade-Clipboard_<version>_macos_universal.dmg`, kind `dmg` | Mount the image and copy Arcade Clipboard.app to Applications. The app and Rust core support Apple silicon and Intel; packaging verifies every bundled native library. Updates keep the recorded Applications folder. This build is not notarized; no quarantine or OS security controls are changed automatically. |
 
-Linux also runs in place with `./arcade-clipboard`; keep `lib/` and `data/`
-beside it. Linux needs GTK 3 and an unlocked Secret Service keyring. The bundle
-includes keybinder and its license. Uninstallation keeps your encrypted data.
+The AppImage includes the Flutter release bundle, Rust core, keybinder library,
+desktop entry, and the app icon as scalable SVG plus hicolor PNG sizes. Its
+`AppRun` adds only the bundled `lib/` directory to `LD_LIBRARY_PATH`; GTK is
+loaded from the host. The tarball remains available for the transition release
+and includes both `install-linux.sh` and the previous `install.sh` entry point.
+Linux needs GTK 3 and an unlocked Secret Service keyring. Uninstallation keeps
+your encrypted data.
 The iOS IPA remains a separate CI artifact, outside the desktop manager.
 
 Every desktop release includes `arcade-release.json` (schema 1, Link v1, channel,
-platform, architecture, installer kind and SHA-256) and `SHA256SUMS.txt`. The
-manifest script is vendored unchanged from Link commit `539fa91`; provenance is
-in `scripts/VENDORED`. `--windows-installer inno` selects the correct silent flags.
+platform, architecture, installer kind, install arguments and SHA-256) and
+`SHA256SUMS.txt`. The manifest script is vendored unchanged from Link commit
+`76883b3`; provenance and its checksum are in `scripts/VENDORED`.
+`--windows-installer inno` selects the correct silent flags.
 
 ## Local Linux packaging verification
 
 ```sh
-CARGO_BUILD_JOBS=3 bash scripts/build-linux.sh
+CARGO_BUILD_JOBS=3 bash scripts/dev.sh build-linux
+bash scripts/dev.sh build-appimage --version 0.1.0
 python3 scripts/package-desktop.py --platform linux --version 0.1.0
 python3 scripts/arcade-release.py --id arcade.clipboard --version 0.1.0 \
   --channel stable --windows-installer inno \

@@ -254,6 +254,8 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
               : await getApplicationSupportDirectory());
       await support.create(recursive: true);
       _supportDirectory = support;
+      // Recent diagnostics lines for Tools' "Report a problem" (manifest `logs`).
+      unawaited(Diagnostics.configure(support).catchError((Object _) {}));
       if (_disposed) return;
       final deviceName = prefs.getString('device_name') ?? _defaultDeviceName();
       await prefs.setString('device_name', deviceName);
@@ -304,6 +306,9 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         });
         await _configureMobileDiscovery();
       }
+      if (desktopAvailable && Platform.isMacOS && await _offerMoveToApplications()) {
+        return;
+      }
       if (desktopAvailable) {
         try {
           _desktopCapabilities = await _desktop.initialize(
@@ -318,10 +323,23 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
           _link.onShow = _desktop.showMainWindow;
           _link.onPick = _openLinkPick;
           _link.onPickCancelled = _cancelLinkPick;
+          _link.onTrayHost = _desktop.setTrayHosted;
+          _link.onSettings = () async {
+            await _desktop.showMainWindow();
+            settingsRequests.value++;
+          };
+          _link.onRestart = _desktop.restart;
+          _link.onShortcutSet = _setShortcutFromLink;
+          _desktop.onTogglePrivateMode =
+              () => setPrivatePause(_status?.paused != true);
           _link.listen();
           try {
+            // Wait for Tools' first tray-host answer (300 ms cap) so a hosted
+            // icon never flashes; without Tools the answer is immediate.
+            await _link.firstTrayAnswer
+                .timeout(const Duration(milliseconds: 300), onTimeout: () {});
             await _desktop.setBackgroundEnabled(_backgroundEnabled);
-            _launchAtLogin = await _desktop.launchAtLoginEnabled();
+            _launchAtLogin = await _readLaunchAtLogin();
             if (_startInBackground && _backgroundEnabled) {
               await _desktop.hideMainWindow();
             }
@@ -803,9 +821,39 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       });
 
   Future<void> setLaunchAtLogin(bool enabled) async => _perform(() async {
-        await _desktop.setLaunchAtLogin(enabled);
-        _launchAtLogin = await _desktop.launchAtLoginEnabled();
+        if (await _windowsInstalled()) {
+          // Remove the portable Run value first so the installer's Startup
+          // shortcut and the Run value never both start Clipboard.
+          await _desktop.setLaunchAtLogin(false);
+          await _core.invoke('windows_login_set', {'enabled': enabled});
+        } else {
+          final previous = await _desktop.launchAtLoginEnabled();
+          await _desktop.setLaunchAtLogin(enabled);
+          if (Platform.isLinux) {
+            try {
+              await _core.invoke('linux_login_record', {'enabled': enabled});
+            } catch (_) {
+              await _desktop.setLaunchAtLogin(previous);
+              rethrow;
+            }
+          }
+        }
+        _launchAtLogin = await _readLaunchAtLogin();
       });
+
+  /// On Windows an installation receipt selects the installer's Startup
+  /// shortcut; portable copies keep the bridge's Run value.
+  Future<bool> _windowsInstalled() async =>
+      Platform.isWindows &&
+      (await _core.invoke('windows_login_status'))['installed'] == true;
+
+  Future<bool> _readLaunchAtLogin() async {
+    if (Platform.isWindows) {
+      final login = await _core.invoke('windows_login_status');
+      if (login['installed'] == true) return login['enabled'] == true;
+    }
+    return _desktop.launchAtLoginEnabled();
+  }
 
   Future<void> addText(String text) async => _perform(() async {
         if (!hasMesh) {
@@ -938,6 +986,53 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         unawaited(_link.configure(cleaned).catchError((Object _) {}));
         _notice = 'Shortcut updated.';
       });
+
+  /// macOS first run from a disk image or Downloads: offer the move to
+  /// Applications. `true` when this copy is relaunching from Applications.
+  Future<bool> _offerMoveToApplications() async {
+    try {
+      final check = await _core.invoke('install_check', {
+        'args': [if (_startInBackground) '--background']
+      });
+      if (check['prompt'] != true) return false;
+      final buttons = (check['buttons'] as List).cast<String>();
+      final choice = await _desktop.askMoveToApplications(
+          check['title'] as String, check['body'] as String? ?? '', buttons);
+      if (choice['button'] != 0) {
+        await _core.invoke('install_dismiss');
+        return false;
+      }
+      final moved = await _core.invoke(
+          'install_move', {'install_cli': choice['installCli'] == true});
+      await _desktop.relaunch(moved['launch'] as String);
+      return true;
+    } catch (exception) {
+      Diagnostics.log('install', 'move to Applications: $exception');
+      return false;
+    }
+  }
+
+  /// `app.shortcuts.set` from Arcade Tools: the same path as Settings, with
+  /// the Link result shape. Errors surface to Tools, not as an app notice.
+  Future<Map<String, Object?>> _setShortcutFromLink(String accelerator) async {
+    if (!_desktopReady || _desktopCapabilities?.globalShortcut != true) {
+      return {
+        'applied': false,
+        'via': 'manual',
+        'hint': 'Bind `arcade-clipboard --overlay` in your desktop\'s keyboard settings.',
+      };
+    }
+    await _desktop.configureShortcut(accelerator);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('mesh_shortcut', accelerator);
+    _shortcut = accelerator;
+    await _link.configure(accelerator);
+    _notifyListeners();
+    return {
+      'applied': true,
+      'via': _desktop.shortcutsViaHyprland ? 'hyprland-runtime' : 'native',
+    };
+  }
 
   Future<void> copyLocally(ClipboardItem item) async {
     try {

@@ -4,11 +4,16 @@ arcade_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$arcade_root"
 source scripts/dev-env.sh
 export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-3}"
-cargo build --release --locked -p arcade_core
+for arcade_target in aarch64-apple-darwin x86_64-apple-darwin; do
+  cargo build --release --locked -p arcade_core --target "$arcade_target"
+done
 arcade_app="$arcade_root/apps/flutter_app/build/macos/Build/Products/${1:-Release}/Arcade Clipboard.app"
 [[ -d "$arcade_app" ]] || { echo 'Build the Flutter macOS app first.' >&2; exit 1; }
 mkdir -p "$arcade_app/Contents/Frameworks"
-cp target/release/libarcade_core.dylib "$arcade_app/Contents/Frameworks/"
+lipo -create target/aarch64-apple-darwin/release/libarcade_core.dylib \
+  target/x86_64-apple-darwin/release/libarcade_core.dylib \
+  -output "$arcade_app/Contents/Frameworks/libarcade_core.dylib"
+lipo "$arcade_app/Contents/Frameworks/libarcade_core.dylib" -verify_arch arm64 x86_64
 install_name_tool -id '@rpath/libarcade_core.dylib' "$arcade_app/Contents/Frameworks/libarcade_core.dylib"
 codesign --force --sign - "$arcade_app/Contents/Frameworks/libarcade_core.dylib"
 codesign --force --deep --sign - "$arcade_app"

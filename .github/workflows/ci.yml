@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
@@ -36,10 +37,13 @@ jobs:
         run: |
           rustup toolchain install 1.98.1 --profile minimal --component rustfmt --component clippy
           sudo apt-get update
-          sudo apt-get install -y pkg-config libdbus-1-dev libsecret-1-dev
+          sudo apt-get install -y pkg-config libdbus-1-dev libsecret-1-dev libgtk-3-dev
+      - name: Documentation, shortcuts and vendored checksums
+        run: python3 scripts/check-docs.py
       - run: bash scripts/dev.sh rust-check
       - run: bash scripts/dev.sh rust-test
   linux:
+    name: Linux build and AppImage smoke
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:
@@ -57,22 +61,58 @@ jobs:
         run: |
           rustup toolchain install 1.98.1 --profile minimal
           sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libkeybinder-3.0-dev libdbus-1-dev libsecret-1-dev
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libkeybinder-3.0-dev libdbus-1-dev libsecret-1-dev desktop-file-utils librsvg2-bin xvfb xauth
       - run: bash scripts/dev.sh flutter-check
       - run: bash scripts/dev.sh flutter-test
-      - name: Build and package Linux release
-        run: bash scripts/build-linux.sh
+      - name: Build Linux release bundle
+        run: bash scripts/dev.sh build-linux
+      - name: Build pinned AppImage
+        run: |
+          release_version="$(python3 -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("Cargo.toml").read_text())["workspace"]["package"]["version"])')"
+          bash scripts/dev.sh build-appimage --version "$release_version"
+          sha256sum "dist/Arcade-Clipboard-$release_version-x86_64.AppImage" > "dist/Arcade-Clipboard-$release_version-x86_64.AppImage.sha256"
+      - name: Smoke test AppImage CLI under Xvfb
+        run: |
+          release_version="$(python3 -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("Cargo.toml").read_text())["workspace"]["package"]["version"])')"
+          appimage="$PWD/dist/Arcade-Clipboard-$release_version-x86_64.AppImage"
+          env -u LD_LIBRARY_PATH xvfb-run -a env APPIMAGE_EXTRACT_AND_RUN=1 "$appimage" --version
+          # xvfb-run appends 2>&1, so keep the answer on its own file.
+          env -u LD_LIBRARY_PATH xvfb-run -a sh -c 'APPIMAGE_EXTRACT_AND_RUN=1 "$0" --arcade-manifest > "$1"' "$appimage" "$RUNNER_TEMP/manifest.json"
+          manifest="$(cat "$RUNNER_TEMP/manifest.json")"
+          printf '%s' "$manifest" | python3 -c 'import json,sys; assert json.load(sys.stdin)["id"] == "arcade.clipboard"' || { printf 'stdout was:\n%s\n' "$manifest" | cat -A | head -40; exit 1; }
+      - name: Prepare pinned isolated lifecycle runner
+        run: |
+          sudo apt-get install -y xdotool python3-dbus python3-gi dbus-x11 gnome-keyring
+          git -c advice.detachedHead=false clone -q --depth 1 --branch v0.3.0 https://github.com/qa-p1/Arcade-Link "$RUNNER_TEMP/link"
+          cargo build --release --manifest-path "$RUNNER_TEMP/link/Cargo.toml" -p arcade-link-cli
+      - name: AppImage install, repair and uninstall (isolated D-Bus and Xvfb)
+        run: |
+          release_version="$(python3 -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("Cargo.toml").read_text())["workspace"]["package"]["version"])')"
+          /usr/bin/python3 "$RUNNER_TEMP/link/tools/e2e.py" run -- xvfb-run -a /usr/bin/python3 scripts/verify-appimage.py \
+            "$PWD/dist/Arcade-Clipboard-$release_version-x86_64.AppImage" "$release_version"
+      - name: Tray icon registration (real StatusNotifierWatcher, isolated)
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror \
+            platform/desktop/arcade_desktop_bridge/linux/tests/lifecycle_bridge_test.cc \
+            -Iapps/flutter_app/linux/flutter/ephemeral -Lapps/flutter_app/linux/flutter/ephemeral \
+            -Wl,-rpath,"$PWD/apps/flutter_app/linux/flutter/ephemeral" \
+            -lflutter_linux_gtk $(pkg-config --cflags --libs gtk+-3.0 gio-2.0) \
+            -o "$RUNNER_TEMP/lifecycle_bridge_test"
+          /usr/bin/python3 "$RUNNER_TEMP/link/tools/e2e.py" run -- "$RUNNER_TEMP/lifecycle_bridge_test"
+          /usr/bin/python3 "$RUNNER_TEMP/link/tools/e2e.py" run -- /usr/bin/python3 tests/tray-registration.py apps/flutter_app/build/linux/x64/release/bundle/clipboard "$RUNNER_TEMP/link/target/release/arcade-link" clipboard
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: Arcade-Clipboard-linux-x64
           path: |
             App dev/Arcade-clipboard/dist/Arcade-Clipboard-linux-x64.tar.gz
             App dev/Arcade-clipboard/dist/Arcade-Clipboard-linux-x64.tar.gz.sha256
+            App dev/Arcade-clipboard/dist/Arcade-Clipboard-*.AppImage
+            App dev/Arcade-clipboard/dist/Arcade-Clipboard-*.AppImage.sha256
           if-no-files-found: error
           retention-days: 14
 
   windows:
-    name: windows desktop — build only (CI defined, not run here)
+    name: Windows build and installer smoke (CI only, not a real desktop)
     runs-on: windows-latest
     timeout-minutes: 60
     env:
@@ -88,19 +128,43 @@ jobs:
           cache: true
       - name: Install Rust
         run: rustup toolchain install 1.98.1 --profile minimal
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path -LiteralPath $iscc)) {
+            choco install innosetup --no-progress -y
+            if ($LASTEXITCODE -ne 0) { throw 'Inno Setup installation failed' }
+          }
+          if (-not (Test-Path -LiteralPath $iscc)) { throw 'Inno Setup compiler is missing' }
       - name: Test Rust core and build the Flutter desktop app with its core
         run: |
+          python3 scripts/check-docs.py
           bash scripts/dev.sh rust-test
           bash scripts/dev.sh build-windows
+      - name: Package Windows Inno installer
+        id: windows-package
+        run: |
+          release_version="$(python3 -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("Cargo.toml").read_text())["workspace"]["package"]["version"])')"
+          python3 scripts/package-desktop.py --version "$release_version" --platform windows
+          printf 'version=%s\n' "$release_version" >> "$GITHUB_OUTPUT"
+      - name: Test Windows installation and uninstallation (CI only, not a real desktop)
+        shell: pwsh
+        env:
+          INSTALLER_VERSION: ${{ steps.windows-package.outputs.version }}
+        run: |
+          pwsh -NoProfile -File scripts/test-windows-installer.ps1 -Version $env:INSTALLER_VERSION
+          if ($LASTEXITCODE -ne 0) { throw 'Windows installer lifecycle checks failed' }
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
         with:
-          name: Arcade-Clipboard-windows-build-only
-          path: App dev/Arcade-clipboard/apps/flutter_app/build/windows/x64/runner/Release/
+          name: Arcade-Clipboard-windows-installer
+          path: App dev/Arcade-clipboard/dist/packages/Arcade-Clipboard_*_windows_x64-setup.exe
           if-no-files-found: error
           retention-days: 14
 
   macos:
-    name: macos desktop — build only (CI defined, not run here)
+    name: macOS build and DMG install smoke (CI only, not a real desktop)
     runs-on: macos-latest
     timeout-minutes: 60
     env:
@@ -115,14 +179,25 @@ jobs:
           channel: stable
           cache: true
       - name: Install Rust
-        run: rustup toolchain install 1.98.1 --profile minimal
+        run: |
+          rustup toolchain install 1.98.1 --profile minimal
+          rustup target add aarch64-apple-darwin x86_64-apple-darwin
       - name: Test Rust core and build the Flutter desktop app with its core
         run: |
+          python3 scripts/check-docs.py
           bash scripts/dev.sh rust-test
           bash scripts/dev.sh build-macos
+      - name: Package and smoke-test macOS DMG (CI only, not a real desktop)
+        run: |
+          release_version="$(python3 -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("Cargo.toml").read_text())["workspace"]["package"]["version"])')"
+          python3 scripts/package-desktop.py --version "$release_version" --platform macos
+          images=(dist/packages/Arcade-Clipboard_*_macos_*.dmg)
+          [[ ${#images[@]} -eq 1 && -f "${images[0]}" ]]
+          bash scripts/verify-dmg.sh "${images[0]}" "$release_version"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
         with:
-          name: Arcade-Clipboard-macos-build-only
-          path: App dev/Arcade-clipboard/apps/flutter_app/build/macos/Build/Products/Release/Arcade Clipboard.app/
+          name: Arcade-Clipboard-macos-dmg
+          path: App dev/Arcade-clipboard/dist/packages/Arcade-Clipboard_*_macos_*.dmg
           if-no-files-found: error
           retention-days: 14

@@ -81,6 +81,7 @@ struct State {
 /// SQLite and keychain access stays behind short state-lock sections; network
 /// waits never hold that lock.
 pub struct Core {
+    data_dir: PathBuf,
     state: Mutex<State>,
     secrets: Arc<dyn SecretStore>,
     invitations: StdMutex<HashMap<String, InvitationState>>,
@@ -204,6 +205,7 @@ impl Core {
         let (revision_tx, _) = watch::channel(1u64);
         let (shutdown_tx, _) = watch::channel(false);
         Ok(Self {
+            data_dir,
             state: Mutex::new(State {
                 identity,
                 store,
@@ -238,6 +240,11 @@ impl Core {
             #[cfg(test)]
             direct_disabled: AtomicU64::new(0),
         })
+    }
+
+    /// The app profile path used for private, allowlisted settings backups.
+    pub fn data_dir(&self) -> &std::path::Path {
+        &self.data_dir
     }
 
     pub async fn status(&self) -> Result<Status, String> {

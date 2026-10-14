@@ -18,6 +18,7 @@ struct LinuxLifecycle {
   gulong map_handler = 0;
   gulong close_handler = 0;
   bool background = false;
+  bool tray_hosted = false;
 };
 
 namespace {
@@ -95,20 +96,19 @@ void ConnectWindow(LinuxLifecycle* state) {
 
 void ViewMapped(GtkWidget*, gpointer data) { ConnectWindow(static_cast<LinuxLifecycle*>(data)); }
 
-// The tray menu every Arcade app has: open, settings, restart and, below a
-// separator, quit. Item ids are 1..kMenuItems; id 4 is the separator.
-constexpr gint kMenuItems = 5;
+// Open/settings/restart, Private mode, and quit.
+constexpr gint kMenuItems = 7;
 constexpr const char* kMenuLabels[] = {"", "Open Clipboard", "Open Settings", "Restart Arcade Clipboard", "",
-                                       "Quit Arcade Clipboard"};
+                                       "Private mode on/off", "", "Quit Arcade Clipboard"};
 constexpr const char* kMenuActions[] = {nullptr, "showMainWindow", "showSettings", "restartRequested", nullptr,
-                                        "quitRequested"};
+                                        "privateModeRequested", nullptr, "quitRequested"};
 
 GVariant* MenuProperties(gint id) {
   GVariantBuilder properties;
   g_variant_builder_init(&properties, G_VARIANT_TYPE("a{sv}"));
   if (id == 0) {
     g_variant_builder_add(&properties, "{sv}", "children-display", g_variant_new_string("submenu"));
-  } else if (id == 4) {
+  } else if (id == 4 || id == 6) {
     g_variant_builder_add(&properties, "{sv}", "type", g_variant_new_string("separator"));
   } else if (id > 0 && id <= kMenuItems) {
     g_variant_builder_add(&properties, "{sv}", "label", g_variant_new_string(kMenuLabels[id]));
@@ -153,7 +153,7 @@ GVariant* ItemProperty(GDBusConnection*, const gchar*, const gchar*, const gchar
   if (g_strcmp0(name, "Category") == 0) return g_variant_new_string("ApplicationStatus");
   if (g_strcmp0(name, "Id") == 0) return g_variant_new_string("arcade-clipboard");
   if (g_strcmp0(name, "Title") == 0) return g_variant_new_string("Arcade Clipboard");
-  if (g_strcmp0(name, "Status") == 0) return g_variant_new_string(state->background ? "Active" : "Passive");
+  if (g_strcmp0(name, "Status") == 0) return g_variant_new_string(state->background && !state->tray_hosted ? "Active" : "Passive");
   if (g_strcmp0(name, "IconName") == 0) return g_variant_new_string("edit-paste");
   if (g_strcmp0(name, "Menu") == 0) return g_variant_new_object_path("/Menu");
   if (g_strcmp0(name, "ItemIsMenu") == 0) return g_variant_new_boolean(FALSE);
@@ -222,34 +222,79 @@ GVariant* MenuProperty(GDBusConnection*, const gchar*, const gchar*, const gchar
   return g_variant_new_string(g_strcmp0(name, "TextDirection") == 0 ? "ltr" : "normal");
 }
 
+void ItemRegistered(GObject* source, GAsyncResult* result, gpointer data) {
+  auto* channel = static_cast<FlMethodChannel*>(data);
+  GError* failure = nullptr;
+  GVariant* reply = g_dbus_connection_call_finish(G_DBUS_CONNECTION(source), result, &failure);
+  if (reply != nullptr) {
+    g_variant_unref(reply);
+  } else if (!g_dbus_connection_is_closed(G_DBUS_CONNECTION(source))) {
+    g_warning("arcade-clipboard: tray registration: %s", failure->message);
+    // A rejected registration must not leave a background window hidden.
+    if (channel != nullptr) {
+      fl_method_channel_invoke_method(channel, "showMainWindow", nullptr, nullptr, nullptr, nullptr);
+    }
+  }
+  g_clear_error(&failure);
+  if (channel != nullptr) g_object_unref(channel);
+}
+
 void RegisterItem(LinuxLifecycle* state) {
-  if (state->bus == nullptr || !state->background) return;
+  if (state->bus == nullptr) return;
+  // A watcher can read the exported item before replying. Keep the GTK main
+  // context free to serve that request, and retain only the channel so a
+  // pending callback never accesses a destroyed lifecycle state.
   g_dbus_connection_call(state->bus, kWatcher, "/StatusNotifierWatcher", kWatcher,
       "RegisterStatusNotifierItem", g_variant_new("(s)", g_dbus_connection_get_unique_name(state->bus)),
-      nullptr, G_DBUS_CALL_FLAGS_NONE, 1500, nullptr, nullptr, nullptr);
+      nullptr, G_DBUS_CALL_FLAGS_NONE, 1500, nullptr, ItemRegistered,
+      state->channel == nullptr ? nullptr : g_object_ref(state->channel));
 }
 
 void WatcherAppeared(GDBusConnection*, const gchar*, const gchar*, gpointer data) {
   RegisterItem(static_cast<LinuxLifecycle*>(data));
 }
 
-void WatcherVanished(GDBusConnection*, const gchar*, gpointer data) {
-  auto* state = static_cast<LinuxLifecycle*>(data);
-  // A shell restart should never strand an invisible application.
-  if (state->background && state->window != nullptr && !gtk_widget_get_visible(state->window)) {
+void ShowHiddenWindow(LinuxLifecycle* state) {
+  if (state->window != nullptr && !gtk_widget_get_visible(state->window)) {
     Invoke(state, "showMainWindow");
   }
 }
 
-bool EnableTray(LinuxLifecycle* state, std::string* error) {
+void WatcherVanished(GDBusConnection*, const gchar*, gpointer data) {
+  auto* state = static_cast<LinuxLifecycle*>(data);
+  // A shell restart should never strand an invisible application.
+  if (state->background) ShowHiddenWindow(state);
+}
+
+bool TrayVisible(const LinuxLifecycle* state) {
+  return state->background && !state->tray_hosted;
+}
+
+// Hosts such as Caelestia and Waybar still draw Passive items, and a watcher
+// forgets an item only when its bus name goes away. The item therefore lives
+// on a private connection that is closed while Arcade Tools hosts the icon.
+void CloseTray(LinuxLifecycle* state) {
+  if (state->watcher != 0) g_bus_unwatch_name(state->watcher);
+  state->watcher = 0;
+  if (state->bus != nullptr) {
+    if (state->item_registration != 0) g_dbus_connection_unregister_object(state->bus, state->item_registration);
+    if (state->menu_registration != 0) g_dbus_connection_unregister_object(state->bus, state->menu_registration);
+    g_dbus_connection_close_sync(state->bus, nullptr, nullptr);
+    g_clear_object(&state->bus);
+  }
+  state->item_registration = 0;
+  state->menu_registration = 0;
+}
+
+bool TrayHostAvailable(std::string* error) {
   GError* failure = nullptr;
-  if (state->bus == nullptr) state->bus = g_bus_get_sync(G_BUS_TYPE_SESSION, nullptr, &failure);
-  if (state->bus == nullptr) {
+  GDBusConnection* session = g_bus_get_sync(G_BUS_TYPE_SESSION, nullptr, &failure);
+  if (session == nullptr) {
     *error = "The desktop session bus is unavailable. Keep the app window open for sync.";
     g_clear_error(&failure);
     return false;
   }
-  GVariant* owner = g_dbus_connection_call_sync(state->bus, "org.freedesktop.DBus", "/org/freedesktop/DBus",
+  GVariant* owner = g_dbus_connection_call_sync(session, "org.freedesktop.DBus", "/org/freedesktop/DBus",
       "org.freedesktop.DBus", "NameHasOwner", g_variant_new("(s)", kWatcher), G_VARIANT_TYPE("(b)"),
       G_DBUS_CALL_FLAGS_NONE, 1000, nullptr, &failure);
   gboolean available = FALSE;
@@ -258,45 +303,62 @@ bool EnableTray(LinuxLifecycle* state, std::string* error) {
     g_variant_unref(owner);
   }
   g_clear_error(&failure);
+  g_object_unref(session);
   if (!available) {
     *error = "This desktop has no system tray host. Keep the app window open, or enable a StatusNotifier tray extension.";
     return false;
   }
-  if (state->item_registration == 0) {
-    static const GDBusInterfaceVTable item_vtable = {ItemMethod, ItemProperty, nullptr, {nullptr}};
-    static const GDBusInterfaceVTable menu_vtable = {MenuMethod, MenuProperty, nullptr, {nullptr}};
-    state->item_info = g_dbus_node_info_new_for_xml(kItemXml, &failure);
-    state->menu_info = g_dbus_node_info_new_for_xml(kMenuXml, &failure);
-    if (state->item_info == nullptr || state->menu_info == nullptr) {
-      *error = "The tray interface could not be created.";
-      g_clear_error(&failure);
-      return false;
-    }
-    state->item_registration = g_dbus_connection_register_object(state->bus, "/StatusNotifierItem",
-        state->item_info->interfaces[0], &item_vtable, state, nullptr, &failure);
-    state->menu_registration = g_dbus_connection_register_object(state->bus, "/Menu",
-        state->menu_info->interfaces[0], &menu_vtable, state, nullptr, &failure);
-    if (state->item_registration == 0 || state->menu_registration == 0) {
-      *error = "The system tray could not be registered.";
-      g_clear_error(&failure);
-      return false;
-    }
-    state->watcher = g_bus_watch_name_on_connection(state->bus, kWatcher, G_BUS_NAME_WATCHER_FLAGS_NONE,
-        WatcherAppeared, WatcherVanished, state, nullptr);
+  return true;
+}
+
+bool OpenTray(LinuxLifecycle* state, std::string* error) {
+  if (state->bus != nullptr) return true;
+  GError* failure = nullptr;
+  if (state->item_info == nullptr) state->item_info = g_dbus_node_info_new_for_xml(kItemXml, &failure);
+  g_clear_error(&failure);
+  if (state->menu_info == nullptr) state->menu_info = g_dbus_node_info_new_for_xml(kMenuXml, &failure);
+  g_clear_error(&failure);
+  if (state->item_info == nullptr || state->menu_info == nullptr) {
+    *error = "The tray interface could not be created.";
+    return false;
   }
-  GVariant* registered = g_dbus_connection_call_sync(state->bus, kWatcher, "/StatusNotifierWatcher", kWatcher,
-      "RegisterStatusNotifierItem", g_variant_new("(s)", g_dbus_connection_get_unique_name(state->bus)),
-      nullptr, G_DBUS_CALL_FLAGS_NONE, 1500, nullptr, &failure);
-  if (registered == nullptr) {
-    *error = "The system tray did not accept the app. Keep the window open for sync.";
+  gchar* address = g_dbus_address_get_for_bus_sync(G_BUS_TYPE_SESSION, nullptr, &failure);
+  if (address != nullptr) {
+    state->bus = g_dbus_connection_new_for_address_sync(address,
+        static_cast<GDBusConnectionFlags>(G_DBUS_CONNECTION_FLAGS_AUTHENTICATION_CLIENT |
+                                          G_DBUS_CONNECTION_FLAGS_MESSAGE_BUS_CONNECTION),
+        nullptr, nullptr, &failure);
+    g_free(address);
+  }
+  if (state->bus == nullptr) {
+    *error = "The desktop session bus is unavailable. Keep the app window open for sync.";
     g_clear_error(&failure);
     return false;
   }
-  g_variant_unref(registered);
+  static const GDBusInterfaceVTable item_vtable = {ItemMethod, ItemProperty, nullptr, {nullptr}};
+  static const GDBusInterfaceVTable menu_vtable = {MenuMethod, MenuProperty, nullptr, {nullptr}};
+  state->item_registration = g_dbus_connection_register_object(state->bus, "/StatusNotifierItem",
+      state->item_info->interfaces[0], &item_vtable, state, nullptr, &failure);
+  g_clear_error(&failure);
+  state->menu_registration = g_dbus_connection_register_object(state->bus, "/Menu",
+      state->menu_info->interfaces[0], &menu_vtable, state, nullptr, &failure);
+  g_clear_error(&failure);
+  if (state->item_registration == 0 || state->menu_registration == 0) {
+    *error = "The system tray could not be registered.";
+    CloseTray(state);
+    return false;
+  }
+  state->watcher = g_bus_watch_name_on_connection(state->bus, kWatcher, G_BUS_NAME_WATCHER_FLAGS_NONE,
+      WatcherAppeared, WatcherVanished, state, nullptr);
+  // WatcherAppeared performs registration, including after shell restarts.
   return true;
 }
 
 std::string AutostartPath() {
+  const gchar* arcade_home = g_getenv("ARCADE_HOME");
+  if (arcade_home != nullptr && *arcade_home != '\0') {
+    return std::string(arcade_home) + "/.config/autostart/arcade-clipboard.desktop";
+  }
   return std::string(g_get_user_config_dir()) + "/autostart/arcade-clipboard.desktop";
 }
 
@@ -307,10 +369,56 @@ bool Enabled(FlMethodCall* call) {
   return enabled != nullptr && fl_value_get_type(enabled) == FL_VALUE_TYPE_BOOL && fl_value_get_bool(enabled);
 }
 
+bool Hosted(FlMethodCall* call) {
+  FlValue* args = fl_method_call_get_args(call);
+  if (args == nullptr || fl_value_get_type(args) != FL_VALUE_TYPE_MAP) return false;
+  FlValue* hosted = fl_value_lookup_string(args, "hosted");
+  return hosted != nullptr && fl_value_get_type(hosted) == FL_VALUE_TYPE_BOOL && fl_value_get_bool(hosted);
+}
+
 bool PersistentPath(const std::string& path) {
   return !path.empty() && path.front() == '/' &&
       path.rfind("/tmp/", 0) != 0 && path.rfind("/run/", 0) != 0 &&
       path.rfind("/var/tmp/", 0) != 0 && path.find("/.cache/") == std::string::npos;
+}
+
+bool InstallPathAllowed(const std::string& path) {
+  if (PersistentPath(path)) return true;
+  // Link's e2e runner is the only lifecycle test environment allowed here.
+  const gchar* root = g_getenv("ARCADE_E2E_ROOT");
+  if (g_strcmp0(g_getenv("ARCADE_E2E_INNER"), "1") != 0 || root == nullptr || *root != '/') return false;
+  const std::string prefix = std::string(root) + "/";
+  return path.rfind(prefix, 0) == 0 && path.find("/../") == std::string::npos;
+}
+
+std::string AutostartExecutable() {
+  const gchar* appimage = g_getenv("APPIMAGE");
+  if (appimage != nullptr && *appimage != '\0') return appimage;
+  gchar* executable = g_file_read_link("/proc/self/exe", nullptr);
+  const std::string path = executable == nullptr ? "" : executable;
+  g_free(executable);
+  return path;
+}
+
+bool AutostartOwned(const gchar* contents, gsize length) {
+  if (contents == nullptr) return false;
+  g_autoptr(GKeyFile) entry = g_key_file_new();
+  if (!g_key_file_load_from_data(entry, contents, length, G_KEY_FILE_NONE, nullptr)) return false;
+  gchar* id = g_key_file_get_string(entry, "Desktop Entry", "X-Arcade-Id", nullptr);
+  const bool owned = id != nullptr
+      ? g_strcmp0(id, "arcade.clipboard") == 0
+      : g_key_file_get_boolean(entry, "Desktop Entry", "X-ArcadeClipboard-Managed", nullptr);
+  g_free(id);
+  return owned;
+}
+
+bool LaunchAtLoginEnabled() {
+  gchar* contents = nullptr;
+  gsize length = 0;
+  const bool loaded = g_file_get_contents(AutostartPath().c_str(), &contents, &length, nullptr);
+  const bool enabled = loaded && AutostartOwned(contents, length);
+  g_free(contents);
+  return enabled;
 }
 
 std::string DesktopExecQuote(const std::string& path) {
@@ -329,9 +437,13 @@ bool SetAutostart(bool enabled, std::string* error) {
   gsize previous_length = 0;
   GError* failure = nullptr;
   const bool exists = g_file_test(path.c_str(), G_FILE_TEST_EXISTS);
+  if (g_file_test(path.c_str(), G_FILE_TEST_IS_SYMLINK)) {
+    *error = "An existing login entry is a symbolic link and could not be safely updated.";
+    return false;
+  }
   if (exists) {
     if (!g_file_get_contents(path.c_str(), &previous, &previous_length, &failure) ||
-        g_strstr_len(previous, static_cast<gssize>(previous_length), "X-ArcadeClipboard-Managed=true") == nullptr) {
+        !AutostartOwned(previous, previous_length)) {
       *error = "An existing login entry could not be safely updated. Remove or rename arcade-clipboard.desktop first.";
       g_free(previous);
       g_clear_error(&failure);
@@ -352,11 +464,9 @@ bool SetAutostart(bool enabled, std::string* error) {
     }
     return true;
   }
-  gchar* executable = g_file_read_link("/proc/self/exe", &failure);
-  const std::string executable_path = executable == nullptr ? "" : executable;
-  g_free(executable);
-  g_clear_error(&failure);
-  if (!PersistentPath(executable_path) || !PersistentPath(path)) {
+  const std::string executable_path = AutostartExecutable();
+  if (!InstallPathAllowed(executable_path) || !InstallPathAllowed(path) ||
+      !g_file_test(executable_path.c_str(), G_FILE_TEST_IS_REGULAR)) {
     *error = "Launch at login requires the app to be installed in a persistent folder.";
     return false;
   }
@@ -376,6 +486,7 @@ bool SetAutostart(bool enabled, std::string* error) {
   g_key_file_set_boolean(validation, "Desktop Entry", "Terminal", FALSE);
   g_key_file_set_boolean(validation, "Desktop Entry", "X-GNOME-Autostart-enabled", TRUE);
   g_key_file_set_boolean(validation, "Desktop Entry", "X-ArcadeClipboard-Managed", TRUE);
+  g_key_file_set_string(validation, "Desktop Entry", "X-Arcade-Id", "arcade.clipboard");
   gsize length = 0;
   gchar* contents = g_key_file_to_data(validation, &length, &failure);
   const bool valid = contents != nullptr && g_key_file_load_from_data(validation, contents, length, G_KEY_FILE_NONE, &failure);
@@ -409,15 +520,30 @@ bool HandleLifecycleMethod(LinuxLifecycle* state, FlMethodCall* call) {
   if (g_strcmp0(method, "setBackgroundEnabled") == 0) {
     const bool enabled = Enabled(call);
     std::string error;
-    if (enabled && !EnableTray(state, &error)) {
+    if (enabled && !TrayHostAvailable(&error)) {
       Fail(call, error);
       return true;
     }
+    const bool was = state->background;
     state->background = enabled;
-    if (enabled) RegisterItem(state);
-    if (state->bus != nullptr && state->item_registration != 0) {
-      g_dbus_connection_emit_signal(state->bus, nullptr, "/StatusNotifierItem", "org.kde.StatusNotifierItem",
-          "NewStatus", g_variant_new("(s)", enabled ? "Active" : "Passive"), nullptr);
+    if (TrayVisible(state) && !OpenTray(state, &error)) {
+      state->background = was;
+      Fail(call, error);
+      return true;
+    }
+    if (!TrayVisible(state)) CloseTray(state);
+    Respond(call);
+    return true;
+  }
+  if (g_strcmp0(method, "setTrayHosted") == 0) {
+    state->tray_hosted = Hosted(call);
+    std::string error;
+    if (!TrayVisible(state)) {
+      CloseTray(state);
+    } else if (!OpenTray(state, &error)) {
+      // Tools stopped hosting and the own icon failed: never stay invisible.
+      g_warning("arcade-clipboard: tray: %s", error.c_str());
+      ShowHiddenWindow(state);
     }
     Respond(call);
     return true;
@@ -429,11 +555,7 @@ bool HandleLifecycleMethod(LinuxLifecycle* state, FlMethodCall* call) {
     return true;
   }
   if (g_strcmp0(method, "launchAtLoginEnabled") == 0) {
-    gchar* contents = nullptr;
-    const bool loaded = g_file_get_contents(AutostartPath().c_str(), &contents, nullptr, nullptr);
-    const bool enabled = loaded && g_strstr_len(contents, -1, "X-ArcadeClipboard-Managed=true") != nullptr;
-    g_free(contents);
-    g_autoptr(FlValue) value = fl_value_new_bool(enabled);
+    g_autoptr(FlValue) value = fl_value_new_bool(LaunchAtLoginEnabled());
     Respond(call, value);
     return true;
   }
@@ -450,12 +572,9 @@ void DestroyLinuxLifecycle(LinuxLifecycle* state) {
     if (state->map_handler != 0) g_signal_handler_disconnect(state->view, state->map_handler);
     g_object_remove_weak_pointer(G_OBJECT(state->view), reinterpret_cast<gpointer*>(&state->view));
   }
-  if (state->watcher != 0) g_bus_unwatch_name(state->watcher);
-  if (state->bus != nullptr && state->item_registration != 0) g_dbus_connection_unregister_object(state->bus, state->item_registration);
-  if (state->bus != nullptr && state->menu_registration != 0) g_dbus_connection_unregister_object(state->bus, state->menu_registration);
+  CloseTray(state);
   if (state->item_info != nullptr) g_dbus_node_info_unref(state->item_info);
   if (state->menu_info != nullptr) g_dbus_node_info_unref(state->menu_info);
-  g_clear_object(&state->bus);
   g_clear_object(&state->channel);
   delete state;
 }

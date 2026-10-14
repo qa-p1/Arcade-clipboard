@@ -28,12 +28,18 @@ for arcade_license in /usr/share/doc/libkeybinder-3.0-0/copyright \
 done
 python3 - "$arcade_bundle" <<'PY'
 from pathlib import Path
+import os
 import subprocess, sys
 bundle = Path(sys.argv[1])
-for file in [bundle / 'clipboard', *sorted((bundle / 'lib').glob('*.so*'))]:
-    output = subprocess.run(['ldd', str(file)], text=True, capture_output=True).stdout
-    if 'not found' in output:
+env = os.environ.copy()
+env['LD_LIBRARY_PATH'] = str(bundle / 'lib') + (os.pathsep + env['LD_LIBRARY_PATH'] if env.get('LD_LIBRARY_PATH') else '')
+files = [bundle / 'clipboard', *sorted((bundle / 'lib').glob('*.so*'))]
+for file in files:
+    result = subprocess.run(['ldd', str(file)], text=True, capture_output=True, env=env)
+    output = result.stdout + result.stderr
+    if result.returncode or 'not found' in output:
         raise SystemExit(f'Runtime dependency missing for {file.name}:\n{output}')
+print(f'ldd: checked {len(files)} bundled ELF files; no missing libraries')
 (bundle / 'START.txt').write_text(
     'Arcade Clipboard\n\nRun ./clipboard (or ./arcade-clipboard) from this folder.\n'
     'Keep the data/ and lib/ folders beside the executable.\n'
@@ -42,6 +48,8 @@ for file in [bundle / 'clipboard', *sorted((bundle / 'lib').glob('*.so*'))]:
     'Other Wayland desktops provide a clipboard picker with copy fallback.\n'
 )
 PY
+cp scripts/install-linux.sh "$arcade_bundle/install-linux.sh"
+# Keep the previous tarball entry point for this transition release.
 cp scripts/install-linux.sh "$arcade_bundle/install.sh"
 mkdir -p dist
 tar -C "$arcade_bundle" -czf dist/Arcade-Clipboard-linux-x64.tar.gz .

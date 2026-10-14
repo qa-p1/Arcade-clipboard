@@ -106,6 +106,24 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
           : _bridge.readClipboard();
   bool _backgroundEnabled = false;
 
+  Future<Map<String, Object?>> askMoveToApplications(
+          String title, String body, List<String> buttons) =>
+      _bridge.askMoveToApplications(title, body, buttons);
+
+  Future<void> relaunch(String path) => _bridge.relaunch(path);
+
+  Future<void> setTrayHosted(bool hosted) async {
+    if (!_initialized || _closed) return;
+    try {
+      await _bridge.setTrayHosted(hosted);
+    } on MissingPluginException {
+      // Platforms without a tray have nothing to hide.
+    }
+  }
+
+  /// Whether global shortcuts go through Hyprland's runtime binds.
+  bool get shortcutsViaHyprland => Platform.isLinux && _isWayland && _isHyprland;
+
   Future<void> setBackgroundEnabled(bool enabled) async {
     await _bridge.setBackgroundEnabled(enabled);
     _backgroundEnabled = enabled;
@@ -137,6 +155,9 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
 
   /// Shows the Settings page (the tray's Open Settings item and click).
   void Function()? onOpenSettings;
+
+  /// The tray's Private mode item.
+  Future<void> Function()? onTogglePrivateMode;
 
   /// Set on the successor started by [restart]: the old process id, which it
   /// waits for before claiming the single instance (see main.dart, main.cc).
@@ -324,6 +345,8 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
         onOpenSettings?.call();
       } else if (action == 'restartRequested') {
         await restart();
+      } else if (action == 'privateModeRequested') {
+        await onTogglePrivateMode?.call();
       }
     });
     _initialized = true;

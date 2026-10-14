@@ -1,5 +1,6 @@
+use fs2::FileExt;
 use std::{
-    fs::{File, OpenOptions, TryLockError},
+    fs::{File, OpenOptions},
     path::Path,
 };
 
@@ -19,10 +20,10 @@ impl ProfileLock {
             .truncate(false)
             .open(directory.join("profile.lock"))
             .map_err(|_| "Could not open the clipboard profile lock".to_string())?;
-        match file.try_lock() {
+        match file.try_lock_exclusive() {
             Ok(()) => Ok(Self { _file: file }),
-            Err(TryLockError::WouldBlock) => Err("This clipboard profile is already open. Close the other instance or use a different data folder.".into()),
-            Err(TryLockError::Error(_)) => Err("This filesystem cannot safely lock the clipboard profile".into()),
+            Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => Err("This clipboard profile is already open. Close the other instance or use a different data folder.".into()),
+            Err(_) => Err("This filesystem cannot safely lock the clipboard profile".into()),
         }
     }
 }
