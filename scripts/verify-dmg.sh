@@ -37,8 +37,8 @@ source_app="$mount/Arcade Clipboard.app"
 plutil -lint "$source_app/Contents/Info.plist"
 executable=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$source_app/Contents/Info.plist")
 [[ -x "$source_app/Contents/MacOS/$executable" ]]
-lipo -verify_arch arm64 x86_64 "$source_app/Contents/MacOS/$executable"
-lipo -verify_arch arm64 x86_64 "$source_app/Contents/Frameworks/libarcade_core.dylib"
+lipo "$source_app/Contents/MacOS/$executable" -verify_arch arm64 x86_64
+lipo "$source_app/Contents/Frameworks/libarcade_core.dylib" -verify_arch arm64 x86_64
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$source_app/Contents/Info.plist")" == "$version" ]]
 run_cli() {
   python3 - "$@" <<'PY'

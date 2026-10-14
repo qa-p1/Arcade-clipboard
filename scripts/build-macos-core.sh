@@ -13,7 +13,7 @@ mkdir -p "$arcade_app/Contents/Frameworks"
 lipo -create target/aarch64-apple-darwin/release/libarcade_core.dylib \
   target/x86_64-apple-darwin/release/libarcade_core.dylib \
   -output "$arcade_app/Contents/Frameworks/libarcade_core.dylib"
-lipo -verify_arch arm64 x86_64 "$arcade_app/Contents/Frameworks/libarcade_core.dylib"
+lipo "$arcade_app/Contents/Frameworks/libarcade_core.dylib" -verify_arch arm64 x86_64
 install_name_tool -id '@rpath/libarcade_core.dylib' "$arcade_app/Contents/Frameworks/libarcade_core.dylib"
 codesign --force --sign - "$arcade_app/Contents/Frameworks/libarcade_core.dylib"
 codesign --force --deep --sign - "$arcade_app"

@@ -17,7 +17,7 @@ def verify_universal_bundle(bundle):
         if path.is_file() and not path.is_symlink():
             kind = subprocess.check_output(['file', '-b', str(path)], text=True)
             if 'Mach-O' in kind:
-                subprocess.run(['lipo', '-verify_arch', 'arm64', 'x86_64', str(path)], check=True)
+                subprocess.run(['lipo', str(path), '-verify_arch', 'arm64', 'x86_64'], check=True)
                 native.append(path)
     if not native:
         raise SystemExit('The macOS bundle contains no native executables')
