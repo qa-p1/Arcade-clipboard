@@ -222,11 +222,32 @@ GVariant* MenuProperty(GDBusConnection*, const gchar*, const gchar*, const gchar
   return g_variant_new_string(g_strcmp0(name, "TextDirection") == 0 ? "ltr" : "normal");
 }
 
+void ItemRegistered(GObject* source, GAsyncResult* result, gpointer data) {
+  auto* channel = static_cast<FlMethodChannel*>(data);
+  GError* failure = nullptr;
+  GVariant* reply = g_dbus_connection_call_finish(G_DBUS_CONNECTION(source), result, &failure);
+  if (reply != nullptr) {
+    g_variant_unref(reply);
+  } else if (!g_dbus_connection_is_closed(G_DBUS_CONNECTION(source))) {
+    g_warning("arcade-clipboard: tray registration: %s", failure->message);
+    // A rejected registration must not leave a background window hidden.
+    if (channel != nullptr) {
+      fl_method_channel_invoke_method(channel, "showMainWindow", nullptr, nullptr, nullptr, nullptr);
+    }
+  }
+  g_clear_error(&failure);
+  if (channel != nullptr) g_object_unref(channel);
+}
+
 void RegisterItem(LinuxLifecycle* state) {
   if (state->bus == nullptr) return;
+  // A watcher can read the exported item before replying. Keep the GTK main
+  // context free to serve that request, and retain only the channel so a
+  // pending callback never accesses a destroyed lifecycle state.
   g_dbus_connection_call(state->bus, kWatcher, "/StatusNotifierWatcher", kWatcher,
       "RegisterStatusNotifierItem", g_variant_new("(s)", g_dbus_connection_get_unique_name(state->bus)),
-      nullptr, G_DBUS_CALL_FLAGS_NONE, 1500, nullptr, nullptr, nullptr);
+      nullptr, G_DBUS_CALL_FLAGS_NONE, 1500, nullptr, ItemRegistered,
+      state->channel == nullptr ? nullptr : g_object_ref(state->channel));
 }
 
 void WatcherAppeared(GDBusConnection*, const gchar*, const gchar*, gpointer data) {
@@ -329,16 +350,7 @@ bool OpenTray(LinuxLifecycle* state, std::string* error) {
   }
   state->watcher = g_bus_watch_name_on_connection(state->bus, kWatcher, G_BUS_NAME_WATCHER_FLAGS_NONE,
       WatcherAppeared, WatcherVanished, state, nullptr);
-  GVariant* registered = g_dbus_connection_call_sync(state->bus, kWatcher, "/StatusNotifierWatcher", kWatcher,
-      "RegisterStatusNotifierItem", g_variant_new("(s)", g_dbus_connection_get_unique_name(state->bus)),
-      nullptr, G_DBUS_CALL_FLAGS_NONE, 1500, nullptr, &failure);
-  if (registered == nullptr) {
-    *error = "The system tray did not accept the app. Keep the window open for sync.";
-    g_clear_error(&failure);
-    CloseTray(state);
-    return false;
-  }
-  g_variant_unref(registered);
+  // WatcherAppeared performs registration, including after shell restarts.
   return true;
 }
 

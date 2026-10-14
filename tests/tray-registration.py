@@ -3,6 +3,7 @@
 
 Usage: python3 tests/tray-registration.py APP_BINARY LINK_CLI find|look|lens|box|clipboard
 Needs python3-dbus and python3-gi (Ubuntu packages), plus the Link runner's tools.
+Clipboard also needs gnome-keyring-daemon for the runner's isolated Secret Service.
 The watcher deliberately displays Passive items, like Caelestia's tray.
 """
 
@@ -158,7 +159,11 @@ def main():
     binary, cli = (Path(arg).resolve(strict=True) for arg in sys.argv[1:3])
     app = sys.argv[3]
     assert app in ("find", "look", "lens", "box", "clipboard")
-    env = dict(os.environ, ARCADE_NO_INSTALL_PROMPT="1")
+    env = dict(os.environ, ARCADE_NO_INSTALL_PROMPT="1", ARCADE_DEBUG="1")
+    if app == "clipboard":
+        until(lambda: dbus.SessionBus().name_has_owner("org.freedesktop.secrets"),
+              "Clipboard needs the Link runner's isolated Secret Service; install gnome-keyring on the CI runner",
+              timeout=5)
     if app == "find":
         config = Path(env["ARCADE_FIND_HOME"]) / "config/settings.json"
         config.parent.mkdir(parents=True, exist_ok=True)
@@ -168,6 +173,7 @@ def main():
     watcher = Watcher()
     processes, hosts, latencies = [], [], []
     log_path = ROOT / f"{app}-tray-registration.log"
+    status_error = ""
 
     def start():
         with log_path.open("ab") as log:
@@ -181,9 +187,12 @@ def main():
         return result
 
     def status():
+        nonlocal status_error
         result = subprocess.run([str(cli), "status", app], env=env, capture_output=True, text=True, timeout=3)
         if result.returncode != 0:
+            status_error = f"arcade-link status {app} exited {result.returncode}: {result.stdout}{result.stderr}"
             return {}
+        status_error = ""
         answer = json.loads(result.stdout)
         # app.status carries pid beside the app's own status object.
         return {**answer.get("status", {}), "pid": answer.get("pid")}
@@ -334,6 +343,8 @@ def main():
               f"rapid toggles/thread cleanup, restart grace, menu handlers, app restart, hosted startup); "
               f"hand-back ms: {', '.join(f'{value:.1f}' for value in latencies)}; max items={watcher.maximum}")
     except BaseException:
+        if status_error:
+            print(status_error, file=sys.stderr)
         print(log_path.read_text(errors="replace"), file=sys.stderr)
         raise
     finally:
