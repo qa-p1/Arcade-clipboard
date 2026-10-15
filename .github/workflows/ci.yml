@@ -11,7 +11,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: checks-${{ github.ref }}
+  # Called from release.yml, github.workflow is the caller's name, so the
+  # release's build no longer cancels (or is cancelled by) the push run.
+  group: checks-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:

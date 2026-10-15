@@ -90,7 +90,9 @@ apps. Clipboard answers the optional hub methods:
 | `app.shortcuts.set` | Rebinds the picker shortcut; on Hyprland it answers with the bind line to add, because Clipboard never edits your Hyprland config. |
 | `app.settings.export`, `app.settings.import` | An allowlisted handoff file: paused, history retention and maximum items. History, keys and devices never leave the encrypted store. Import keeps a backup of the previous values. |
 
-`describe` lists these in `methods`, so Tools never calls one Clipboard lacks.
+`describe.methods` advertises `app.settings`, `app.restart`, `app.menu`,
+`app.menu.invoke`, `app.shortcuts.set`, `app.settings.export`, and
+`app.settings.import`, so Tools never calls one Clipboard lacks.
 
 While Tools hosts the tray (`tray.host`), Clipboard removes its own tray icon
 (on Linux it closes the D-Bus connection that carries its StatusNotifierItem,
