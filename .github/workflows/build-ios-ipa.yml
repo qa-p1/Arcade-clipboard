@@ -17,9 +17,6 @@ defaults:
     shell: bash
     working-directory: App dev/Arcade-clipboard
 
-env:
-  CARGO_BUILD_JOBS: '3'
-
 jobs:
   unsigned-iphone:
     runs-on: macos-15
