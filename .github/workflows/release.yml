@@ -175,5 +175,5 @@ jobs:
             gh release upload "$TAG" dist/packages/* --clobber
           else
             gh release create "$TAG" dist/packages/* --target "$GITHUB_SHA" --latest --generate-notes \
-              --title "Arcade Clipboard $RELEASE_VERSION"
+              --title "Arcade Clipboard $RELEASE_VERSION" --notes "User guide: https://github.com/qa-p1/Arcade-clipboard/tree/main/docs/user"
           fi
