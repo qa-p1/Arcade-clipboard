@@ -97,7 +97,7 @@ checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
 
 [[package]]
 name = "arcade-clipboard-launcher"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "arcade-link",
  "gtk",
@@ -108,10 +108,11 @@ dependencies = [
 [[package]]
 name = "arcade-link"
 version = "0.3.0"
-source = "git+https://github.com/qa-p1/Arcade-Link?rev=2fc7c91b7578ca424264627b82174bedc176e511#2fc7c91b7578ca424264627b82174bedc176e511"
+source = "git+https://github.com/qa-p1/Arcade-Link?rev=85bdb0e9769cc724c0edd83c6f214b70fba33f42#85bdb0e9769cc724c0edd83c6f214b70fba33f42"
 dependencies = [
  "getrandom 0.4.3",
  "interprocess",
+ "libc",
  "notify",
  "serde",
  "serde_json",
@@ -121,7 +122,7 @@ dependencies = [
 
 [[package]]
 name = "arcade_core"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "arcade-link",
  "arcade_relay",
@@ -167,7 +168,7 @@ dependencies = [
 
 [[package]]
 name = "arcade_test_driver"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "arcade_core",
  "serde_json",
@@ -989,7 +990,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -2711,7 +2712,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -3164,7 +3165,7 @@ dependencies = [
  "getrandom 0.3.4",
  "once_cell",
  "rustix",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -3729,7 +3730,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
