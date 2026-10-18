@@ -34,6 +34,19 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   final CoreApi _core;
   final DesktopAdapter _desktop;
 
+  /// The Private mode state last shown on the tray menu.
+  bool _trayPrivateMode = false;
+
+  @override
+  void notifyListeners() {
+    final paused = _status?.paused == true;
+    if (paused != _trayPrivateMode && desktopAvailable) {
+      _trayPrivateMode = paused;
+      unawaited(_desktop.setPrivateMode(paused));
+    }
+    super.notifyListeners();
+  }
+
   /// Bumped when the tray asks for the Settings page.
   final ValueNotifier<int> settingsRequests = ValueNotifier(0);
   late final LinkService _link =

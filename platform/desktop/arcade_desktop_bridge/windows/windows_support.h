@@ -33,6 +33,7 @@ class WindowsSupport {
   HWND window_ = nullptr;
   bool background_ = false;
   bool tray_hosted_ = false;
+  bool private_mode_ = false;  // The tray menu's Private mode checkmark.
   bool capture_enabled_ = false;
   NOTIFYICONDATAW tray_ = {};
   ULONG_PTR graphics_token_ = 0;

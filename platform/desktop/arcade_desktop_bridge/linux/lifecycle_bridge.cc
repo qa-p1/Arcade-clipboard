@@ -22,6 +22,9 @@ struct LinuxLifecycle {
   // A StatusNotifier watcher is running (our item can be shown).
   bool host_present = false;
   guint host_timeout = 0;
+  // The tray's Private mode checkmark, and the menu revision hosts compare.
+  bool private_mode = false;
+  guint menu_revision = 1;
 };
 
 namespace {
@@ -59,6 +62,8 @@ constexpr const char* kMenuXml = R"XML(
  <method name="Event"><arg type="i" direction="in"/><arg type="s" direction="in"/><arg type="v" direction="in"/><arg type="u" direction="in"/></method>
  <method name="EventGroup"><arg type="a(isvu)" direction="in"/><arg type="ai" direction="out"/></method>
  <method name="AboutToShow"><arg type="i" direction="in"/><arg type="b" direction="out"/></method>
+ <signal name="ItemsPropertiesUpdated"><arg type="a(ia{sv})"/><arg type="a(ias)"/></signal>
+ <signal name="LayoutUpdated"><arg type="u"/><arg type="i"/></signal>
  <method name="AboutToShowGroup"><arg type="ai" direction="in"/><arg type="ai" direction="out"/><arg type="ai" direction="out"/></method>
  <property name="Version" type="u" access="read"/>
  <property name="TextDirection" type="s" access="read"/>
@@ -108,11 +113,13 @@ void ViewMapped(GtkWidget*, gpointer data) { ConnectWindow(static_cast<LinuxLife
 // Open/settings/restart, Private mode, and quit.
 constexpr gint kMenuItems = 7;
 constexpr const char* kMenuLabels[] = {"", "Open Clipboard", "Open Settings", "Restart Arcade Clipboard", "",
-                                       "Private mode on/off", "", "Quit Arcade Clipboard"};
+                                       "Private mode", "", "Quit Arcade Clipboard"};
 constexpr const char* kMenuActions[] = {nullptr, "showMainWindow", "showSettings", "restartRequested", nullptr,
                                         "privateModeRequested", nullptr, "quitRequested"};
 
-GVariant* MenuProperties(gint id) {
+constexpr gint kPrivateModeItem = 5;
+
+GVariant* MenuProperties(const LinuxLifecycle* state, gint id) {
   GVariantBuilder properties;
   g_variant_builder_init(&properties, G_VARIANT_TYPE("a{sv}"));
   if (id == 0) {
@@ -123,17 +130,21 @@ GVariant* MenuProperties(gint id) {
     g_variant_builder_add(&properties, "{sv}", "label", g_variant_new_string(kMenuLabels[id]));
     g_variant_builder_add(&properties, "{sv}", "enabled", g_variant_new_boolean(TRUE));
     g_variant_builder_add(&properties, "{sv}", "visible", g_variant_new_boolean(TRUE));
+    if (id == kPrivateModeItem) {
+      g_variant_builder_add(&properties, "{sv}", "toggle-type", g_variant_new_string("checkmark"));
+      g_variant_builder_add(&properties, "{sv}", "toggle-state", g_variant_new_int32(state->private_mode ? 1 : 0));
+    }
   }
   return g_variant_builder_end(&properties);
 }
 
-GVariant* MenuLayout(gint id) {
+GVariant* MenuLayout(const LinuxLifecycle* state, gint id) {
   GVariantBuilder children;
   g_variant_builder_init(&children, G_VARIANT_TYPE("av"));
   if (id == 0) {
-    for (gint child = 1; child <= kMenuItems; ++child) g_variant_builder_add(&children, "v", MenuLayout(child));
+    for (gint child = 1; child <= kMenuItems; ++child) g_variant_builder_add(&children, "v", MenuLayout(state, child));
   }
-  return g_variant_new("(i@a{sv}@av)", id, MenuProperties(id), g_variant_builder_end(&children));
+  return g_variant_new("(i@a{sv}@av)", id, MenuProperties(state, id), g_variant_builder_end(&children));
 }
 
 void MenuEvent(LinuxLifecycle* state, gint id, const gchar* event) {
@@ -177,17 +188,17 @@ void MenuMethod(GDBusConnection*, const gchar*, const gchar*, const gchar*, cons
   if (g_strcmp0(method, "GetLayout") == 0) {
     gint id = 0;
     g_variant_get_child(arguments, 0, "i", &id);
-    g_dbus_method_invocation_return_value(invocation, g_variant_new("(u@(ia{sv}av))", 1U, MenuLayout(id)));
+    g_dbus_method_invocation_return_value(invocation, g_variant_new("(u@(ia{sv}av))", state->menu_revision, MenuLayout(state, id)));
   } else if (g_strcmp0(method, "GetGroupProperties") == 0) {
     GVariantBuilder groups;
     g_variant_builder_init(&groups, G_VARIANT_TYPE("a(ia{sv})"));
-    for (gint id = 0; id <= kMenuItems; ++id) g_variant_builder_add(&groups, "(i@a{sv})", id, MenuProperties(id));
+    for (gint id = 0; id <= kMenuItems; ++id) g_variant_builder_add(&groups, "(i@a{sv})", id, MenuProperties(state, id));
     g_dbus_method_invocation_return_value(invocation, g_variant_new("(@a(ia{sv}))", g_variant_builder_end(&groups)));
   } else if (g_strcmp0(method, "GetProperty") == 0) {
     gint id = 0;
     const gchar* name = nullptr;
     g_variant_get(arguments, "(i&s)", &id, &name);
-    GVariant* properties = MenuProperties(id);
+    GVariant* properties = MenuProperties(state, id);
     GVariant* value = g_variant_lookup_value(properties, name, nullptr);
     g_dbus_method_invocation_return_value(invocation, g_variant_new("(v)", value == nullptr ? g_variant_new_string("") : value));
     if (value != nullptr) g_variant_unref(value);
@@ -580,6 +591,26 @@ bool HandleLifecycleMethod(LinuxLifecycle* state, FlMethodCall* call) {
       ShowHiddenWindow(state);
     } else if (!TrayHostAvailable(&error)) {
       WaitForTrayHost(state);
+    }
+    Respond(call);
+    return true;
+  }
+  if (g_strcmp0(method, "setPrivateMode") == 0) {
+    const bool enabled = Enabled(call);
+    if (enabled != state->private_mode) {
+      state->private_mode = enabled;
+      ++state->menu_revision;
+      if (state->bus != nullptr && state->menu_registration != 0) {
+        // Hosts that keep the menu open update the checkmark in place.
+        GVariantBuilder updated;
+        g_variant_builder_init(&updated, G_VARIANT_TYPE("a(ia{sv})"));
+        g_variant_builder_add(&updated, "(i@a{sv})", kPrivateModeItem, MenuProperties(state, kPrivateModeItem));
+        g_dbus_connection_emit_signal(state->bus, nullptr, "/Menu", "com.canonical.dbusmenu", "ItemsPropertiesUpdated",
+            g_variant_new("(@a(ia{sv})@a(ias))", g_variant_builder_end(&updated),
+                g_variant_new_array(G_VARIANT_TYPE("(ias)"), nullptr, 0)), nullptr);
+        g_dbus_connection_emit_signal(state->bus, nullptr, "/Menu", "com.canonical.dbusmenu", "LayoutUpdated",
+            g_variant_new("(ui)", state->menu_revision, 0), nullptr);
+      }
     }
     Respond(call);
     return true;
