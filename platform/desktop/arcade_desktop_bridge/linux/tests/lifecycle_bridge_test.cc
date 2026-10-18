@@ -212,12 +212,24 @@ int main() {
   g_dbus_node_info_unref(item);
   g_dbus_node_info_unref(menu);
 
-  GVariant* layout = g_variant_ref_sink(MenuLayout(0));
+  LinuxLifecycle lifecycle;
+  GVariant* layout = g_variant_ref_sink(MenuLayout(&lifecycle, 0));
   assert(g_variant_is_of_type(layout, G_VARIANT_TYPE("(ia{sv}av)")));
   GVariant* children = g_variant_get_child_value(layout, 2);
   assert(g_variant_n_children(children) == 7);
   g_variant_unref(children);
   g_variant_unref(layout);
+
+  // The Private mode item is a checkmark that follows the core's state.
+  for (bool on : {false, true}) {
+    lifecycle.private_mode = on;
+    GVariant* properties = g_variant_ref_sink(MenuProperties(&lifecycle, kPrivateModeItem));
+    const gchar* toggle = nullptr;
+    gint32 checked = -1;
+    assert(g_variant_lookup(properties, "toggle-type", "&s", &toggle) && g_strcmp0(toggle, "checkmark") == 0);
+    assert(g_variant_lookup(properties, "toggle-state", "i", &checked) && checked == (on ? 1 : 0));
+    g_variant_unref(properties);
+  }
 
   // Exercise the layered desktop-file escaping for literal shell metacharacters.
   GKeyFile* config = g_key_file_new();
