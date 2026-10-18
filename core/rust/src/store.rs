@@ -21,6 +21,10 @@ const MAX_SOURCE_NAME_BYTES: usize = 128;
 const MAX_ITEM_LIFETIME_MS: i64 = 30 * 24 * 60 * 60 * 1000;
 const MAX_FUTURE_CLOCK_SKEW_MS: i64 = 5 * 60 * 1000;
 const MAX_TOMBSTONE_AGE_MS: i64 = 31 * 24 * 60 * 60 * 1000;
+/// Pin revisions advance by one per pin change across the mesh. A revision
+/// further ahead of this device's clock than this did not come from use; one
+/// at the limit would leave no revisions for anyone's later pins.
+const MAX_PIN_REVISION_STEP: u64 = 1 << 32;
 const HASH_PRIVACY_SCRUB_MARKER: &str = "hash_privacy_scrub_pending_v3";
 
 /// Matching `(item ID, pinned)` pairs and the newest item ID in history.
@@ -354,43 +358,98 @@ impl Store {
         query: Option<&str>,
         limit: usize,
     ) -> Result<Vec<HistoryItem>, String> {
+        self.history_until(query, limit, &|| false)
+    }
+
+    /// History rows, newest first, optionally filtered. Clips are encrypted,
+    /// so a search reads every retained row: each row's metadata and small
+    /// preview record come from one query, and `stop` (checked every 64
+    /// rows) lets a newer search end this one early.
+    pub fn history_until(
+        &mut self,
+        query: Option<&str>,
+        limit: usize,
+        stop: &dyn Fn() -> bool,
+    ) -> Result<Vec<HistoryItem>, String> {
         self.expire()?;
+        let needle = query.unwrap_or_default().trim().to_lowercase();
+        let limit = limit.clamp(1, MAX_RETAINED_ITEMS);
+        let cipher = XChaCha20Poly1305::new((&self.key).into());
         let mut statement = self
             .conn
             .prepare(
-                "SELECT id,pinned FROM items ORDER BY pinned DESC,created_at DESC,id DESC LIMIT ?1",
+                "SELECT i.id,i.pinned,i.protocol_version,i.sender_sequence,i.origin_device,i.source_name,
+                        i.created_at,i.expires_at,i.kind,i.content_tag,i.nonce,i.aad_version,p.nonce,p.ciphertext
+                 FROM items i LEFT JOIN item_previews p ON p.id=i.id
+                 ORDER BY i.pinned DESC,i.created_at DESC,i.id DESC LIMIT ?1",
             )
             .map_err(db_error)?;
-        let rows = statement
-            .query_map([MAX_RETAINED_ITEMS as i64], |r| {
-                Ok((r.get::<_, String>(0)?, r.get::<_, bool>(1)?))
-            })
+        let mut rows = statement
+            .query([MAX_RETAINED_ITEMS as i64])
             .map_err(db_error)?;
-        let needle = query.unwrap_or_default().trim().to_lowercase();
         let mut out = Vec::new();
-        for row in rows {
-            let (id, pinned) = row.map_err(db_error)?;
-            let Some(mut item) = self.history_metadata(&id)? else {
-                continue;
+        let mut scanned = 0usize;
+        while let Some(row) = rows.next().map_err(db_error)? {
+            scanned += 1;
+            if scanned.is_multiple_of(64) && stop() {
+                break;
+            }
+            let id: String = row.get(0).map_err(db_error)?;
+            let pinned: bool = row.get(1).map_err(db_error)?;
+            let cached: Option<Vec<u8>> = row.get(12).map_err(db_error)?;
+            let mut item = match cached {
+                Some(preview_nonce) => {
+                    let item_nonce: Vec<u8> = row.get(10).map_err(db_error)?;
+                    checked_nonce(&item_nonce)?;
+                    let mut aad = item_aad_for_row(
+                        row.get(11).map_err(db_error)?,
+                        row.get(2).map_err(db_error)?,
+                        row.get(3).map_err(db_error)?,
+                        &id,
+                        &row.get::<_, String>(4).map_err(db_error)?,
+                        &row.get::<_, String>(5).map_err(db_error)?,
+                        row.get(6).map_err(db_error)?,
+                        row.get(7).map_err(db_error)?,
+                        &row.get::<_, String>(8).map_err(db_error)?,
+                        &row.get::<_, String>(9).map_err(db_error)?,
+                    )?;
+                    aad.extend_from_slice(b":preview:v1:");
+                    aad.extend_from_slice(&item_nonce);
+                    let ciphertext: Vec<u8> = row.get(13).map_err(db_error)?;
+                    let bytes = cipher
+                        .decrypt(
+                            checked_nonce(&preview_nonce)?,
+                            Payload {
+                                msg: &ciphertext,
+                                aad: &aad,
+                            },
+                        )
+                        .map_err(|_| {
+                            "Clipboard preview failed local authentication".to_string()
+                        })?;
+                    serde_json::from_slice::<HistoryItem>(&bytes)
+                        .map_err(|_| "Stored clipboard preview is invalid".to_string())?
+                }
+                // An older profile's row: upgraded (and cached) as it is read.
+                None => match self.history_metadata(&id)? {
+                    Some(item) => item,
+                    None => continue,
+                },
             };
             if !needle.is_empty()
-                && !item.text.to_lowercase().contains(&needle)
-                && !item.source_name.to_lowercase().contains(&needle)
-                && !item.kind.to_lowercase().contains(&needle)
+                && !contains_folded(&item.text, &needle)
+                && !contains_folded(&item.source_name, &needle)
+                && !contains_folded(&item.kind, &needle)
                 && !item.representations.iter().any(|representation| {
-                    representation
-                        .name
-                        .as_deref()
-                        .unwrap_or_default()
-                        .to_lowercase()
-                        .contains(&needle)
+                    contains_folded(representation.name.as_deref().unwrap_or_default(), &needle)
                 })
             {
                 continue;
             }
             item.pinned = pinned;
+            item.preview = short_preview(&item.preview);
             out.push(item);
-            if out.len() >= limit.clamp(1, MAX_RETAINED_ITEMS) {
+            if out.len() >= limit {
                 break;
             }
         }
@@ -539,6 +598,10 @@ impl Store {
         if self.was_deleted(&state.id)? {
             return Ok(false);
         }
+        let local_clock = self.next_pin_revision()?.saturating_sub(1);
+        if state.revision > local_clock.saturating_add(MAX_PIN_REVISION_STEP) {
+            return Err("Pin update revision is too far ahead of this device".into());
+        }
         if let Some(previous) = self.pin_state(&state.id)? {
             if (state.revision, &state.actor_device) < (previous.revision, &previous.actor_device) {
                 return Ok(false);
@@ -559,10 +622,7 @@ impl Store {
                 return Err("Pin preferences reached their storage limit".into());
             }
         }
-        let clock = self
-            .next_pin_revision()?
-            .saturating_sub(1)
-            .max(state.revision);
+        let clock = local_clock.max(state.revision);
         let tx = self.conn.transaction().map_err(db_error)?;
         let json = serde_json::to_string(state)
             .map_err(|_| "Could not encode pin preference".to_string())?;
@@ -594,9 +654,13 @@ impl Store {
                         .into(),
                 );
             }
+            // A pinned copy never expires, so neither may the record of its
+            // deletion: a device holding the copy would restore it later.
             self.conn
                 .execute(
-                    "INSERT INTO deleted_items(id,deleted_at) VALUES(?1,?2)",
+                    "INSERT INTO deleted_items(id,deleted_at,pinned) VALUES(?1,?2,
+                        EXISTS(SELECT 1 FROM items WHERE id=?1 AND pinned=1)
+                        OR EXISTS(SELECT 1 FROM pin_updates WHERE id=?1 AND json_extract(state,'$.pinned')=1))",
                     params![id, now_ms()],
                 )
                 .map_err(db_error)?;
@@ -657,13 +721,16 @@ impl Store {
             return Err("This profile reached its deletion-tombstone capacity".into());
         }
         for id in &ids {
-            tx.execute("DELETE FROM pin_updates WHERE id=?1", [id])
-                .map_err(db_error)?;
             tx.execute(
-                "INSERT INTO deleted_items(id,deleted_at) VALUES(?1,?2) ON CONFLICT(id) DO NOTHING",
+                "INSERT INTO deleted_items(id,deleted_at,pinned) VALUES(?1,?2,
+                    EXISTS(SELECT 1 FROM items WHERE id=?1 AND pinned=1)
+                    OR EXISTS(SELECT 1 FROM pin_updates WHERE id=?1 AND json_extract(state,'$.pinned')=1))
+                 ON CONFLICT(id) DO NOTHING",
                 params![id, now_ms()],
             )
             .map_err(db_error)?;
+            tx.execute("DELETE FROM pin_updates WHERE id=?1", [id])
+                .map_err(db_error)?;
         }
         tx.execute("DELETE FROM items WHERE ?1 OR pinned=0", [include_pinned])
             .map_err(db_error)?;
@@ -858,17 +925,20 @@ impl Store {
         let retention: u32 = self.setting("retention_hours", DEFAULT_RETENTION_HOURS);
         let now = now_ms();
         let cutoff = now.saturating_sub(i64::from(retention.max(1)) * 60 * 60 * 1000);
+        // Retention is this device's own setting: a clip from a device that
+        // keeps history for less time (its expires_at) stays here as long as
+        // this device keeps history. 720 hours is also the protocol's limit.
         self.conn
             .execute(
-                "DELETE FROM items WHERE pinned=0 AND (expires_at<=?1 OR created_at<?2)",
-                params![now, cutoff],
+                "DELETE FROM items WHERE pinned=0 AND created_at<?1",
+                params![cutoff],
             )
             .map_err(db_error)?;
         let tombstone_cutoff = now.saturating_sub(MAX_TOMBSTONE_AGE_MS);
         self.conn.execute("DELETE FROM pin_updates WHERE id NOT IN (SELECT id FROM items) AND CAST(json_extract(state,'$.changed_at') AS INTEGER)<?1", [tombstone_cutoff]).map_err(db_error)?;
         self.conn
             .execute(
-                "DELETE FROM deleted_items WHERE deleted_at<?1",
+                "DELETE FROM deleted_items WHERE deleted_at<?1 AND pinned=0",
                 [tombstone_cutoff],
             )
             .map_err(db_error)?;
@@ -1339,7 +1409,7 @@ fn create_schema_v3(tx: &rusqlite::Transaction<'_>) -> Result<(), String> {
             aad_version INTEGER NOT NULL DEFAULT 3
          );
          CREATE INDEX items_created_idx ON items(created_at DESC);
-         CREATE TABLE deleted_items (id TEXT PRIMARY KEY NOT NULL, deleted_at INTEGER NOT NULL);
+         CREATE TABLE deleted_items (id TEXT PRIMARY KEY NOT NULL, deleted_at INTEGER NOT NULL, pinned INTEGER NOT NULL DEFAULT 0);
          CREATE TABLE devices (
             device_id TEXT PRIMARY KEY NOT NULL,
             device_name TEXT NOT NULL,
@@ -1381,6 +1451,14 @@ fn ensure_support_schema(conn: &Connection) -> Result<(), String> {
          CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);
          INSERT OR IGNORE INTO settings(key,value) VALUES ('paused','false'),('retention_hours','24'),('max_items','500');"
     ).map_err(db_error)?;
+    if !column_exists(conn, "deleted_items", "pinned")? {
+        conn.execute_batch("ALTER TABLE deleted_items ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0")
+            .map_err(db_error)?;
+    }
+    // Count pruning keeps pinned items first, then the newest: an index in
+    // that order avoids sorting the whole history on every capture and refresh.
+    conn.execute_batch("CREATE INDEX IF NOT EXISTS items_retention_idx ON items(pinned DESC, created_at DESC, id DESC)")
+        .map_err(db_error)?;
     Ok(())
 }
 
@@ -1437,6 +1515,33 @@ fn hash_privacy_scrub_pending(conn: &Connection) -> Result<bool, String> {
     .map_err(db_error)
 }
 
+/// The list shows one line of each clip; the full text is in `text`
+/// already, so the preview needn't repeat all of it.
+const PREVIEW_CHARS: usize = 500;
+
+fn short_preview(preview: &str) -> String {
+    match preview.char_indices().nth(PREVIEW_CHARS) {
+        Some((end, _)) => preview[..end].to_owned(),
+        None => preview.to_owned(),
+    }
+}
+
+/// `haystack` contains `needle` (already lowercase), ignoring case, without
+/// lowercasing a copy of the haystack when the needle is ASCII.
+fn contains_folded(haystack: &str, needle: &str) -> bool {
+    if needle.is_empty() {
+        return true;
+    }
+    if !needle.is_ascii() {
+        return haystack.to_lowercase().contains(needle);
+    }
+    let needle = needle.as_bytes();
+    haystack
+        .as_bytes()
+        .windows(needle.len())
+        .any(|window| window.eq_ignore_ascii_case(needle))
+}
+
 fn history_preview(item: &WireItem) -> Result<HistoryItem, String> {
     let representations = crate::payload::representation_info(&item.representations)?;
     let size = item.text.len()
@@ -1458,7 +1563,7 @@ fn history_preview(item: &WireItem) -> Result<HistoryItem, String> {
                 .collect::<Vec<_>>()
                 .join(", ")
         } else {
-            item.text.clone()
+            short_preview(&item.text)
         },
         kind: item.kind.clone(),
         pinned: false,
@@ -1492,6 +1597,8 @@ mod tests {
     use crate::model::MAX_TEXT_BYTES;
     use crate::model::{MemberCertificate, SignedMemberCertificate};
     use tempfile::tempdir;
+
+    const HOUR: i64 = 60 * 60 * 1000;
 
     fn sample() -> WireItem {
         sample_text("secret clipboard")
@@ -1662,6 +1769,101 @@ mod tests {
             .item(&second.id)
             .unwrap_err()
             .contains("nonce is malformed"));
+    }
+
+    #[test]
+    fn a_far_future_pin_revision_cannot_exhaust_the_pin_clock() {
+        let dir = tempdir().unwrap();
+        let mut store = Store::open(&dir.path().join("history.sqlite"), [14; 32]).unwrap();
+        let (first, second) = (sample(), sample());
+        store.capture(&first, 10).unwrap();
+        store.capture(&second, 10).unwrap();
+        let actor = uuid::Uuid::new_v4().to_string();
+        assert!(store
+            .apply_pin(&pin_update(&first, &actor, i64::MAX as u64, true))
+            .is_err());
+        // Ordinary updates and local pins keep working.
+        assert!(store.apply_pin(&pin_update(&first, &actor, 5, true)).unwrap());
+        assert_eq!(store.next_pin_revision().unwrap(), 6);
+        assert!(store.apply_pin(&pin_update(&second, &actor, 6, true)).unwrap());
+    }
+
+    #[test]
+    fn a_newer_search_stops_an_older_one_and_previews_stay_short() {
+        let dir = tempdir().unwrap();
+        let mut store = Store::open(&dir.path().join("history.sqlite"), [15; 32]).unwrap();
+        for i in 0..200 {
+            store.capture(&sample_text(&format!("clip {i} {}", "y".repeat(2000))), 500).unwrap();
+        }
+        // Stopped at the first check: nothing past the first 64 rows is read.
+        let calls = std::cell::Cell::new(0);
+        let stopped = store
+            .history_until(Some("no such text"), 50, &|| {
+                calls.set(calls.get() + 1);
+                true
+            })
+            .unwrap();
+        assert!(stopped.is_empty() && calls.get() == 1);
+        let page = store.history(Some("CLIP 1"), 5).unwrap();
+        assert_eq!(page.len(), 5);
+        assert!(page.iter().all(|item| item.preview.chars().count() == PREVIEW_CHARS && item.text.len() > 2000));
+    }
+
+    #[test]
+    fn retention_is_this_devices_own() {
+        let dir = tempdir().unwrap();
+        let mut store = Store::open(&dir.path().join("history.sqlite"), [13; 32]).unwrap();
+        store.set_setting("retention_hours", "168").unwrap();
+        // From a device that keeps history for 1 hour, received 2 hours ago.
+        let mut short = sample_text_at("short-lived elsewhere", now_ms() - 2 * HOUR);
+        short.expires_at = short.created_at + 3 * HOUR;
+        store.capture(&short, 10).unwrap();
+        store
+            .conn
+            .execute(
+                "UPDATE items SET expires_at=?2 WHERE id=?1",
+                params![short.id, now_ms() - HOUR],
+            )
+            .unwrap();
+        let old = sample_text_at("older than a week", now_ms() - 169 * HOUR);
+        let mut old = old;
+        old.expires_at = now_ms() + HOUR;
+        store.capture(&old, 10).unwrap();
+        store.expire().unwrap();
+        let ids: Vec<String> = store
+            .conn
+            .prepare("SELECT id FROM items")
+            .unwrap()
+            .query_map([], |row| row.get(0))
+            .unwrap()
+            .collect::<Result<_, _>>()
+            .unwrap();
+        assert_eq!(ids, vec![short.id]);
+    }
+
+    #[test]
+    fn a_deleted_pinned_item_stays_deleted_after_tombstone_expiry() {
+        let dir = tempdir().unwrap();
+        let mut store = Store::open(&dir.path().join("history.sqlite"), [12; 32]).unwrap();
+        let (pinned, plain) = (sample(), sample());
+        store.capture(&pinned, 10).unwrap();
+        store.capture(&plain, 10).unwrap();
+        store
+            .conn
+            .execute("UPDATE items SET pinned=1 WHERE id=?1", [&pinned.id])
+            .unwrap();
+        assert!(store.delete_item(&pinned.id).unwrap());
+        assert!(store.delete_item(&plain.id).unwrap());
+        // Both records age past the expiry another device's copy outlives
+        // only when it is pinned.
+        let old_at = now_ms() - MAX_TOMBSTONE_AGE_MS - 1;
+        store
+            .conn
+            .execute("UPDATE deleted_items SET deleted_at=?1", [old_at])
+            .unwrap();
+        store.expire().unwrap();
+        assert!(store.was_deleted(&pinned.id).unwrap());
+        assert!(!store.was_deleted(&plain.id).unwrap());
     }
 
     #[test]
@@ -1947,7 +2149,8 @@ mod tests {
     fn pinned_expired_items_are_retained_and_expire_immediately_when_unpinned() {
         let directory = tempdir().unwrap();
         let mut store = Store::open(&directory.path().join("history.sqlite"), [31; 32]).unwrap();
-        let mut item = sample_text_at("Pinned beyond retention", now_ms() - 2 * 60 * 60 * 1000);
+        // Older than this device's 24-hour retention.
+        let mut item = sample_text_at("Pinned beyond retention", now_ms() - 25 * 60 * 60 * 1000);
         item.expires_at = now_ms() - 60 * 60 * 1000;
         let actor = uuid::Uuid::new_v4().to_string();
         let mut update = pin_update(&item, &actor, 1, true);
