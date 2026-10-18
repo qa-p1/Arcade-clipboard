@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "0.2.1"
+  #define AppVersion "0.2.2"
 #endif
 #ifndef SourceDir
   #error SourceDir must be the Flutter Windows Release bundle
