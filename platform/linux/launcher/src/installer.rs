@@ -90,7 +90,12 @@ impl Options {
             .as_ref()
             // Fresh installs start at login like every Arcade app; an existing
             // install reflects whether its entry will really run.
-            .is_none_or(|r| r.integration.autostart.as_ref().is_some_and(|p| install::autostart_enabled(p)));
+            .is_none_or(|r| {
+                r.integration
+                    .autostart
+                    .as_ref()
+                    .is_some_and(|p| install::autostart_enabled(p))
+            });
         let install_cli = environment
             .path
             .as_ref()
@@ -303,7 +308,11 @@ fn quit_running_instance() {
 /// keep the single instance and the new copy would only show it. Asks over the
 /// Link first (and waits for it to go), else with the app's own `--quit`.
 pub fn stop_running_copy(environment: &Environment) {
-    let quit = install::quit_running(&environment.locations, ME, std::time::Duration::from_secs(10));
+    let quit = install::quit_running(
+        &environment.locations,
+        ME,
+        std::time::Duration::from_secs(10),
+    );
     if !matches!(quit, Ok(true)) {
         quit_running_instance();
     }

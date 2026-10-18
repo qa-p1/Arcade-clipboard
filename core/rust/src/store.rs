@@ -424,9 +424,7 @@ impl Store {
                                 aad: &aad,
                             },
                         )
-                        .map_err(|_| {
-                            "Clipboard preview failed local authentication".to_string()
-                        })?;
+                        .map_err(|_| "Clipboard preview failed local authentication".to_string())?;
                     serde_json::from_slice::<HistoryItem>(&bytes)
                         .map_err(|_| "Stored clipboard preview is invalid".to_string())?
                 }
@@ -1452,8 +1450,10 @@ fn ensure_support_schema(conn: &Connection) -> Result<(), String> {
          INSERT OR IGNORE INTO settings(key,value) VALUES ('paused','false'),('retention_hours','24'),('max_items','500');"
     ).map_err(db_error)?;
     if !column_exists(conn, "deleted_items", "pinned")? {
-        conn.execute_batch("ALTER TABLE deleted_items ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0")
-            .map_err(db_error)?;
+        conn.execute_batch(
+            "ALTER TABLE deleted_items ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0",
+        )
+        .map_err(db_error)?;
     }
     // Count pruning keeps pinned items first, then the newest: an index in
     // that order avoids sorting the whole history on every capture and refresh.
@@ -1783,9 +1783,13 @@ mod tests {
             .apply_pin(&pin_update(&first, &actor, i64::MAX as u64, true))
             .is_err());
         // Ordinary updates and local pins keep working.
-        assert!(store.apply_pin(&pin_update(&first, &actor, 5, true)).unwrap());
+        assert!(store
+            .apply_pin(&pin_update(&first, &actor, 5, true))
+            .unwrap());
         assert_eq!(store.next_pin_revision().unwrap(), 6);
-        assert!(store.apply_pin(&pin_update(&second, &actor, 6, true)).unwrap());
+        assert!(store
+            .apply_pin(&pin_update(&second, &actor, 6, true))
+            .unwrap());
     }
 
     #[test]
@@ -1793,7 +1797,9 @@ mod tests {
         let dir = tempdir().unwrap();
         let mut store = Store::open(&dir.path().join("history.sqlite"), [15; 32]).unwrap();
         for i in 0..200 {
-            store.capture(&sample_text(&format!("clip {i} {}", "y".repeat(2000))), 500).unwrap();
+            store
+                .capture(&sample_text(&format!("clip {i} {}", "y".repeat(2000))), 500)
+                .unwrap();
         }
         // Stopped at the first check: nothing past the first 64 rows is read.
         let calls = std::cell::Cell::new(0);
@@ -1806,7 +1812,9 @@ mod tests {
         assert!(stopped.is_empty() && calls.get() == 1);
         let page = store.history(Some("CLIP 1"), 5).unwrap();
         assert_eq!(page.len(), 5);
-        assert!(page.iter().all(|item| item.preview.chars().count() == PREVIEW_CHARS && item.text.len() > 2000));
+        assert!(page
+            .iter()
+            .all(|item| item.preview.chars().count() == PREVIEW_CHARS && item.text.len() > 2000));
     }
 
     #[test]

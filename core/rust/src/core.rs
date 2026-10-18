@@ -1536,7 +1536,10 @@ impl Core {
         Ok(())
     }
 
-    pub async fn update_settings(self: &Arc<Self>, values: &serde_json::Value) -> Result<(), String> {
+    pub async fn update_settings(
+        self: &Arc<Self>,
+        values: &serde_json::Value,
+    ) -> Result<(), String> {
         let object = values
             .as_object()
             .ok_or_else(|| "Settings values must be an object".to_string())?;
@@ -1996,12 +1999,11 @@ impl Core {
                 let items = if object.get("latest_only").and_then(|v| v.as_bool()) == Some(true) {
                     let search = self.searches.fetch_add(1, Ordering::SeqCst) + 1;
                     let superseded = || self.searches.load(Ordering::SeqCst) != search;
-                    let items = self
-                        .state
-                        .lock()
-                        .await
-                        .store
-                        .history_until(Some(query), limit, &superseded)?;
+                    let items = self.state.lock().await.store.history_until(
+                        Some(query),
+                        limit,
+                        &superseded,
+                    )?;
                     if superseded() {
                         return Ok(serde_json::json!({"items":[],"superseded":true}));
                     }

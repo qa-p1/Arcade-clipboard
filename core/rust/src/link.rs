@@ -1118,7 +1118,10 @@ mod tests {
 
         // Large rich text: the text in `path`, its HTML in `htmlPath`.
         let dir = tempfile::tempdir().unwrap();
-        let (text, html) = (dir.path().join("clipboard.txt"), dir.path().join("clipboard.html"));
+        let (text, html) = (
+            dir.path().join("clipboard.txt"),
+            dir.path().join("clipboard.html"),
+        );
         std::fs::write(&text, "Big").unwrap();
         std::fs::write(&html, "<b>Big</b>").unwrap();
         let handed = Content {

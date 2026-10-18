@@ -149,7 +149,12 @@ pub fn run_uninstall(environment: Environment, remove_data: bool) -> Result<Outc
     Ok(Outcome::Exit)
 }
 
-fn ask(state: &DialogState, mut options: Options, managed: bool, legacy: &[PathBuf]) -> Result<Choice, String> {
+fn ask(
+    state: &DialogState,
+    mut options: Options,
+    managed: bool,
+    legacy: &[PathBuf],
+) -> Result<Choice, String> {
     use gtk::prelude::*;
     gtk::init().map_err(|e| format!("no display for the install dialog: {e}"))?;
     let (title, body, buttons) = text(state);
