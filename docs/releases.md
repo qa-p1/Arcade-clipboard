@@ -2,18 +2,20 @@
 
 The release workflow defines stable (`v<version>` tags) and nightly (pushes to
 `main`) channels. A manual run can choose either channel; stable must run on a
-version tag matching both Cargo.toml and pubspec.yaml. Nothing is tagged, pushed
+version tag matching both Cargo.toml and pubspec.yaml. To ship a stable release, bump
+both versions on `main`, run "Tag a release" (`tag.yml`) with the tag and the
+commit SHA, then run "Release" on that tag with channel `stable`. Nothing is tagged, pushed
 or published by local development. CI builds the Windows and macOS desktop apps
 and runs the Rust core tests on them; their installers run install, repair and uninstall smoke checks in disposable CI
 profiles. Interactive behavior on Windows and macOS has not been verified.
 
 ## Shared Link dependency
 
-The core takes Arcade Link as a git dependency pinned to a release tag
-(`qa-p1/Arcade-Link`, `v0.3.0`, in the workspace `Cargo.toml`), so no workflow
+The core takes Arcade Link as a git dependency pinned to a commit
+(`qa-p1/Arcade-Link`, `2fc7c91`, in the workspace `Cargo.toml`), so no workflow
 needs a second checkout. To build against a local Link checkout, use the
 `[patch]` override described next to the dependency. Moving to a newer Link
-means changing the tag and refreshing `Cargo.lock`.
+means changing the pinned commit and refreshing `Cargo.lock`.
 
 ## Packages and installation
 
