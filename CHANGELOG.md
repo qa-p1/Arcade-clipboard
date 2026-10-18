@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.1 — 2026-10-18
+
+- Updating or installing from your Downloads folder, and restarting no longer
+  leave the old AppImage mounted and its runtime (about 20 MB) running. A
+  program the app started inherited an open handle on its AppImage mount and
+  kept it busy.
+- `arcade-clipboard --help` prints the command-line options instead of opening
+  the app.
+
 ## 0.2.0 — 2026-10-18
 
 - Private mode: nothing copied while paused leaks to other devices afterwards,
