@@ -1,6 +1,8 @@
 #include "my_application.h"
 
+#include <errno.h>
 #include <flutter_linux/flutter_linux.h>
+#include <string.h>
 #include <unistd.h>
 #ifdef GDK_WINDOWING_X11
 #include <gdk/gdkx.h>
@@ -13,10 +15,15 @@ struct _MyApplication {
   char** dart_entrypoint_arguments;
   gboolean start_hidden;
   FlMethodChannel* instance_channel;
+  // --version / --arcade-manifest: the caller's stdout, saved before engine
+  // logging was moved to stderr, and the channel Dart writes the answer on.
+  int answer_fd;
+  FlMethodChannel* answer_channel;
 };
 
 // A second launch forwards to the running instance through these actions:
 // `clipboard` shows the main window, `clipboard --overlay` opens the picker,
+// `clipboard --settings` opens Settings,
 // `clipboard --quit` quits.
 static void forward_instance_action(GSimpleAction* action, GVariant*, gpointer user_data) {
   MyApplication* self = MY_APPLICATION(user_data);
@@ -26,6 +33,33 @@ static void forward_instance_action(GSimpleAction* action, GVariant*, gpointer u
 }
 
 G_DEFINE_TYPE(MyApplication, my_application, GTK_TYPE_APPLICATION)
+
+// Writes Dart's answer through the saved descriptor itself. Reopening
+// /proc/self/fd/N instead started over at offset 0 in a redirected file
+// (overwriting what came before) and failed for sockets and for pipes of
+// another user.
+static void answer_method(FlMethodChannel*, FlMethodCall* call, gpointer user_data) {
+  MyApplication* self = MY_APPLICATION(user_data);
+  FlValue* text = fl_method_call_get_args(call);
+  if (g_strcmp0(fl_method_call_get_name(call), "write") != 0 || self->answer_fd < 0 ||
+      fl_value_get_type(text) != FL_VALUE_TYPE_STRING) {
+    fl_method_call_respond_not_implemented(call, nullptr);
+    return;
+  }
+  const char* bytes = fl_value_get_string(text);
+  size_t left = strlen(bytes);
+  while (left > 0) {
+    const ssize_t written = write(self->answer_fd, bytes, left);
+    if (written < 0 && errno == EINTR) continue;
+    if (written <= 0) {
+      fl_method_call_respond_error(call, "write", g_strerror(errno), nullptr, nullptr);
+      return;
+    }
+    bytes += written;
+    left -= static_cast<size_t>(written);
+  }
+  fl_method_call_respond_success(call, nullptr, nullptr);
+}
 
 // Called when first Flutter frame received.
 static void first_frame_cb(MyApplication* self, FlView* view) {
@@ -112,6 +146,12 @@ static void my_application_activate(GApplication* application) {
   self->instance_channel = fl_method_channel_new(
       fl_engine_get_binary_messenger(fl_view_get_engine(view)),
       "arcade_clipboard/instance", FL_METHOD_CODEC(codec));
+  if (self->answer_fd >= 0) {
+    self->answer_channel = fl_method_channel_new(
+        fl_engine_get_binary_messenger(fl_view_get_engine(view)),
+        "arcade_clipboard/answer", FL_METHOD_CODEC(codec));
+    fl_method_channel_set_method_call_handler(self->answer_channel, answer_method, self, nullptr);
+  }
 
   gtk_widget_grab_focus(GTK_WIDGET(view));
 }
@@ -140,6 +180,7 @@ static gboolean my_application_local_command_line(GApplication* application,
     // goes to stderr. A caller parsing --arcade-manifest gets only JSON.
     int answer = dup(STDOUT_FILENO);
     if (answer >= 0 && dup2(STDERR_FILENO, STDOUT_FILENO) >= 0) {
+      self->answer_fd = answer;
       g_autofree gchar* fd = g_strdup_printf("%d", answer);
       g_setenv("ARCADE_ANSWER_FD", fd, TRUE);
     }
@@ -171,13 +212,15 @@ static gboolean my_application_local_command_line(GApplication* application,
 
   if (g_application_get_is_remote(application)) {
     gboolean overlay = FALSE;
+    gboolean settings = FALSE;
     for (gchar** argument = self->dart_entrypoint_arguments; *argument != nullptr; ++argument) {
       if (g_strcmp0(*argument, "--overlay") == 0) overlay = TRUE;
+      if (g_strcmp0(*argument, "--settings") == 0) settings = TRUE;
     }
     // Login autostart must not pop the window of an already running app.
     if (!self->start_hidden || overlay) {
       g_action_group_activate_action(G_ACTION_GROUP(application),
-                                     overlay ? "overlay" : "show", nullptr);
+                                     overlay ? "overlay" : settings ? "settings" : "show", nullptr);
       GDBusConnection* bus = g_application_get_dbus_connection(application);
       if (bus != nullptr) g_dbus_connection_flush_sync(bus, nullptr, nullptr);
     }
@@ -197,6 +240,7 @@ static void my_application_startup(GApplication* application) {
   static const GActionEntry actions[] = {
       {"show", forward_instance_action, nullptr, nullptr, nullptr, {0}},
       {"overlay", forward_instance_action, nullptr, nullptr, nullptr, {0}},
+      {"settings", forward_instance_action, nullptr, nullptr, nullptr, {0}},
       {"quit", forward_instance_action, nullptr, nullptr, nullptr, {0}},
   };
   g_action_map_add_action_entries(G_ACTION_MAP(application), actions,
@@ -217,6 +261,7 @@ static void my_application_dispose(GObject* object) {
   MyApplication* self = MY_APPLICATION(object);
   g_clear_pointer(&self->dart_entrypoint_arguments, g_strfreev);
   g_clear_object(&self->instance_channel);
+  g_clear_object(&self->answer_channel);
   G_OBJECT_CLASS(my_application_parent_class)->dispose(object);
 }
 
@@ -229,7 +274,7 @@ static void my_application_class_init(MyApplicationClass* klass) {
   G_OBJECT_CLASS(klass)->dispose = my_application_dispose;
 }
 
-static void my_application_init(MyApplication* self) {}
+static void my_application_init(MyApplication* self) { self->answer_fd = -1; }
 
 MyApplication* my_application_new() {
   // Set the program name to the application ID, which helps various systems

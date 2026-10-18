@@ -19,6 +19,9 @@ struct LinuxLifecycle {
   gulong close_handler = 0;
   bool background = false;
   bool tray_hosted = false;
+  // A StatusNotifier watcher is running (our item can be shown).
+  bool host_present = false;
+  guint host_timeout = 0;
 };
 
 namespace {
@@ -81,7 +84,13 @@ void Invoke(LinuxLifecycle* state, const char* action) {
 gboolean WindowClose(GtkWidget* window, GdkEvent*, gpointer data) {
   auto* state = static_cast<LinuxLifecycle*>(data);
   if (!state->background) return FALSE;
-  gtk_widget_hide(window);
+  // Without a tray icon yet, a hidden window could not be found again:
+  // minimize instead. Clipboard keeps running either way.
+  if (state->tray_hosted || state->host_present) {
+    gtk_widget_hide(window);
+  } else {
+    gtk_window_iconify(GTK_WINDOW(window));
+  }
   return TRUE;
 }
 
@@ -251,7 +260,11 @@ void RegisterItem(LinuxLifecycle* state) {
 }
 
 void WatcherAppeared(GDBusConnection*, const gchar*, const gchar*, gpointer data) {
-  RegisterItem(static_cast<LinuxLifecycle*>(data));
+  auto* state = static_cast<LinuxLifecycle*>(data);
+  state->host_present = true;
+  if (state->host_timeout != 0) g_source_remove(state->host_timeout);
+  state->host_timeout = 0;
+  RegisterItem(state);
 }
 
 void ShowHiddenWindow(LinuxLifecycle* state) {
@@ -262,8 +275,27 @@ void ShowHiddenWindow(LinuxLifecycle* state) {
 
 void WatcherVanished(GDBusConnection*, const gchar*, gpointer data) {
   auto* state = static_cast<LinuxLifecycle*>(data);
+  // Reported at once when no watcher runs yet (started before the tray at
+  // login): wait for it, see WaitForTrayHost.
+  if (!state->host_present) return;
+  state->host_present = false;
   // A shell restart should never strand an invisible application.
   if (state->background) ShowHiddenWindow(state);
+}
+
+gboolean TrayHostTimeout(gpointer data) {
+  auto* state = static_cast<LinuxLifecycle*>(data);
+  state->host_timeout = 0;
+  if (state->background && !state->tray_hosted && !state->host_present) ShowHiddenWindow(state);
+  return G_SOURCE_REMOVE;
+}
+
+// Started at login before the desktop's tray: the item registers when the
+// watcher appears (WatcherAppeared). A tray that never comes must not leave
+// the app invisible, so the window shows after a grace period.
+void WaitForTrayHost(LinuxLifecycle* state) {
+  if (state->host_present || state->host_timeout != 0) return;
+  state->host_timeout = g_timeout_add_seconds(10, TrayHostTimeout, state);
 }
 
 bool TrayVisible(const LinuxLifecycle* state) {
@@ -276,6 +308,9 @@ bool TrayVisible(const LinuxLifecycle* state) {
 void CloseTray(LinuxLifecycle* state) {
   if (state->watcher != 0) g_bus_unwatch_name(state->watcher);
   state->watcher = 0;
+  state->host_present = false;
+  if (state->host_timeout != 0) g_source_remove(state->host_timeout);
+  state->host_timeout = 0;
   if (state->bus != nullptr) {
     if (state->item_registration != 0) g_dbus_connection_unregister_object(state->bus, state->item_registration);
     if (state->menu_registration != 0) g_dbus_connection_unregister_object(state->bus, state->menu_registration);
@@ -520,10 +555,6 @@ bool HandleLifecycleMethod(LinuxLifecycle* state, FlMethodCall* call) {
   if (g_strcmp0(method, "setBackgroundEnabled") == 0) {
     const bool enabled = Enabled(call);
     std::string error;
-    if (enabled && !TrayHostAvailable(&error)) {
-      Fail(call, error);
-      return true;
-    }
     const bool was = state->background;
     state->background = enabled;
     if (TrayVisible(state) && !OpenTray(state, &error)) {
@@ -532,6 +563,9 @@ bool HandleLifecycleMethod(LinuxLifecycle* state, FlMethodCall* call) {
       return true;
     }
     if (!TrayVisible(state)) CloseTray(state);
+    // No tray yet (a login race, or a desktop without one): keep running in
+    // the background and add the icon once a tray host appears.
+    else if (!TrayHostAvailable(&error)) WaitForTrayHost(state);
     Respond(call);
     return true;
   }
@@ -544,6 +578,8 @@ bool HandleLifecycleMethod(LinuxLifecycle* state, FlMethodCall* call) {
       // Tools stopped hosting and the own icon failed: never stay invisible.
       g_warning("arcade-clipboard: tray: %s", error.c_str());
       ShowHiddenWindow(state);
+    } else if (!TrayHostAvailable(&error)) {
+      WaitForTrayHost(state);
     }
     Respond(call);
     return true;

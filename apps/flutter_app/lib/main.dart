@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:arcade_desktop_bridge/arcade_desktop_bridge.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app.dart';
@@ -22,7 +23,8 @@ void main(List<String> arguments) async {
       controller: AppController(
           startInBackground: arguments.contains('--background') ||
               arguments.contains('--overlay'),
-          openOverlayOnStart: arguments.contains('--overlay'))));
+          openOverlayOnStart: arguments.contains('--overlay'),
+          openSettingsOnStart: arguments.contains('--settings'))));
 }
 
 /// After the tray's Restart: waits (up to 5 s) for the old instance to exit.
@@ -50,19 +52,22 @@ Future<bool> _running(int processId) async {
   }
 }
 
-/// Where `--version` and `--arcade-manifest` answer. The Linux runner moves
-/// engine logging off stdout and passes the real stdout as ARCADE_ANSWER_FD.
-IOSink _answerSink() {
-  final fd = Platform.environment['ARCADE_ANSWER_FD'];
-  if (Platform.isLinux && fd != null && int.tryParse(fd) != null) {
-    return File('/proc/self/fd/$fd').openWrite(mode: FileMode.writeOnly);
+/// Prints a command's answer. For `--version` and `--arcade-manifest` the
+/// Linux runner moves engine logging off stdout (ARCADE_ANSWER_FD names the
+/// saved real stdout) and writes the answer there itself.
+Future<void> _answer(String text) async {
+  if (Platform.isLinux && Platform.environment['ARCADE_ANSWER_FD'] != null) {
+    await const MethodChannel('arcade_clipboard/answer')
+        .invokeMethod<void>('write', text);
+    return;
   }
-  return stdout;
+  stdout.write(text);
+  await stdout.flush();
 }
 
 Future<int> _command(List<String> arguments) async {
   final core = RustCoreApi();
-  final out = _answerSink();
+  final out = StringBuffer();
   try {
     if (arguments.contains('--version')) {
       final version = await core.invoke('version');
@@ -100,8 +105,7 @@ Future<int> _command(List<String> arguments) async {
       // before Dart runs when it can; this covers the rest over the Link.
       await core.invoke('link_quit_running');
     }
-    await out.flush();
-    if (!identical(out, stdout)) await out.close();
+    await _answer(out.toString());
     return 0;
   } catch (error) {
     stderr.writeln('Arcade Clipboard: $error');

@@ -22,12 +22,14 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     Directory? dataDirectory,
     bool startInBackground = false,
     bool openOverlayOnStart = false,
+    bool openSettingsOnStart = false,
   })  : _core = core ?? RustCoreApi(),
         _desktop = desktop ?? DesktopAdapter(),
         _mobile = mobile ?? MobileShareBridge(),
         _dataDirectoryOverride = dataDirectory,
         _startInBackground = startInBackground,
-        _openOverlayOnStart = openOverlayOnStart;
+        _openOverlayOnStart = openOverlayOnStart,
+        _openSettingsOnStart = openSettingsOnStart;
 
   final CoreApi _core;
   final DesktopAdapter _desktop;
@@ -40,6 +42,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   final Directory? _dataDirectoryOverride;
   final bool _startInBackground;
   final bool _openOverlayOnStart;
+  final bool _openSettingsOnStart;
 
   MeshStatus? _status;
   List<ClipboardItem> _items = const [];
@@ -367,6 +370,8 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       await _drainSharedInbox();
       unawaited(_watchChanges());
       if (_openOverlayOnStart && _desktopReady) unawaited(openOverlay());
+      // The launcher's "Open Settings" action (`--settings`).
+      if (_openSettingsOnStart) settingsRequests.value++;
     } catch (exception) {
       _setError(exception, source: 'startup');
     } finally {
@@ -537,10 +542,18 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     final activeQuery = _query ?? '';
     var errorSource = 'history';
     try {
-      final data = await _core
-          .invoke('history', {'query': activeQuery, 'limit': _historyLimit});
+      // A search typed on stops the native scan of an older one.
+      final data = await _core.invoke('history', {
+        'query': activeQuery,
+        'limit': _historyLimit,
+        if (activeQuery.isNotEmpty) 'latest_only': true,
+      });
+      if (generation != _historyGeneration ||
+          _disposed ||
+          data['superseded'] == true) {
+        return;
+      }
       final result = _parseHistory(data);
-      if (generation != _historyGeneration || _disposed) return;
       _items = _sortedItems(result);
       _hasMoreHistory =
           result.length >= _historyLimit && _historyLimit < _maxItems;

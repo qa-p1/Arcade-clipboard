@@ -1733,12 +1733,12 @@ class _SettingsPageState extends State<_SettingsPage> {
               'Unpinned clips expire after this time. Pinned clips stay until you unpin or delete them.',
           trailing: DropdownButtonHideUnderline(
             child: DropdownButton<int>(
-              value: _retentionValue(controller.retentionHours),
-              items: const [
-                DropdownMenuItem(value: 1, child: Text('1 hour')),
-                DropdownMenuItem(value: 24, child: Text('24 hours')),
-                DropdownMenuItem(value: 168, child: Text('7 days')),
-                DropdownMenuItem(value: 720, child: Text('30 days')),
+              value: controller.retentionHours > 0 ? controller.retentionHours : 24,
+              items: [
+                for (final hours in _withCurrent(
+                    const [1, 24, 168, 720], controller.retentionHours))
+                  DropdownMenuItem(
+                      value: hours, child: Text(_retentionLabel(hours))),
               ],
               onChanged: controller.working
                   ? null
@@ -1756,13 +1756,12 @@ class _SettingsPageState extends State<_SettingsPage> {
               'Older clips are removed when the limit is reached. Pinned clips are kept first.',
           trailing: DropdownButtonHideUnderline(
               child: DropdownButton<int>(
-            value: const {500, 1000, 5000}.contains(controller.maxItems)
-                ? controller.maxItems
-                : 500,
-            items: const [
-              DropdownMenuItem(value: 500, child: Text('500 clips')),
-              DropdownMenuItem(value: 1000, child: Text('1,000 clips')),
-              DropdownMenuItem(value: 5000, child: Text('5,000 clips'))
+            value: controller.maxItems > 0 ? controller.maxItems : 500,
+            items: [
+              for (final count
+                  in _withCurrent(const [500, 1000, 5000], controller.maxItems))
+                DropdownMenuItem(
+                    value: count, child: Text('${_grouped(count)} clips')),
             ],
             onChanged: controller.working
                 ? null
@@ -2027,8 +2026,20 @@ class _SettingsPageState extends State<_SettingsPage> {
     if (confirm == true) await widget.controller.clearHistory();
   }
 
-  int _retentionValue(int hours) =>
-      const {1, 24, 168, 720}.contains(hours) ? hours : 24;
+  /// The presets, plus the current value when it came from elsewhere (an
+  /// imported settings file, Arcade Tools) so Settings shows what applies.
+  static List<int> _withCurrent(List<int> presets, int current) =>
+      presets.contains(current) || current <= 0
+          ? presets
+          : ([...presets, current]..sort());
+
+  static String _retentionLabel(int hours) {
+    if (hours % 24 == 0 && hours >= 48) return '${hours ~/ 24} days';
+    return hours == 1 ? '1 hour' : '$hours hours';
+  }
+
+  static String _grouped(int value) => value.toString().replaceAllMapped(
+      RegExp(r'(\d)(?=(\d{3})+$)'), (match) => '${match[1]},');
 
   void _beginShortcutCapture() {
     setState(() {

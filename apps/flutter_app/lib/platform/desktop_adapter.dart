@@ -327,6 +327,9 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
           await _requestOverlay();
         } else if (call.method == 'show') {
           await showMainWindow();
+        } else if (call.method == 'settings') {
+          await showMainWindow();
+          onOpenSettings?.call();
         } else if (call.method == 'quit') {
           await _quit();
         }
