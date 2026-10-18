@@ -205,7 +205,9 @@ pub(crate) fn clip_for(input: &Content) -> Result<Clip, LinkError> {
         "text" => {
             let text = handoff::read_text(input)
                 .map_err(|e| LinkError::unsupported(format!("couldn't read the text: {e}")))?;
-            let html = input.html.as_deref().filter(|_| input.kind == "text/rich");
+            let html = handoff::read_html(input)
+                .map_err(|e| LinkError::unsupported(format!("couldn't read the HTML: {e}")))?;
+            let html = html.as_deref();
             let size = text.len() + html.map_or(0, str::len);
             if size > MAX_PAYLOAD_BYTES {
                 return Err(too_large());
@@ -1113,6 +1115,21 @@ mod tests {
         let clip = clip_for(&rich).unwrap();
         assert_eq!(clip.kind, "rich_text");
         assert_eq!(clip.representations.len(), 2);
+
+        // Large rich text: the text in `path`, its HTML in `htmlPath`.
+        let dir = tempfile::tempdir().unwrap();
+        let (text, html) = (dir.path().join("clipboard.txt"), dir.path().join("clipboard.html"));
+        std::fs::write(&text, "Big").unwrap();
+        std::fs::write(&html, "<b>Big</b>").unwrap();
+        let handed = Content {
+            kind: "text/rich".into(),
+            path: Some(text.to_string_lossy().into_owned()),
+            html_path: Some(html.to_string_lossy().into_owned()),
+            ..Default::default()
+        };
+        let clip = clip_for(&handed).unwrap();
+        assert_eq!(clip.kind, "rich_text");
+        assert_eq!(clip.representations[1].mime_type, "text/html");
 
         assert_eq!(
             clip_for(&Content::plain("  ")).unwrap_err().code,
