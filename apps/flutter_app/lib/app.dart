@@ -1165,12 +1165,14 @@ class _ClipboardRow extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodyMedium?.copyWith(height: 1.45)),
                 const SizedBox(height: 7),
-                Text(
-                    '${item.sourceName} · ${_relativeTime(item.createdAt)}${item.size > 0 && item.hasBinaryContent ? ' · ${formatBytes(item.size)}' : ''}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.labelSmall
-                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                ListenableBuilder(
+                  listenable: _RelativeClock.instance,
+                  builder: (context, _) => Text(
+                        '${item.sourceName} · ${_relativeTime(item.createdAt)}${item.size > 0 && item.hasBinaryContent ? ' · ${formatBytes(item.size)}' : ''}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.labelSmall
+                            ?.copyWith(color: theme.colorScheme.onSurfaceVariant))),
               ])),
           if (item.pinned)
             Padding(
@@ -1578,11 +1580,13 @@ class _TrustedDeviceRow extends StatelessWidget {
                     style: theme.textTheme.bodyMedium
                         ?.copyWith(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 3),
-                Text(
-                  '${device.platform}${device.lastSeen == null ? '' : ' · seen ${_relativeTime(device.lastSeen!)}'}',
-                  style: theme.textTheme.labelSmall
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                ),
+                ListenableBuilder(
+                  listenable: _RelativeClock.instance,
+                  builder: (context, _) => Text(
+                      '${device.platform}${device.lastSeen == null ? '' : ' · seen ${_relativeTime(device.lastSeen!)}'}',
+                      style: theme.textTheme.labelSmall
+                          ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                    )),
               ],
             ),
           ),
@@ -1733,12 +1737,12 @@ class _SettingsPageState extends State<_SettingsPage> {
               'Unpinned clips expire after this time. Pinned clips stay until you unpin or delete them.',
           trailing: DropdownButtonHideUnderline(
             child: DropdownButton<int>(
-              value: _retentionValue(controller.retentionHours),
-              items: const [
-                DropdownMenuItem(value: 1, child: Text('1 hour')),
-                DropdownMenuItem(value: 24, child: Text('24 hours')),
-                DropdownMenuItem(value: 168, child: Text('7 days')),
-                DropdownMenuItem(value: 720, child: Text('30 days')),
+              value: controller.retentionHours > 0 ? controller.retentionHours : 24,
+              items: [
+                for (final hours in _withCurrent(
+                    const [1, 24, 168, 720], controller.retentionHours))
+                  DropdownMenuItem(
+                      value: hours, child: Text(_retentionLabel(hours))),
               ],
               onChanged: controller.working
                   ? null
@@ -1756,13 +1760,12 @@ class _SettingsPageState extends State<_SettingsPage> {
               'Older clips are removed when the limit is reached. Pinned clips are kept first.',
           trailing: DropdownButtonHideUnderline(
               child: DropdownButton<int>(
-            value: const {500, 1000, 5000}.contains(controller.maxItems)
-                ? controller.maxItems
-                : 500,
-            items: const [
-              DropdownMenuItem(value: 500, child: Text('500 clips')),
-              DropdownMenuItem(value: 1000, child: Text('1,000 clips')),
-              DropdownMenuItem(value: 5000, child: Text('5,000 clips'))
+            value: controller.maxItems > 0 ? controller.maxItems : 500,
+            items: [
+              for (final count
+                  in _withCurrent(const [500, 1000, 5000], controller.maxItems))
+                DropdownMenuItem(
+                    value: count, child: Text('${_grouped(count)} clips')),
             ],
             onChanged: controller.working
                 ? null
@@ -1791,7 +1794,7 @@ class _SettingsPageState extends State<_SettingsPage> {
           if (controller.desktopCapabilities?.globalShortcut == true)
             _SettingLine(
               icon: Icons.keyboard_command_key_rounded,
-              title: 'Mesh Clipboard Shortcut',
+              title: 'Picker shortcut',
               description: 'Open the clip picker over your current app.',
               trailing: TextButton(
                 onPressed: controller.working ? null : _beginShortcutCapture,
@@ -1803,7 +1806,7 @@ class _SettingsPageState extends State<_SettingsPage> {
           else
             _SettingLine(
               icon: Icons.keyboard_command_key_rounded,
-              title: 'Mesh Clipboard Shortcut',
+              title: 'Picker shortcut',
               description: controller.desktopAvailable
                   ? 'A global shortcut is not available on this desktop.'
                   : 'Available on desktop versions of Arcade Clipboard.',
@@ -2027,8 +2030,20 @@ class _SettingsPageState extends State<_SettingsPage> {
     if (confirm == true) await widget.controller.clearHistory();
   }
 
-  int _retentionValue(int hours) =>
-      const {1, 24, 168, 720}.contains(hours) ? hours : 24;
+  /// The presets, plus the current value when it came from elsewhere (an
+  /// imported settings file, Arcade Tools) so Settings shows what applies.
+  static List<int> _withCurrent(List<int> presets, int current) =>
+      presets.contains(current) || current <= 0
+          ? presets
+          : ([...presets, current]..sort());
+
+  static String _retentionLabel(int hours) {
+    if (hours % 24 == 0 && hours >= 48) return '${hours ~/ 24} days';
+    return hours == 1 ? '1 hour' : '$hours hours';
+  }
+
+  static String _grouped(int value) => value.toString().replaceAllMapped(
+      RegExp(r'(\d)(?=(\d{3})+$)'), (match) => '${match[1]},');
 
   void _beginShortcutCapture() {
     setState(() {
@@ -2352,7 +2367,7 @@ class _MeshOverlayState extends State<MeshOverlay> {
                     Expanded(
                       child: Text(
                           widget.controller.linkPickFor == null
-                              ? 'Mesh Clipboard'
+                              ? 'Arcade Clipboard'
                               : 'Choose a clip for ${widget.controller.linkPickFor}',
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.titleMedium
@@ -2587,13 +2602,15 @@ class _OverlayClipRow extends StatelessWidget {
                             style: theme.textTheme.bodySmall
                                 ?.copyWith(height: 1.35)),
                         const SizedBox(height: 5),
-                        Text(
-                          '${item.sourceName}  ·  ${_relativeTime(item.createdAt)}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant),
-                        ),
+                        ListenableBuilder(
+                          listenable: _RelativeClock.instance,
+                          builder: (context, _) => Text(
+                              '${item.sourceName}  ·  ${_relativeTime(item.createdAt)}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant),
+                            )),
                       ],
                     ),
                   ),
@@ -2769,6 +2786,51 @@ TextStyle? _eyebrowStyle(BuildContext context) =>
           fontWeight: FontWeight.w700,
           color: Theme.of(context).colorScheme.onSurfaceVariant,
         );
+
+/// Ticks every 30 s while a relative time ("2m ago") is on screen and the app
+/// is in the foreground, so those labels keep up without waking a hidden app.
+class _RelativeClock extends ChangeNotifier with WidgetsBindingObserver {
+  _RelativeClock._() {
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  static final instance = _RelativeClock._();
+  Timer? _timer;
+
+  void _update() {
+    final state = WidgetsBinding.instance.lifecycleState;
+    final run = hasListeners &&
+        (state == null ||
+            state == AppLifecycleState.resumed ||
+            state == AppLifecycleState.inactive);
+    if (run) {
+      _timer ??= Timer.periodic(
+          const Duration(seconds: 30), (_) => notifyListeners());
+    } else {
+      _timer?.cancel();
+      _timer = null;
+    }
+  }
+
+  @override
+  void addListener(VoidCallback listener) {
+    super.addListener(listener);
+    _update();
+  }
+
+  @override
+  void removeListener(VoidCallback listener) {
+    super.removeListener(listener);
+    _update();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Coming back after a while: show the current ages at once.
+    if (state == AppLifecycleState.resumed) notifyListeners();
+    _update();
+  }
+}
 
 String _relativeTime(DateTime time) {
   final difference = DateTime.now().difference(time);

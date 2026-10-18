@@ -74,7 +74,7 @@ Compositors without the data-control protocol, most notably GNOME, do not let ba
 
 ## Shortcut and picker
 
-The default shortcut is **Ctrl+Shift+Space**. Change it in **Settings → Mesh Clipboard Shortcut**. Shortcuts already taken by the compositor are reported as conflicts.
+The default shortcut is **Ctrl+Shift+Space**. Change it in **Settings → Picker shortcut**. Shortcuts already taken by the compositor are reported as conflicts.
 
 The picker lists recent clips with the newest selected:
 
@@ -89,7 +89,7 @@ The picker lists recent clips with the newest selected:
 
 The app registers the shortcut at runtime with `hyprctl`. In Lua configurations this uses `hl.bind`, otherwise the legacy `keyword bind`. The binding belongs to the app and is removed when the app quits. Nothing is written to your configuration files.
 
-The picker window is titled **Mesh Clipboard**. On first use the app adds a window rule for the current compositor session that floats, pins and centers that window at 430 × 510. The picker therefore opens in place and does not disturb your tiling layout. The main window keeps its normal title and tiles as usual.
+The picker window is titled **Arcade Clipboard Picker**. On first use the app adds a window rule for the current compositor session that floats, pins and centers that window at 430 × 510. The picker therefore opens in place and does not disturb your tiling layout. The main window keeps its normal title and tiles as usual.
 
 When you choose a clip, the app:
 

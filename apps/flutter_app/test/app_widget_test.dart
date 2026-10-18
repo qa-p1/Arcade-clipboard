@@ -92,7 +92,7 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.pageBack();
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('Mesh Clipboard Shortcut'), 150,
+    await tester.scrollUntilVisible(find.text('Picker shortcut'), 150,
         scrollable: find.byType(Scrollable).first);
     await tester.ensureVisible(
         find.widgetWithText(TextButton, fixture.controller.shortcut));
@@ -241,7 +241,7 @@ void main() {
     await fixture.controller.openOverlay();
     await tester.pumpAndSettle();
 
-    expect(find.text('Mesh Clipboard'), findsOneWidget);
+    expect(find.text('Arcade Clipboard'), findsOneWidget);
     await tester.sendKeyEvent(LogicalKeyboardKey.end);
     await tester.pump();
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);

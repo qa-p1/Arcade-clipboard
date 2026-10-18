@@ -31,7 +31,7 @@ Download the file for your system from [Releases](https://github.com/qa-p1/Arcad
 | macOS (universal) | `Arcade-Clipboard_<version>_macos_universal.dmg` | Open the dmg and drag Arcade Clipboard to Applications. Run from the dmg or Downloads, it offers to move itself to Applications. |
 | iPhone, iPad | unsigned IPA (CI artifact) | Sign and install it with your own signing tool. See [iPhone setup](docs/ios.md). |
 
-- Scripted Linux install: `--install --silent --no-launch`. `--repair` restores integration. Scripted Windows install: `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CURRENTUSER`.
+- Scripted Linux install: `--install --silent --no-launch`. `--repair` restores integration. Scripted Windows install: `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CURRENTUSER`. A silent install removes the AppImage it was started from only when that file is in your Downloads folder; add `--keep-download` to keep it there too. Files elsewhere are never removed.
 - Linux needs GTK 3 and an unlocked Secret Service keyring (GNOME Keyring, KWallet) for the device identity. Wayland capture needs `wl-clipboard` 2.2 or newer; X11 paste needs `xdotool`.
 - Builds are unsigned. On Windows, SmartScreen may warn: choose **More info → Run anyway**. On macOS the app is not notarized: right-click it and choose **Open** the first time.
 - If FUSE is missing on Linux, run the AppImage with `--appimage-extract-and-run`.
@@ -91,7 +91,7 @@ The installed desktop command is `arcade-clipboard`. The app bundle also contain
 | `--overlay` | Open the picker in the running instance, or start the app and open it. |
 | `--quit` | Quit the running instance |
 | `--version` | Print the version |
-| `--install [--silent] [--no-launch] [--channel C]` | Install this AppImage / macOS app |
+| `--install [--silent] [--no-launch] [--keep-download] [--channel C]` | Install this AppImage / macOS app |
 | `--uninstall [--silent] [--remove-data]` | Remove the installation; data is kept unless `--remove-data` |
 | `--repair` | Restore the launcher, command and login entries |
 | `--integration-status` | Print the integration as JSON |

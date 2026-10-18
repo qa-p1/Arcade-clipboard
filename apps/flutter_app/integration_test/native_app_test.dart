@@ -119,7 +119,7 @@ void main() {
       await controller.openOverlay();
       await tester.pumpAndSettle();
       expect(controller.overlayOpen, isTrue, reason: controller.error);
-      expect(find.text('Mesh Clipboard'), findsOneWidget);
+      expect(find.text('Arcade Clipboard'), findsOneWidget);
       await _screenshot(boundary, 'native-overlay.png');
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pumpAndSettle();

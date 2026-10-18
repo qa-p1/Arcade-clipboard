@@ -64,7 +64,7 @@ pub fn dialog_state(d: &Detection, version: &str) -> Option<DialogState> {
     }
 }
 
-fn parse_version(v: &str) -> Option<(u64, u64, u64)> {
+pub(crate) fn parse_version(v: &str) -> Option<(u64, u64, u64)> {
     let core = v.split(['-', '+']).next()?;
     let mut parts = core.split('.').map(|p| p.parse::<u64>().ok());
     Some((
@@ -88,7 +88,14 @@ impl Options {
         let receipt = environment.receipts().read(ME).ok().flatten();
         let start_at_login = receipt
             .as_ref()
-            .is_some_and(|r| r.integration.autostart.as_ref().is_some_and(|p| p.exists()));
+            // Fresh installs start at login like every Arcade app; an existing
+            // install reflects whether its entry will really run.
+            .is_none_or(|r| {
+                r.integration
+                    .autostart
+                    .as_ref()
+                    .is_some_and(|p| install::autostart_enabled(p))
+            });
         let install_cli = environment
             .path
             .as_ref()
@@ -200,6 +207,19 @@ pub fn install_copy(
     options: &Options,
 ) -> io::Result<Receipt> {
     if !runtime.is_appimage() {
+        // A second install window, after the first one installed (and removed) this download.
+        if runtime.appimage.as_ref().is_some_and(|p| !p.exists()) {
+            if let Some(receipt) = environment
+                .receipts()
+                .read(ME)?
+                .filter(|r| r.version == VERSION && r.path.is_file())
+            {
+                return Ok(receipt);
+            }
+            return Err(io::Error::other(
+                "This downloaded file is gone (it may have been installed from another window). Open NAME from the app launcher.".replace("NAME", NAME),
+            ));
+        }
         return Err(io::Error::other(
             "--install requires a real AppImage, not an ordinary or development binary",
         ));
@@ -273,7 +293,7 @@ pub fn integration_status(environment: &Environment) -> io::Result<install::Inte
 }
 
 /// Quits the running copy, then removes what the receipt lists.
-pub fn uninstall(environment: &Environment, remove_data: bool) -> io::Result<bool> {
+fn quit_running_instance() {
     if let Some(app) = bundled_app() {
         let _ = std::process::Command::new(app)
             .arg("--quit")
@@ -282,6 +302,24 @@ pub fn uninstall(environment: &Environment, remove_data: bool) -> io::Result<boo
             .stderr(std::process::Stdio::null())
             .status();
     }
+}
+
+/// Before the freshly installed copy starts: an older one still running would
+/// keep the single instance and the new copy would only show it. Asks over the
+/// Link first (and waits for it to go), else with the app's own `--quit`.
+pub fn stop_running_copy(environment: &Environment) {
+    let quit = install::quit_running(
+        &environment.locations,
+        ME,
+        std::time::Duration::from_secs(10),
+    );
+    if !matches!(quit, Ok(true)) {
+        quit_running_instance();
+    }
+}
+
+pub fn uninstall(environment: &Environment, remove_data: bool) -> io::Result<bool> {
+    quit_running_instance();
     // Device keys stay in the system keyring (see docs/user/faq.md).
     let data_folders = [data_dir()];
     install::uninstall(
@@ -341,7 +379,7 @@ pub fn launch_args(args: &[String]) -> Vec<std::ffi::OsString> {
             "--channel" => {
                 it.next();
             }
-            "--install" | "--silent" | "--no-launch" => {}
+            "--install" | "--silent" | "--no-launch" | "--keep-download" => {}
             _ => result.push(arg.into()),
         }
     }
@@ -394,13 +432,16 @@ fn json(value: &impl Serialize) -> Result<String, String> {
     serde_json::to_string_pretty(value).map_err(|e| e.to_string())
 }
 
-/// `--install [--silent] [--no-launch] [--channel C]`.
+/// `--install [--silent] [--no-launch] [--keep-download] [--channel C]`.
 pub fn install_cli(silent: bool, no_launch: bool, channel: &str) -> Result<String, String> {
     let environment = Environment::discover().map_err(|e| e.to_string())?;
     let runtime = Runtime::discover().map_err(|e| e.to_string())?;
     let mut options = Options::defaults(&environment);
     options.channel = channel.into();
     let args: Vec<String> = std::env::args().collect();
+    if args.iter().any(|a| a == "--keep-download") {
+        options.remove_download = false;
+    }
     let (output, launch) = if silent {
         let receipt = install_copy(&environment, &runtime, &options).map_err(|e| e.to_string())?;
         if let Some(hint) = integration_status(&environment)
@@ -416,12 +457,14 @@ pub fn install_cli(silent: bool, no_launch: bool, channel: &str) -> Result<Strin
             return Err(arcade_link::install::strings::get().errors["devBuild"].clone());
         }
         let state = dialog_state(&detection, VERSION).unwrap_or(DialogState::Install);
-        match crate::installer_ui::run(environment, runtime, detection, state, options)? {
+        match crate::installer_ui::run(environment.clone(), runtime, detection, state, options)? {
             crate::installer_ui::Outcome::Launch(path) => (String::new(), Some(path)),
             _ => (String::new(), None),
         }
     };
     if let Some(path) = launch.filter(|_| !no_launch) {
+        // The installed copy replaces an older one still running.
+        stop_running_copy(&environment);
         install::reexec(&path, &launch_args(&args)).map_err(|e| e.to_string())?;
     }
     Ok(output)

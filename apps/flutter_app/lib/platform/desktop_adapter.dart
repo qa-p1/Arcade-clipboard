@@ -112,6 +112,20 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
 
   Future<void> relaunch(String path) => _bridge.relaunch(path);
 
+  /// Shows Private mode's state on the own tray menu (Tools' menu reads it
+  /// from the manifest). Kept until the tray exists.
+  Future<void> setPrivateMode(bool enabled) async {
+    _privateMode = enabled;
+    if (!_initialized || _closed) return;
+    try {
+      await _bridge.setPrivateMode(enabled);
+    } on MissingPluginException {
+      // Platforms without a tray have no menu to update.
+    }
+  }
+
+  bool _privateMode = false;
+
   Future<void> setTrayHosted(bool hosted) async {
     if (!_initialized || _closed) return;
     try {
@@ -327,6 +341,9 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
           await _requestOverlay();
         } else if (call.method == 'show') {
           await showMainWindow();
+        } else if (call.method == 'settings') {
+          await showMainWindow();
+          onOpenSettings?.call();
         } else if (call.method == 'quit') {
           await _quit();
         }
@@ -350,6 +367,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
       }
     });
     _initialized = true;
+    if (_privateMode) unawaited(setPrivateMode(true));
     WidgetsBinding.instance.addObserver(this);
     windowManager.addListener(this);
     return capabilities;
@@ -837,7 +855,8 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
   }
 
   static const String _mainTitle = 'Arcade Clipboard';
-  static const String _overlayTitle = 'Mesh Clipboard';
+  // Distinct from the main window's title so window rules can tell them apart.
+  static const String _overlayTitle = 'Arcade Clipboard Picker';
 
   /// Shows the picker. With `paste: false` (choosing a clip for another
   /// Arcade app) nothing will be pasted, so a missing paste target is fine.

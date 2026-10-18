@@ -58,9 +58,11 @@ def main():
         assert installed.read_bytes() == image.read_bytes(), "Installed package differs from the download"
         integration = receipt["integration"]
         desktop, cli = Path(integration["desktopEntry"]), Path(integration["cli"])
-        assert not integration.get("autostart"), integration
+        # A fresh install starts at login, like every Arcade app.
+        autostart = Path(integration["autostart"])
+        assert autostart == install_home / ".config/autostart/arcade-clipboard.desktop", integration
         icons = [Path(path) for path in integration["icons"]]
-        entries = [installed, desktop, cli, *icons]
+        entries = [installed, desktop, cli, autostart, *icons]
         assert icons, "No installed icons"
         for path in entries:
             assert path.is_relative_to(root) and path.exists(), path

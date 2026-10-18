@@ -592,3 +592,32 @@ async fn both_devices_redial_after_restart_and_keep_one_connection() {
     b.core.shutdown().await;
     a.core.shutdown().await;
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn private_mode_holds_back_the_backlog_until_it_ends() {
+    let a = Device::new("Desktop A").await;
+    let mut b = Device::new("Desktop B").await;
+    a.request(json!({"op":"create_mesh","device_name":"Desktop A"}))
+        .await;
+    pair(&a, &b).await;
+    b.core.shutdown().await;
+    a.request(json!({"op":"capture","text":"Captured before Private mode"}))
+        .await;
+    a.request(json!({"op":"settings","values":{"paused":true}}))
+        .await;
+    b = b.restart().await;
+    wait_until("reconnect", || async {
+        b.core.status().await.unwrap().connection == "online"
+    })
+    .await;
+    tokio::time::sleep(Duration::from_millis(1500)).await;
+    assert!(b.rows().await.is_empty(), "Private mode sent the backlog");
+    a.request(json!({"op":"settings","values":{"paused":false}}))
+        .await;
+    wait_until("backlog after Private mode", || async {
+        b.rows().await.len() == 1
+    })
+    .await;
+    b.core.shutdown().await;
+    a.core.shutdown().await;
+}

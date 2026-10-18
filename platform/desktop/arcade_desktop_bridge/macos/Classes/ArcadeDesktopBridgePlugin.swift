@@ -9,6 +9,7 @@ public class ArcadeDesktopBridgePlugin: NSObject, FlutterPlugin {
   private var channel: FlutterMethodChannel?
   private var statusItem: NSStatusItem?
   private var trayHosted = false
+  private var privateModeItem: NSMenuItem?
   private var clipboardTimer: Timer?
   private var clipboardRevision = NSPasteboard.general.changeCount
   private let maximumClipboardBytes = 32 * 1024 * 1024
@@ -86,6 +87,10 @@ public class ArcadeDesktopBridgePlugin: NSObject, FlutterPlugin {
       NSWorkspace.shared.openApplication(at: URL(fileURLWithPath: path), configuration: configuration) { _, _ in
         DispatchQueue.main.async { NSApp.terminate(nil) }
       }
+      result(nil)
+    case "setPrivateMode":
+      let enabled = (call.arguments as? [String: Any])?["enabled"] as? Bool ?? false
+      privateModeItem?.state = enabled ? .on : .off
       result(nil)
     case "setTrayHosted":
       trayHosted = (call.arguments as? [String: Any])?["hosted"] as? Bool ?? false
@@ -289,9 +294,10 @@ public class ArcadeDesktopBridgePlugin: NSObject, FlutterPlugin {
     restart.target = self
     menu.addItem(restart)
     menu.addItem(.separator())
-    let privateMode = NSMenuItem(title: "Private mode on/off", action: #selector(togglePrivateMode), keyEquivalent: "")
+    let privateMode = NSMenuItem(title: "Private mode", action: #selector(togglePrivateMode), keyEquivalent: "")
     privateMode.target = self
     menu.addItem(privateMode)
+    privateModeItem = privateMode
     menu.addItem(.separator())
     let quit = NSMenuItem(title: "Quit Arcade Clipboard", action: #selector(quitApplication), keyEquivalent: "q")
     quit.target = self

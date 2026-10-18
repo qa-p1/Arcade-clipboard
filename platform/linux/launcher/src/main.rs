@@ -45,11 +45,14 @@ fn main() {
 fn integration_command(args: &[String]) -> Result<String, String> {
     let action = args[0].as_str();
     let (mut silent, mut no_launch, mut remove_data, mut channel) = (false, false, false, None);
+    let mut keep_download = false;
     let mut it = args[1..].iter();
     while let Some(arg) = it.next() {
         match arg.as_str() {
             "--silent" => silent = true,
             "--no-launch" => no_launch = true,
+            // Read by the installer itself; validated here.
+            "--keep-download" => keep_download = true,
             "--remove-data" => remove_data = true,
             "--channel" => {
                 channel = Some(
@@ -62,8 +65,8 @@ fn integration_command(args: &[String]) -> Result<String, String> {
             other => return Err(format!("unexpected argument {other:?} for {action}")),
         }
     }
-    if (no_launch || channel.is_some()) && action != "--install" {
-        return Err("--no-launch and --channel require --install".into());
+    if (no_launch || keep_download || channel.is_some()) && action != "--install" {
+        return Err("--no-launch, --keep-download and --channel require --install".into());
     }
     if remove_data && action != "--uninstall" {
         return Err("--remove-data requires --uninstall".into());

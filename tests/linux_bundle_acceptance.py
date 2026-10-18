@@ -81,7 +81,7 @@ def main():
             deadline = time.monotonic() + 10
             while time.monotonic() < deadline:
                 words = checks._ui_words(s, window)
-                if any(y < 80 for _, y in checks._ui_matches(words, "Mesh Clipboard")):
+                if any(y < 80 for _, y in checks._ui_matches(words, "Arcade Clipboard")):
                     break
                 time.sleep(0.1)
             else:

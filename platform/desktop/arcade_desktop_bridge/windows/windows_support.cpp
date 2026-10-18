@@ -434,7 +434,7 @@ std::optional<LRESULT> WindowsSupport::WindowProc(HWND window, UINT message, WPA
     AppendMenuW(menu, MF_STRING, 3, L"Open Settings");
     AppendMenuW(menu, MF_STRING, 4, L"Restart Arcade Clipboard");
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-    AppendMenuW(menu, MF_STRING, 5, L"Private mode on/off");
+    AppendMenuW(menu, MF_STRING | (private_mode_ ? MF_CHECKED : MF_UNCHECKED), 5, L"Private mode");
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(menu, MF_STRING, 2, L"Quit Arcade Clipboard");
     SetForegroundWindow(window);
@@ -484,6 +484,13 @@ bool WindowsSupport::Handle(const flutter::MethodCall<Value>& call,
     const bool success = call.method_name() == "setLaunchAtLogin" ? SetStartup(enabled) : SetBackground(enabled);
     if (success) result->Success();
     else result->Error("desktop_lifecycle_unavailable", "The desktop setting could not be applied. Install the app in a persistent folder and retry.");
+    return true;
+  }
+  if (call.method_name() == "setPrivateMode") {
+    const Value* value = arguments == nullptr ? nullptr : Lookup(*arguments, "enabled");
+    const auto* boolean = value == nullptr ? nullptr : std::get_if<bool>(value);
+    private_mode_ = boolean != nullptr && *boolean;
+    result->Success();
     return true;
   }
   if (call.method_name() == "setTrayHosted") {

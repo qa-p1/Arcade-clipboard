@@ -95,6 +95,8 @@ pub struct Core {
     tasks: StdMutex<Vec<JoinHandle<()>>>,
     handshakes: Arc<Semaphore>,
     connector_started: AtomicU64,
+    /// Counts `latest_only` history searches; a newer one stops an older one.
+    searches: AtomicU64,
     _profile_lock: ProfileLock,
     transfers: StdMutex<HashMap<(String, String), IncomingTransfer>>,
     discovery: StdMutex<Option<mdns_sd::ServiceDaemon>>,
@@ -230,6 +232,7 @@ impl Core {
             tasks: StdMutex::new(Vec::new()),
             handshakes: Arc::new(Semaphore::new(32)),
             connector_started: AtomicU64::new(0),
+            searches: AtomicU64::new(0),
             _profile_lock: profile_lock,
             transfers: StdMutex::new(HashMap::new()),
             discovery: StdMutex::new(None),
@@ -676,7 +679,13 @@ impl Core {
             if peers.iter().any(|p| p.device_id == local_id && p.revoked) {
                 return Err("This device has been removed from the mesh".into());
             }
-            let ids = state.store.active_item_ids(10_000)?;
+            // Private mode: no clip leaves this device, the backlog included.
+            // It is sent when Private mode ends.
+            let ids = if state.store.setting("paused", false) {
+                Vec::new()
+            } else {
+                state.store.active_item_ids(10_000)?
+            };
             (outbound, ids, state.store.deleted_ids()?)
         };
         let (certificates, revocations) = self.membership_snapshot().await?;
@@ -718,6 +727,9 @@ impl Core {
                     .any(|peer| peer.device_id == peer_id && !peer.revoked)
                 {
                     return Err("Device was revoked during history synchronization".into());
+                }
+                if state.store.setting("paused", false) {
+                    return Ok(());
                 }
                 let local_id = state.identity.device_id.to_string();
                 state.store.item(&id)?.filter(|item| {
@@ -1524,11 +1536,15 @@ impl Core {
         Ok(())
     }
 
-    pub async fn update_settings(&self, values: &serde_json::Value) -> Result<(), String> {
+    pub async fn update_settings(
+        self: &Arc<Self>,
+        values: &serde_json::Value,
+    ) -> Result<(), String> {
         let object = values
             .as_object()
             .ok_or_else(|| "Settings values must be an object".to_string())?;
         let mut state = self.state.lock().await;
+        let was_paused = state.store.setting("paused", false);
         for (key, value) in object {
             match key.as_str() {
                 "paused" => {
@@ -1568,7 +1584,22 @@ impl Core {
             }
         }
         state.store.expire()?;
+        let resumed = was_paused && !state.store.setting("paused", false);
         drop(state);
+        if resumed {
+            // Catch connected devices up on what Private mode held back.
+            let connected: Vec<(String, u64)> = self
+                .connections
+                .lock()
+                .map(|c| c.iter().map(|(id, c)| (id.clone(), c.generation)).collect())
+                .unwrap_or_default();
+            for (peer_id, generation) in connected {
+                let core = self.clone();
+                self.track(tokio::spawn(async move {
+                    let _ = core.sync_peer(&peer_id, generation).await;
+                }));
+            }
+        }
         self.touch();
         Ok(())
     }
@@ -1963,7 +1994,24 @@ impl Core {
                     .and_then(|value| value.as_u64())
                     .unwrap_or(250)
                     .clamp(1, 10_000) as usize;
-                Ok(serde_json::json!({"items":self.history(Some(query), limit).await?}))
+                // The search box asks for `latest_only`: typing on supersedes
+                // a search still scanning an encrypted history.
+                let items = if object.get("latest_only").and_then(|v| v.as_bool()) == Some(true) {
+                    let search = self.searches.fetch_add(1, Ordering::SeqCst) + 1;
+                    let superseded = || self.searches.load(Ordering::SeqCst) != search;
+                    let items = self.state.lock().await.store.history_until(
+                        Some(query),
+                        limit,
+                        &superseded,
+                    )?;
+                    if superseded() {
+                        return Ok(serde_json::json!({"items":[],"superseded":true}));
+                    }
+                    items
+                } else {
+                    self.history(Some(query), limit).await?
+                };
+                Ok(serde_json::json!({"items":items}))
             }
             "capture" => {
                 let id = object.get("id").and_then(|value| value.as_str());

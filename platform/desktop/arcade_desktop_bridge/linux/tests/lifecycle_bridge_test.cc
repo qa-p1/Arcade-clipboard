@@ -146,6 +146,55 @@ void CheckTrayRegistration() {
   g_object_unref(bus);
 }
 
+// Started at login before the desktop's tray: the icon must appear once the
+// watcher does, not never (the item used to be refused without a host).
+void CheckLateTrayHost() {
+  assert(g_strcmp0(g_getenv("ARCADE_E2E_INNER"), "1") == 0);
+  std::string error;
+  assert(!TrayHostAvailable(&error));
+  LinuxLifecycle state;
+  state.background = true;
+  assert(OpenTray(&state, &error));
+  WaitForTrayHost(&state);
+  for (int i = 0; i < 50; ++i) {
+    while (g_main_context_iteration(nullptr, FALSE)) {}
+    g_usleep(1000);
+  }
+  assert(!state.host_present && state.host_timeout != 0);
+
+  GDBusConnection* bus = g_bus_get_sync(G_BUS_TYPE_SESSION, nullptr, nullptr);
+  GDBusNodeInfo* watcher_info = g_dbus_node_info_new_for_xml(
+      "<node><interface name='org.kde.StatusNotifierWatcher'>"
+      "<method name='RegisterStatusNotifierItem'><arg type='s' direction='in'/></method>"
+      "</interface></node>", nullptr);
+  WatcherProbe probe;
+  static const GDBusInterfaceVTable vtable = {RegisterProbe, nullptr, nullptr, {nullptr}};
+  guint registration = g_dbus_connection_register_object(bus, "/StatusNotifierWatcher",
+      watcher_info->interfaces[0], &vtable, &probe, nullptr, nullptr);
+  GVariant* reply = g_dbus_connection_call_sync(bus, "org.freedesktop.DBus", "/org/freedesktop/DBus",
+      "org.freedesktop.DBus", "RequestName", g_variant_new("(su)", kWatcher, 0U),
+      G_VARIANT_TYPE("(u)"), G_DBUS_CALL_FLAGS_NONE, 1000, nullptr, nullptr);
+  assert(reply != nullptr);
+  g_variant_unref(reply);
+  const gint64 deadline = g_get_monotonic_time() + 2 * G_TIME_SPAN_SECOND;
+  while (probe.registrations == 0 && g_get_monotonic_time() < deadline) {
+    while (g_main_context_iteration(nullptr, FALSE)) {}
+    g_usleep(1000);
+  }
+  assert(probe.registrations == 1);
+  assert(state.host_present && state.host_timeout == 0);
+  CloseTray(&state);
+  g_dbus_node_info_unref(state.item_info);
+  g_dbus_node_info_unref(state.menu_info);
+  g_dbus_connection_unregister_object(bus, registration);
+  reply = g_dbus_connection_call_sync(bus, "org.freedesktop.DBus", "/org/freedesktop/DBus",
+      "org.freedesktop.DBus", "ReleaseName", g_variant_new("(s)", kWatcher),
+      G_VARIANT_TYPE("(u)"), G_DBUS_CALL_FLAGS_NONE, 1000, nullptr, nullptr);
+  g_variant_unref(reply);
+  g_dbus_node_info_unref(watcher_info);
+  g_object_unref(bus);
+}
+
 }  // namespace
 
 int main() {
@@ -163,12 +212,24 @@ int main() {
   g_dbus_node_info_unref(item);
   g_dbus_node_info_unref(menu);
 
-  GVariant* layout = g_variant_ref_sink(MenuLayout(0));
+  LinuxLifecycle lifecycle;
+  GVariant* layout = g_variant_ref_sink(MenuLayout(&lifecycle, 0));
   assert(g_variant_is_of_type(layout, G_VARIANT_TYPE("(ia{sv}av)")));
   GVariant* children = g_variant_get_child_value(layout, 2);
   assert(g_variant_n_children(children) == 7);
   g_variant_unref(children);
   g_variant_unref(layout);
+
+  // The Private mode item is a checkmark that follows the core's state.
+  for (bool on : {false, true}) {
+    lifecycle.private_mode = on;
+    GVariant* properties = g_variant_ref_sink(MenuProperties(&lifecycle, kPrivateModeItem));
+    const gchar* toggle = nullptr;
+    gint32 checked = -1;
+    assert(g_variant_lookup(properties, "toggle-type", "&s", &toggle) && g_strcmp0(toggle, "checkmark") == 0);
+    assert(g_variant_lookup(properties, "toggle-state", "i", &checked) && checked == (on ? 1 : 0));
+    g_variant_unref(properties);
+  }
 
   // Exercise the layered desktop-file escaping for literal shell metacharacters.
   GKeyFile* config = g_key_file_new();
@@ -186,5 +247,6 @@ int main() {
   g_key_file_unref(config);
   CheckAutostart();
   CheckTrayRegistration();
+  CheckLateTrayHost();
   return 0;
 }

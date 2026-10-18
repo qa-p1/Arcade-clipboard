@@ -43,6 +43,10 @@ class ArcadeDesktopBridge {
   Future<void> setTrayHosted(bool hosted) =>
       _channel.invokeMethod<void>('setTrayHosted', {'hosted': hosted});
 
+  /// The checkmark on the tray menu's Private mode item.
+  Future<void> setPrivateMode(bool enabled) =>
+      _channel.invokeMethod<void>('setPrivateMode', {'enabled': enabled});
+
   /// macOS: the "Move to Applications?" alert. Returns the button index and
   /// whether to add the terminal command.
   Future<Map<String, Object?>> askMoveToApplications(
