@@ -53,7 +53,7 @@ pub async fn call(request: String) -> Result<String, String> {
         #[cfg(not(any(target_os = "android", target_os = "ios")))]
         "link_manifest" => {
             let settings = crate::link::LinkSettings::from_request(value.get("link"));
-            serde_json::to_value(crate::link::manifest(&settings))
+            serde_json::to_value(crate::link::printed_document(&settings))
                 .map_err(|_| "Could not encode the manifest".to_string())?
         }
         #[cfg(not(any(target_os = "android", target_os = "ios")))]

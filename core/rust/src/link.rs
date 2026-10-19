@@ -832,6 +832,23 @@ fn manifest_document(
     }
 }
 
+/// What `--arcade-manifest` prints: the manifest with the additions that need
+/// no open profile. Tools reads `install` from it: without it, adopting a
+/// manually installed Clipboard downloaded and reinstalled the latest release
+/// instead of taking over the copy in place, and failed offline.
+pub fn printed_document(settings: &LinkSettings) -> ManifestDocument {
+    ManifestDocument {
+        manifest: manifest(settings),
+        additions: ManifestAdditions {
+            docs: Some(Docs {
+                version: env!("CARGO_PKG_VERSION").into(),
+            }),
+            install: Some(install_method(&Locations::discover())),
+            ..ManifestAdditions::default()
+        },
+    }
+}
+
 fn install_method(locations: &Locations) -> InstallMethod {
     if let Ok(Some(receipt)) = arcade_link::receipt::Store::new(locations).read(ids::CLIPBOARD) {
         return receipt.method;
@@ -1055,6 +1072,17 @@ pub(crate) fn quit_running() -> bool {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn the_printed_manifest_says_how_clipboard_is_installed() {
+        let printed =
+            serde_json::to_value(printed_document(&LinkSettings::from_request(None))).unwrap();
+        assert_eq!(printed["id"], ids::CLIPBOARD);
+        assert!(
+            printed["install"].is_string(),
+            "Tools adopts in place only with an install method: {printed}"
+        );
+    }
     use super::*;
 
     #[test]
