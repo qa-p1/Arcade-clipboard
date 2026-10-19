@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.4 — 2026-10-19
+
+- The picker and a clip's actions no longer show a "Get · Ctrl+Alt+" button on
+  every text clip. It was Arcade Tools' install action, which Clipboard uses
+  only to get a missing app; pressing it on a clip only showed an error.
+  Tools still installs a missing app when you choose Get in Connected apps.
+
 ## 0.2.3 — 2026-10-19
 
 - A helper an app starts from its own image (such as a settings window) keeps
