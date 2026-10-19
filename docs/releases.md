@@ -12,7 +12,7 @@ profiles. Interactive behavior on Windows and macOS has not been verified.
 ## Shared Link dependency
 
 The core takes Arcade Link as a git dependency pinned to a commit
-(`qa-p1/Arcade-Link`, `85bdb0e`, in the workspace `Cargo.toml`), so no workflow
+(`qa-p1/Arcade-Link`, `829cc90`, in the workspace `Cargo.toml`), so no workflow
 needs a second checkout. To build against a local Link checkout, use the
 `[patch]` override described next to the dependency. Moving to a newer Link
 means changing the pinned commit and refreshing `Cargo.lock`.
