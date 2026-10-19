@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.5 — 2026-10-19
+
+- `--arcade-manifest` now says how Clipboard is installed, as the other Arcade
+  apps do. Without it Arcade Tools treated a Clipboard you installed yourself as
+  one that can't install itself: adopting it downloaded and reinstalled the
+  latest release instead of taking over your copy, and failed when the release
+  couldn't be fetched.
+
 ## 0.2.4 — 2026-10-19
 
 - The picker and a clip's actions no longer show a "Get · Ctrl+Alt+" button on
