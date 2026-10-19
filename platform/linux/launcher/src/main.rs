@@ -12,6 +12,11 @@ mod installer_ui;
 #[cfg(target_os = "linux")]
 fn main() {
     use std::os::unix::process::CommandExt;
+    // The AppImage starts here: the install and its relaunch of the
+    // installed copy run in this process (Link detaches that copy from
+    // this image), and the runtime's keep-alive pipe stays for the
+    // Flutter runner exec'd below.
+    arcade_link::childenv::on_startup();
     let argv: Vec<String> = std::env::args().collect();
     if let Some("--install" | "--uninstall" | "--repair" | "--integration-status") =
         argv.get(1).map(String::as_str)

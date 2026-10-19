@@ -2,7 +2,8 @@
 
 ## Release status (2026-10-18)
 
-- Latest release: [v0.2.2](https://github.com/qa-p1/Arcade-clipboard/releases/tag/v0.2.2), published 2026-10-19 (releases every descriptor an AppImage start inherits; see CHANGELOG.md). The CI and e2e notes below were recorded for v0.1.0. Idle memory (about 250 MiB, mostly the Flutter engine) is not addressed in this release.
+- Latest release: [v0.2.3](https://github.com/qa-p1/Arcade-clipboard/releases/tag/v0.2.3), published 2026-10-19 (only programs from another image drop the AppImage's descriptors; see CHANGELOG.md). The CI and e2e notes below were recorded for v0.1.0. Idle memory (about 250 MiB, mostly the Flutter engine) is not addressed in this release.
+- Previously released: [v0.2.2](https://github.com/qa-p1/Arcade-clipboard/releases/tag/v0.2.2), published 2026-10-19 (released every inherited descriptor at start, which also cut off helpers from the app's own image).
 - Previously released: [v0.2.1](https://github.com/qa-p1/Arcade-clipboard/releases/tag/v0.2.1), published 2026-10-18 (fixes for what verifying the release before it found).
 - Previously released: [v0.2.0](https://github.com/qa-p1/Arcade-clipboard/releases/tag/v0.2.0), published 2026-10-18 (fixes from the October audit and stress test).
 - Previously released: [v0.1.0](https://github.com/qa-p1/Arcade-clipboard/releases/tag/v0.1.0) with a Linux self-installing AppImage, a per-user Windows installer, a macOS dmg, `arcade-release.json` and `SHA256SUMS.txt`.
