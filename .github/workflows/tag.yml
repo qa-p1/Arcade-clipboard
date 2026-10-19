@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Tag to create, e.g. v0.2.2
+        description: Tag to create, e.g. v0.2.3
         required: true
       sha:
         description: Full SHA of a commit on main

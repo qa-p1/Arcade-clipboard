@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.3 — 2026-10-19
+
+- A helper an app starts from its own image (such as a settings window) keeps
+  working after the app quits: the previous release stopped passing the AppImage
+  runtime's keep-alive pipe to every program, its own helpers included, so
+  quitting could unmount the image under them. Now only programs from another
+  image (the installed copy, other Arcade apps, a restart through the AppImage
+  file) drop it, so installing from Downloads still leaves nothing behind.
+- The AppImage's launcher, which runs `--install`, now releases the runtime's
+  handles itself, so installing from Downloads no longer leaves the downloaded
+  image's runtime running.
+
 ## 0.2.2 — 2026-10-19
 
 - Installing or updating from your Downloads folder no longer leaves the

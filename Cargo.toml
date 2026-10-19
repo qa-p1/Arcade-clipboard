@@ -3,14 +3,14 @@ members = ["core/rust", "services/relay", "tests/driver", "platform/linux/launch
 resolver = "2"
 
 [workspace.package]
-version = "0.2.2"
+version = "0.2.3"
 edition = "2021"
 license = "MIT"
 rust-version = "1.88"
 
 [workspace.dependencies]
 # Arcade Link shared protocol, installer and tray-host runtime.
-arcade-link = { git = "https://github.com/qa-p1/Arcade-Link", rev = "829cc90a0628fe5c4afc87796eb900aff3fd4e50", features = ["watch", "install", "trayhost"] }
+arcade-link = { git = "https://github.com/qa-p1/Arcade-Link", rev = "4c75f3a7c806ae78f96127c556708e65eaeeb476", features = ["watch", "install", "trayhost"] }
 fs2 = "0.4.3"
 
 [profile.release]
