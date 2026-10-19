@@ -147,6 +147,11 @@ fn offers(registry: &arcade_link::Registry, settings: &LinkSettings, kind: &str)
             continue;
         }
         for action in &peer.actions {
+            // Tools' install action is how "Get" reaches Tools for a missing
+            // app; it is nothing to do with a clip.
+            if peer.id == ids::TOOLS {
+                continue;
+            }
             let Some((title, import, shortcut)) = item_action(&peer.id, action) else {
                 continue;
             };
@@ -761,6 +766,34 @@ mod tests {
             Action::new("shelf.show", "Show Shelf", "show").interactive(true),
         ];
         shelf
+    }
+
+    #[test]
+    fn tools_install_is_not_a_clip_action() {
+        let dir = tempfile::tempdir().unwrap();
+        let locations = Locations::under(dir.path());
+        let mut tools = Manifest::new(
+            ids::TOOLS,
+            "0.3.5",
+            &std::env::current_exe().unwrap().to_string_lossy(),
+        );
+        tools.actions = vec![
+            Action::new("tools.install", "Install an Arcade app", "install")
+                .accepts(&["text/plain"])
+                .interactive(true),
+        ];
+        arcade_link::manifest::write_manifest(&locations, &tools).unwrap();
+        let registry = arcade_link::Registry::load(&locations);
+        assert!(registry.get(ids::TOOLS).is_some());
+        let settings = LinkSettings::from_request(None);
+        for kind in ["text", "url", "rich_text", "image", "file", "files"] {
+            assert!(
+                offers(&registry, &settings, kind)
+                    .iter()
+                    .all(|o| o["peer"] != ids::TOOLS),
+                "{kind}"
+            );
+        }
     }
 
     #[test]
