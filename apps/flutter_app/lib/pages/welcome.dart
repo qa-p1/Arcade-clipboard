@@ -70,7 +70,7 @@ class _WelcomeViewState extends State<_WelcomeView> {
                             ArcadeTokens.textDisplay.copyWith(color: c.text)),
                     const SizedBox(height: ArcadeTokens.space8),
                     Text(
-                      'Copy on one of your devices and paste on another. No account, end-to-end encrypted.',
+                      'An encrypted copy history, synced across your own devices.',
                       textAlign: TextAlign.center,
                       style: ArcadeTokens.textBody.copyWith(color: c.muted),
                     ),

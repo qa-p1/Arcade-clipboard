@@ -20,17 +20,37 @@ class _AppHomeState extends State<_AppHome> {
   void initState() {
     super.initState();
     widget.controller.settingsRequests.addListener(_openSettings);
+    widget.controller.addListener(_titleOnReady);
+  }
+
+  /// Names the window once the app is ready, and again once setup is done.
+  void _titleOnReady() {
+    final controller = widget.controller;
+    if (controller.loading) return;
+    if (controller.hasMesh) controller.removeListener(_titleOnReady);
+    unawaited(controller
+        .setPageTitle(controller.hasMesh ? _sectionTitle(_section) : null));
   }
 
   @override
   void dispose() {
     widget.controller.settingsRequests.removeListener(_openSettings);
+    widget.controller.removeListener(_titleOnReady);
     super.dispose();
   }
 
   void _openSettings() => _select(_Section.settings);
 
-  void _select(_Section section) => setState(() => _section = section);
+  void _select(_Section section) {
+    setState(() => _section = section);
+    unawaited(widget.controller.setPageTitle(_sectionTitle(section)));
+  }
+
+  static String _sectionTitle(_Section section) => switch (section) {
+        _Section.history => 'History',
+        _Section.devices => 'Devices',
+        _Section.settings => 'Settings',
+      };
 
   @override
   Widget build(BuildContext context) {

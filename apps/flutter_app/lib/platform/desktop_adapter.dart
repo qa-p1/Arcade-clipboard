@@ -239,6 +239,24 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
   bool _initialized = false;
   bool _captureEnabled = false;
   bool _overlayVisible = false;
+  DateTime? _overlayShownAt;
+
+  /// The quick picker closes when it loses focus (STANDARD §8).
+  Future<void> Function()? onOverlayFocusLost;
+
+  @override
+  void onWindowBlur() {
+    final shownAt = _overlayShownAt;
+    if (!_overlayVisible || shownAt == null) return;
+    // Focus can bounce while the window maps; only a later blur means the
+    // user went elsewhere.
+    if (DateTime.now().difference(shownAt) <
+        const Duration(milliseconds: 400)) {
+      return;
+    }
+    unawaited(onOverlayFocusLost?.call());
+  }
+
   bool _closed = false;
 
   void _setCapabilities(DesktopCapabilities value) {
@@ -877,7 +895,23 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
     ));
   }
 
-  static const String _mainTitle = 'Arcade Clipboard';
+  String _mainTitle = 'Arcade Clipboard';
+
+  /// The window title, "`<Page>` — Arcade Clipboard" (STANDARD §8.1). The
+  /// picker borrows the window under its own title and restores this one.
+  Future<void> setPageTitle(String? page) async {
+    final title =
+        page == null ? 'Arcade Clipboard' : '$page — Arcade Clipboard';
+    if (title == _mainTitle) return;
+    _mainTitle = title;
+    if (!_initialized || _closed || _overlayVisible) return;
+    try {
+      await windowManager.setTitle(_mainTitle);
+    } catch (_) {
+      // A window that is going away keeps its old title.
+    }
+  }
+
   // Distinct from the main window's title so window rules can tell them apart.
   static const String _overlayTitle = 'Arcade Clipboard Picker';
 
@@ -934,6 +968,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
       await windowManager.show();
       await windowManager.focus();
       _overlayVisible = true;
+      _overlayShownAt = DateTime.now();
     } catch (error) {
       final snapshot = _windowSnapshot;
       if (snapshot != null) {
@@ -972,6 +1007,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
       await _ensureHyprlandPickerRule();
       await windowManager.show();
       _overlayVisible = true;
+      _overlayShownAt = DateTime.now();
       final own = await _ownHyprlandWindow();
       if (own != null) {
         if (own['floating'] != true) {
@@ -1033,10 +1069,13 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
       final height = _overlaySize.height.toInt();
       final result = await _runCommand('hyprctl', [
         'eval',
-        'if not rawget(_G, "ARCADE_CLIPBOARD_PICKER_RULE") then '
-            'hl.window_rule({ match = { class = "^dev[.]arcade[.]clipboard\$", title = "^$_overlayTitle\$" }, '
+        // The class is dev.arcade.Clipboard from 0.3.0 (STANDARD §10). The
+        // guard is new too: a session that ran 0.2 already set the old one
+        // for a rule matching the old class.
+        'if not rawget(_G, "ARCADE_CLIPBOARD_PICKER_RULE_V2") then '
+            'hl.window_rule({ match = { class = "^dev[.]arcade[.]Clipboard\$", title = "^$_overlayTitle\$" }, '
             'float = true, pin = true, center = true, size = "$width $height" }); '
-            'rawset(_G, "ARCADE_CLIPBOARD_PICKER_RULE", true) end'
+            'rawset(_G, "ARCADE_CLIPBOARD_PICKER_RULE_V2", true) end'
       ]);
       if (result.exitCode != 0) {
         Diagnostics.log(
@@ -1084,6 +1123,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
 
   Future<void> hideOverlay() async {
     if (!_overlayVisible) return;
+    _overlayShownAt = null;
     if (Platform.isLinux && _isWayland && _isHyprland) {
       _overlayVisible = false;
       await _restoreHyprlandMainWindow(focusTarget: true);

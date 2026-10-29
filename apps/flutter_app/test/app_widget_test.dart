@@ -266,6 +266,14 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pumpAndSettle();
     expect(fixture.controller.overlayOpen, isFalse);
+
+    // Clicking elsewhere closes it too (the desktop reports the blur).
+    await fixture.controller.openOverlay();
+    await tester.pumpAndSettle();
+    expect(fixture.controller.overlayOpen, isTrue);
+    await fixture.desktop.onOverlayFocusLost!();
+    await tester.pumpAndSettle();
+    expect(fixture.controller.overlayOpen, isFalse);
     expect(tester.takeException(), isNull);
   });
 }

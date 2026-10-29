@@ -367,6 +367,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
           _desktop.setRichCaptureHandler(_captureRichFromDesktop);
           _desktop.onQuit = shutdown;
           _desktop.onOpenSettings = () => settingsRequests.value++;
+          _desktop.onOverlayFocusLost = dismissOverlay;
           _link.onQuit = _desktop.quit;
           _link.onShow = _desktop.showMainWindow;
           _link.onOverlay = openOverlay;
@@ -1270,6 +1271,11 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     _linkPick = null;
     _linkPickFor = null;
     await dismissOverlay();
+  }
+
+  /// Names the window after the page it shows.
+  Future<void> setPageTitle(String? page) async {
+    if (_desktopReady) await _desktop.setPageTitle(page);
   }
 
   Future<void> dismissOverlay() async {
