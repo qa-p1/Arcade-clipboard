@@ -1,5 +1,23 @@
 # Arcade Clipboard: status
 
+## 0.3.0 overhaul (2026-10-29)
+
+- Every surface is on the Arcade design kit (Link `v0.4.3` Flutter
+  components): Template A window, Template B quick picker with paste as plain
+  text, kit dialogs, the standard Settings order, the Clipboard icon family on
+  every platform and the monochrome tray glyph.
+- Standard identifiers and folders: `dev.arcade.Clipboard`, data in
+  `arcade/clipboard`, settings in `settings.json`; the first start moves a 0.2
+  profile (checked in CI by `tests/folder-migration.py`).
+- Standard command line (`--status`, `--show`, `--hide`, `--toggle`,
+  `--restart`) and single instance on all three desktops; checked on Linux
+  under Xvfb.
+- Audit fixes: C1 (macOS icon), C2 (release APKs signed with the release key,
+  checked by the Android CI job), C3 (`jni_flutter` 1.0.4+1), C4 (this page).
+- Not checkable here: a real Hyprland desktop (global shortcut, picker
+  placement and focus-loss timing, tray), the macOS permission and login-item
+  re-grant after the bundle id change, and Tools updating a real 0.2.5 install.
+
 ## Release status (2026-10-18)
 
 - Latest release: [v0.2.5](https://github.com/qa-p1/Arcade-clipboard/releases/tag/v0.2.5), published 2026-10-19 (Tools adopts a manually installed Clipboard in place; see CHANGELOG.md). The CI and e2e notes below were recorded for v0.1.0. Idle memory (about 250 MiB, mostly the Flutter engine) is not addressed in this release.
@@ -96,9 +114,10 @@ release workflow's existing `scripts/package-desktop.py`. These checks are
   been run interactively. Installer coverage is now defined in branch CI;
   it passed at `119d3c2`. macOS installer uninstall/repair, Gatekeeper
   and a real desktop session remain unverified by these checks.
-- The AppImage has only had isolated command-line smoke checks, not a real
-  desktop install test. Its `--install` and `--uninstall` behavior is not
-  implemented yet; the release manifest arguments prepare for a separate port.
+- The AppImage installs, repairs and uninstalls itself (`--install`,
+  `--repair`, `--uninstall [--remove-data]`, and the first-run prompt), which
+  CI checks in a temporary profile on every run; it has not had a real
+  desktop install test.
 - iPhone sync runs only while the app is open; the IPA is unsigned. Android
   builds but has not been run on a device.
 - Other Wayland compositors: capture needs data-control (not GNOME) and there
@@ -114,9 +133,9 @@ release workflow's existing `scripts/package-desktop.py`. These checks are
 | Document | Contents |
 |---|---|
 | [README](../README.md) | Behavior, platform table, install, pairing |
-| [linux](linux.md), [ios](ios.md), [platforms](platforms.md) | Per-platform setup and limits |
-| [architecture](architecture.md), [protocol](protocol.md), [security](security.md) | Design, wire protocol, threat model |
-| [arcade-link](arcade-link.md) | Link actions, connected clip actions, verification |
-| [development](development.md) | Building, tests, CI |
-| [releases](releases.md), [relay-deployment](relay-deployment.md) | Packages and the relay |
-| [Original-spec](../Original-spec.md) | The original product brief (not an implementation record) |
+| [linux](dev/linux.md), [ios](dev/ios.md), [platforms](dev/platforms.md) | Per-platform setup and limits |
+| [architecture](dev/architecture.md), [protocol](dev/protocol.md), [security](dev/security.md) | Design, wire protocol, threat model |
+| [arcade-link](dev/link.md) | Link actions, connected clip actions, verification |
+| [development](dev/development.md) | Building, tests, CI |
+| [releases](dev/releases.md), [relay-deployment](dev/relay-deployment.md) | Packages and the relay |
+| [Original-spec](dev/history/Original-spec.md) | The original product brief (not an implementation record) |

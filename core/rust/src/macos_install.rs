@@ -328,20 +328,29 @@ pub fn uninstall(remove_data: bool) -> Result<Value, String> {
     let environment = Environment::discover().map_err(|e| e.to_string())?;
     let _ = crate::link::quit_running();
     // Device keys stay in the system keyring, as on Linux and Windows.
-    let data = std::env::var_os("ARCADE_DATA_DIR")
+    let folders = match std::env::var_os("ARCADE_DATA_DIR")
         .map(PathBuf::from)
         .filter(|p| p.is_absolute())
-        .unwrap_or_else(|| {
-            environment
-                .home
-                .join("Library/Application Support/dev.arcade.clipboard")
-        });
-    let folders = [
-        data,
-        environment
-            .home
-            .join("Library/Preferences/dev.arcade.clipboard.plist"),
-    ];
+    {
+        Some(data) => vec![data],
+        None => {
+            // Link's folders, any older folder not moved yet, and the user
+            // defaults Clipboard kept before 0.3.0.
+            let dirs = arcade_link::paths::app_dirs(arcade_link::ids::CLIPBOARD);
+            let mut folders = vec![dirs.data, dirs.config, dirs.cache];
+            folders.extend(
+                arcade_link::paths::legacy_dirs(arcade_link::ids::CLIPBOARD)
+                    .into_iter()
+                    .map(|legacy| legacy.path),
+            );
+            folders.push(
+                environment
+                    .home
+                    .join("Library/Preferences/dev.arcade.clipboard.plist"),
+            );
+            folders
+        }
+    };
     let removed = uninstall_in(&environment, remove_data, &folders).map_err(|e| e.to_string())?;
     Ok(json!({"uninstalled": removed}))
 }

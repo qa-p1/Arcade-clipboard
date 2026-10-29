@@ -20,4 +20,4 @@ Enable **Connect with other Arcade apps** in Clipboard’s Connected apps settin
 
 Other Arcade apps can send content to your devices with **Send to my devices**, or open Clipboard’s picker and ask you to choose a clip. The picker returns the chosen clip to the requesting app instead of pasting it. Nothing exposes your history unless you choose a clip.
 
-The latest Shelf action is present in the Link offer data, but the current STATUS records only a mock-peer test for the action; it has not yet been confirmed by rebuilding the desktop UI and running it against a real Shelf. See [Arcade Link details](../arcade-link.md).
+The latest Shelf action is present in the Link offer data, but the current STATUS records only a mock-peer test for the action; it has not yet been confirmed by rebuilding the desktop UI and running it against a real Shelf. See [Arcade Link details](https://github.com/qa-p1/Arcade-clipboard/blob/main/docs/dev/link.md).

@@ -94,7 +94,7 @@ With Xcode, Flutter 3.47.2, Rust 1.98.1 and Ruby:
 ```bash
 rustup target add aarch64-apple-ios
 gem install xcodeproj --version 1.28.1 --no-document
-bash scripts/dev.sh build-ios
+bash scripts/dev build-ios
 ```
 
 The IPA is written to `dist/Arcade-Clipboard-iOS-unsigned.ipa`. The build:

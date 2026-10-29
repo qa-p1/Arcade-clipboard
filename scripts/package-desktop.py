@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Package a bundle built by scripts/dev.sh; no build or publishing happens here."""
+"""Package a bundle built by scripts/dev; no build or publishing happens here."""
 import argparse
 import os
 from pathlib import Path
@@ -36,20 +36,20 @@ def main():
         source = ROOT / 'dist/Arcade-Clipboard-linux-x64.tar.gz'
         appimage = ROOT / f'dist/Arcade-Clipboard-{args.version}-x86_64.AppImage'
         if not appimage.is_file():
-            raise SystemExit('Build the Linux AppImage with bash scripts/dev.sh build-appimage --version VERSION first')
+            raise SystemExit('Build the Linux AppImage with bash scripts/dev build-appimage --version VERSION first')
         shutil.copy2(source, out / f'Arcade-Clipboard_{args.version}_linux_x64.tar.gz')
         shutil.copy2(appimage, out / appimage.name)
     elif args.platform == 'windows':
         source = ROOT / 'apps/flutter_app/build/windows/x64/runner/Release'
         if not (source / 'clipboard.exe').is_file() or not (source / 'arcade_core.dll').is_file():
-            raise SystemExit('Build the Windows app/core with bash scripts/dev.sh build-windows first')
+            raise SystemExit('Build the Windows app/core with bash scripts/dev build-windows first')
         compiler = shutil.which('ISCC.exe') or str(Path(os.environ.get('ProgramFiles(x86)', r'C:\Program Files (x86)')) / 'Inno Setup 6/ISCC.exe')
         subprocess.run([compiler, f'/DAppVersion={args.version}', f'/DSourceDir={source}',
                         f'/DOutputDir={out}', str(ROOT / 'packaging/windows/arcade-clipboard.iss')], check=True)
     else:
         source = ROOT / 'apps/flutter_app/build/macos/Build/Products/Release/Arcade Clipboard.app'
         if not (source / 'Contents/Frameworks/libarcade_core.dylib').is_file():
-            raise SystemExit('Build the macOS app/core with bash scripts/dev.sh build-macos first')
+            raise SystemExit('Build the macOS app/core with bash scripts/dev build-macos first')
         verify_universal_bundle(source)
         stage = ROOT / 'dist/dmg'
         if stage.exists():

@@ -10,6 +10,10 @@ Arcade Clipboard is an encrypted clipboard history shared by your own devices. I
 
 ![Arcade Clipboard history showing pinned notes, recent clips, and search filters](images/history.png)
 
+With the system set to a dark theme:
+
+![The same history in the dark theme](images/history-dark.png)
+
 ## Three useful things to start with
 
 - **Find something you copied earlier:** open the picker and search your recent clips.

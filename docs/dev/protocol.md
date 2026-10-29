@@ -84,4 +84,4 @@ Devices that cannot reach each other directly can meet at a relay. The relay for
 - **Pairing route:** `/v1/relay/{session_id}?token={ticket}`, where the session ID and ticket come from the invite.
 - **Paired route:** `/v1/relay/paired/{route_id}/{slot}?token={route_token}`. The route ID and token are derived separately from the two devices' X25519 shared secret, so knowing a device's public ID does not reveal its route. Slots `a` and `b` are assigned by device ID order.
 
-The relay keeps no queue. Both devices must be connected at the same time; anything missed is delivered by catch-up on the next session. The server side is documented in [services/relay](../services/relay/README.md).
+The relay keeps no queue. Both devices must be connected at the same time; anything missed is delivered by catch-up on the next session. The server side is documented in [services/relay](../../services/relay/README.md).

@@ -34,14 +34,15 @@ entry. The tarball is planned to be dropped after this release.
 To build both release formats locally:
 
 ```bash
-bash scripts/dev.sh build-linux
-bash scripts/dev.sh build-appimage --version 0.1.0
+bash scripts/dev build-linux
+bash scripts/dev build-appimage --version 0.1.0
 ```
 
 `build-linux` creates the release bundle and transition tarball. `build-appimage`
 assembles that bundle as `dist/Arcade-Clipboard-0.1.0-x86_64.AppImage`. The
-AppImage desktop entry keeps the `dev.arcade.clipboard` desktop ID and the
-`arcade.clipboard` Arcade ID.
+AppImage desktop entry uses the `dev.arcade.Clipboard` desktop ID (also the
+window class; `dev.arcade.clipboard` before 0.3.0, whose entry the installer
+removes) and the `arcade.clipboard` Arcade ID.
 
 The legacy installer does not edit shell or compositor configuration. To run
 the release bundle directly, start `clipboard` or `arcade-clipboard` from its
@@ -74,7 +75,7 @@ Compositors without the data-control protocol, most notably GNOME, do not let ba
 
 ## Shortcut and picker
 
-The default shortcut is **Ctrl+Shift+Space**. Change it in **Settings → Picker shortcut**. Shortcuts already taken by the compositor are reported as conflicts.
+The default shortcut is **Ctrl+Alt+V** (it was **Ctrl+Shift+Space** before 0.3.0; profiles from then keep theirs). Change it in **Settings → Shortcuts**. Shortcuts already taken by the compositor are reported as conflicts.
 
 The picker lists recent clips with the newest selected:
 
@@ -109,14 +110,16 @@ Wayland does not let apps register global shortcuts or type into other windows. 
 
 ```ini
 # Sway example
-bindsym Ctrl+Shift+space exec ~/.local/share/arcade-clipboard/clipboard --overlay
+bindsym Ctrl+Alt+v exec ~/.local/share/arcade-clipboard/clipboard --overlay
 ```
 
 ## Background and login
 
 **Keep running in the background** makes closing the window hide it to the tray instead of quitting. If there is no tray host, the window stays reachable and closing it quits the app. **Launch at login** writes `~/.config/autostart/arcade-clipboard.desktop`, which starts the installed app with `--background`.
 
-The tray icon opens Settings on click. Its menu is the one every Arcade app has: **Open Clipboard**, **Open Settings**, **Restart Arcade Clipboard** and, below a separator, **Quit Arcade Clipboard**. Restart starts a new background instance, which waits for the old one to exit, then quits.
+The tray icon is Clipboard's glyph in white. A click opens the window. Its menu follows the Arcade standard: **Open Arcade Clipboard**, **Settings**, a separator, **Private mode**, **Restart Arcade Clipboard** and **Quit Arcade Clipboard**. Restart starts a new background instance, which waits for the old one to exit, then quits.
+
+Data lives in `~/.local/share/arcade/clipboard/` and settings in `~/.config/arcade/clipboard/settings.json`. The first start of 0.3.0 moves the old `~/.local/share/dev.arcade.clipboard/` there: it copies, verifies, then removes the old folder, and leaves it in place (and logs why) if any step fails.
 
 The app quits cleanly on the tray's Quit item, `SIGTERM` or `SIGINT`. It removes its Hyprland binding and stops the capture helper before exiting.
 
@@ -130,6 +133,6 @@ Start the app from a terminal with `ARCADE_DEBUG=1` and repeat the action.
 | "This clipboard profile is already open" | Another instance is using the same profile. Quit it, or use `ARCADE_DATA_DIR` for a second profile. |
 | "Could not access the system credential store" | Unlock your keyring, or install and start a Secret Service provider. |
 | The shortcut does nothing on Hyprland | Run `hyprctl binds` and look for the `Arcade Clipboard` entry. Another binding on the same keys takes priority; choose a different shortcut. |
-| The picker opens tiled on Hyprland | A rule in your configuration matching `dev.arcade.clipboard` may override the app's rule. Restrict it to the title `Arcade Clipboard`. |
+| The picker opens tiled on Hyprland | A rule in your configuration matching the class `dev.arcade.Clipboard` may override the app's rule. Exclude the picker's title, `Arcade Clipboard Picker`. |
 | Paste goes to the wrong place | The remembered window was replaced, for example by a browser tab that moved to a new window. The clip is still on the clipboard; paste it manually. |
 | Other devices do not appear | Both devices must be on the same network and allow incoming TCP on the app's port, plus UDP 5353 for mDNS. Otherwise configure a relay. |

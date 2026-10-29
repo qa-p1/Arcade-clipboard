@@ -27,22 +27,22 @@ For running the app you also need a Secret Service provider and, on Wayland, `wl
 
 ## Commands
 
-`scripts/dev.sh` wraps the common tasks:
+`scripts/dev` wraps the common tasks:
 
 | Command | What it does |
 | --- | --- |
-| `bash scripts/dev.sh desktop` | Run the Linux app in debug mode |
-| `bash scripts/dev.sh build-linux` | Build the release bundle and `dist/Arcade-Clipboard-linux-x64.tar.gz` |
+| `bash scripts/dev desktop` | Run the Linux app in debug mode |
+| `bash scripts/dev build-linux` | Build the release bundle and `dist/Arcade-Clipboard-linux-x64.tar.gz` |
 | `bash scripts/install-linux.sh` | Install the release bundle for the current user |
-| `bash scripts/dev.sh test` | Rust workspace tests and Flutter tests |
-| `bash scripts/dev.sh check` | `rustfmt`, Clippy with warnings as errors, and `flutter analyze` |
-| `bash scripts/dev.sh smoke` | Pair two real core processes and sync between them |
-| `bash scripts/dev.sh native-test` | Pairing, sync and picker paste on a live Hyprland session |
-| `bash scripts/dev.sh relay` | Run the relay on `127.0.0.1:8787` |
-| `bash scripts/dev.sh generate` | Regenerate the Flutter–Rust bindings |
-| `bash scripts/dev.sh build-windows` | Build the Windows desktop bundle (Windows runner) |
-| `bash scripts/dev.sh build-macos` | Build the macOS desktop bundle (macOS runner) |
-| `bash scripts/dev.sh build-ios` | Build the unsigned IPA (macOS only) |
+| `bash scripts/dev test` | Rust workspace tests and Flutter tests |
+| `bash scripts/dev check` | `rustfmt`, Clippy with warnings as errors, and `flutter analyze` |
+| `bash scripts/dev smoke` | Pair two real core processes and sync between them |
+| `bash scripts/dev native-test` | Pairing, sync and picker paste on a live Hyprland session |
+| `bash scripts/dev relay` | Run the relay on `127.0.0.1:8787` |
+| `bash scripts/dev generate` | Regenerate the Flutter–Rust bindings |
+| `bash scripts/dev build-windows` | Build the Windows desktop bundle (Windows runner) |
+| `bash scripts/dev build-macos` | Build the macOS desktop bundle (macOS runner) |
+| `bash scripts/dev build-ios` | Build the unsigned IPA (macOS only) |
 
 ## Project structure
 
@@ -84,9 +84,9 @@ compositor configuration or persistent environment files.
 | `cargo test -p arcade_core` | Noise sessions and tampering, pairing consent and replay, signatures, revocation, storage encryption and migrations, size limits, offline catch-up, pins, deduplication, reconnection after restart, LAN-to-relay failover |
 | `cargo test -p arcade_relay` | Route limits and real WebSocket forwarding |
 | `flutter test` (in `apps/flutter_app`) | Onboarding, history, search, settings, picker keyboard navigation and layouts |
-| `bash scripts/dev.sh smoke` | Two separate processes through the real API and system keyring |
+| `bash scripts/dev smoke` | Two separate processes through the real API and system keyring |
 | `dbus-run-session -- bash tests/with-secret-service.sh` | The same, against an isolated Secret Service |
-| `bash scripts/dev.sh native-test` | Real pairing, sync and Enter-to-paste into a GTK test window on Hyprland |
+| `bash scripts/dev native-test` | Real pairing, sync and Enter-to-paste into a GTK test window on Hyprland |
 
 The Rust integration tests start real listeners on loopback. Several of them depend on timing; if one fails under heavy load, run it again on its own before investigating.
 

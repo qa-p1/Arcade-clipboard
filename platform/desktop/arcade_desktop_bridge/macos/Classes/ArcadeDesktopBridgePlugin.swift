@@ -278,27 +278,39 @@ public class ArcadeDesktopBridgePlugin: NSObject, FlutterPlugin {
     guard statusItem == nil else { return }
     let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     if let button = item.button {
-      if #available(macOS 11.0, *) { button.image = NSImage(systemSymbolName: "doc.on.clipboard", accessibilityDescription: "Arcade Clipboard") }
-      else { button.title = "AC" }
+      // Clipboard's glyph as a template image (STANDARD §8), rendered by
+      // scripts/sync-design.py into the app's assets.
+      let glyph = Bundle.main.privateFrameworksURL?
+        .appendingPathComponent("App.framework/Resources/flutter_assets/assets/arcade/tray/tray-black.png")
+      if let glyph, let image = NSImage(contentsOf: glyph) {
+        image.size = NSSize(width: 18, height: 18)
+        image.isTemplate = true
+        image.accessibilityDescription = "Arcade Clipboard"
+        button.image = image
+      } else if #available(macOS 11.0, *) {
+        button.image = NSImage(systemSymbolName: "doc.on.clipboard", accessibilityDescription: "Arcade Clipboard")
+      } else {
+        button.title = "AC"
+      }
       button.toolTip = "Arcade Clipboard"
     }
     let menu = NSMenu()
-    // The tray menu every Arcade app has.
-    let open = NSMenuItem(title: "Open Clipboard", action: #selector(openMainWindow), keyEquivalent: "")
+    // The standard tray order (STANDARD §8): open, Settings, separator,
+    // app-level actions, Quit last.
+    let open = NSMenuItem(title: "Open Arcade Clipboard", action: #selector(openMainWindow), keyEquivalent: "")
     open.target = self
     menu.addItem(open)
-    let settings = NSMenuItem(title: "Open Settings", action: #selector(openSettings), keyEquivalent: ",")
+    let settings = NSMenuItem(title: "Settings", action: #selector(openSettings), keyEquivalent: ",")
     settings.target = self
     menu.addItem(settings)
-    let restart = NSMenuItem(title: "Restart Arcade Clipboard", action: #selector(restartApplication), keyEquivalent: "")
-    restart.target = self
-    menu.addItem(restart)
     menu.addItem(.separator())
     let privateMode = NSMenuItem(title: "Private mode", action: #selector(togglePrivateMode), keyEquivalent: "")
     privateMode.target = self
     menu.addItem(privateMode)
     privateModeItem = privateMode
-    menu.addItem(.separator())
+    let restart = NSMenuItem(title: "Restart Arcade Clipboard", action: #selector(restartApplication), keyEquivalent: "")
+    restart.target = self
+    menu.addItem(restart)
     let quit = NSMenuItem(title: "Quit Arcade Clipboard", action: #selector(quitApplication), keyEquivalent: "q")
     quit.target = self
     menu.addItem(quit)

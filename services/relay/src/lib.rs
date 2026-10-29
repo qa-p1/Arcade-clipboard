@@ -393,15 +393,14 @@ impl RelayState {
     async fn detach(&self, route: &str, generation: u64, paired_route: bool) {
         let mut broker = self.inner.broker.lock().await;
         if paired_route {
-            if let Some(entry) = broker.paired.get_mut(route) {
-                if entry
+            if let Some(entry) = broker.paired.get_mut(route)
+                && entry
                     .active
                     .as_ref()
                     .is_some_and(|active| active.generation == generation)
-                {
-                    entry.active = None;
-                    entry.last_used = Instant::now();
-                }
+            {
+                entry.active = None;
+                entry.last_used = Instant::now();
             }
         } else if broker
             .invites
@@ -588,15 +587,14 @@ async fn handle_attached(
         ),
     };
 
-    if let Some((mut socket, link)) = link {
-        if !notify_ready
+    if let Some((mut socket, link)) = link
+        && (!notify_ready
             || socket
                 .send(Message::Text("arcade-ready-v1".into()))
                 .await
-                .is_ok()
-        {
-            forward_socket(socket, link).await;
-        }
+                .is_ok())
+    {
+        forward_socket(socket, link).await;
     }
     state.detach(&route_id, generation, paired_route).await;
     state.release_connection(ip).await;

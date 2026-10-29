@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
@@ -22,10 +24,7 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "dev.arcade.clipboard"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = maxOf(flutter.minSdkVersion, 26)
         targetSdk = flutter.targetSdkVersion
         // Uses the version code from pubspec.yaml. When using split APKs, 1000 * ABI_VERSION
@@ -36,11 +35,31 @@ android {
         versionName = flutter.versionName
     }
 
+    // The release key comes from CI secrets (ARCADE_ANDROID_KEYSTORE, a
+    // base64 keystore decoded to a file, plus its passwords and alias) or a
+    // local, untracked android/key.properties. Without one, release builds are
+    // left unsigned; only debug builds use the debug key.
+    val keyProperties = Properties().apply {
+        val file = rootProject.file("key.properties")
+        if (file.isFile) file.inputStream().use { load(it) }
+    }
+    fun releaseKey(property: String, variable: String): String? =
+        System.getenv(variable)?.takeIf { it.isNotEmpty() } ?: keyProperties.getProperty(property)
+    val releaseStore = releaseKey("storeFile", "ARCADE_ANDROID_KEYSTORE_FILE")
+    signingConfigs {
+        if (releaseStore != null) {
+            create("release") {
+                storeFile = file(releaseStore)
+                storePassword = releaseKey("storePassword", "ARCADE_ANDROID_KEYSTORE_PASSWORD")
+                keyAlias = releaseKey("keyAlias", "ARCADE_ANDROID_KEY_ALIAS")
+                keyPassword = releaseKey("keyPassword", "ARCADE_ANDROID_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 }

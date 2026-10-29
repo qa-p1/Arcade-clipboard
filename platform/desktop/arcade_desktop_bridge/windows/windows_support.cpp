@@ -22,6 +22,28 @@ constexpr UINT kTrayMessage = WM_APP + 73;
 constexpr wchar_t kRunKey[] = L"Software\\Microsoft\\Windows\\CurrentVersion\\Run";
 constexpr wchar_t kRunValue[] = L"ArcadeClipboard";
 
+// The taskbar is dark unless Windows says it uses the light theme.
+bool TaskbarIsLight() {
+  DWORD value = 0;
+  DWORD size = sizeof(value);
+  return RegGetValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+             L"SystemUsesLightTheme", RRF_RT_REG_DWORD, nullptr, &value, &size) == ERROR_SUCCESS &&
+         value != 0;
+}
+
+// Clipboard's glyph, monochrome for the taskbar's theme (STANDARD §8),
+// rendered by scripts/sync-design.py into the app's assets.
+HICON LoadTrayGlyph() {
+  wchar_t executable[MAX_PATH] = {};
+  const DWORD length = GetModuleFileNameW(nullptr, executable, MAX_PATH);
+  if (length == 0 || length >= MAX_PATH) return nullptr;
+  std::wstring path(executable, length);
+  path = path.substr(0, path.find_last_of(L"\\") + 1) + L"data\\flutter_assets\\assets\\arcade\\tray\\" +
+         (TaskbarIsLight() ? L"tray-black.ico" : L"tray-white.ico");
+  return static_cast<HICON>(LoadImageW(nullptr, path.c_str(), IMAGE_ICON, GetSystemMetrics(SM_CXSMICON),
+      GetSystemMetrics(SM_CYSMICON), LR_LOADFROMFILE));
+}
+
 const Value* Lookup(const Map& map, const char* key) {
   auto found = map.find(Value(key));
   return found == map.end() ? nullptr : &found->second;
@@ -372,6 +394,18 @@ WindowsSupport::~WindowsSupport() {
   SetBackground(false);
   if (delegate_id_ >= 0) registrar_->UnregisterTopLevelWindowProcDelegate(delegate_id_);
   if (graphics_token_ != 0) Gdiplus::GdiplusShutdown(graphics_token_);
+  if (tray_icon_ != nullptr) DestroyIcon(tray_icon_);
+}
+
+void WindowsSupport::UpdateTrayIcon() {
+  HICON glyph = LoadTrayGlyph();
+  if (glyph != nullptr) {
+    if (tray_icon_ != nullptr) DestroyIcon(tray_icon_);
+    tray_icon_ = glyph;
+  }
+  tray_.hIcon = tray_icon_;
+  if (tray_.hIcon == nullptr) tray_.hIcon = reinterpret_cast<HICON>(SendMessageW(window_, WM_GETICON, ICON_SMALL, 0));
+  if (tray_.hIcon == nullptr) tray_.hIcon = LoadIconW(nullptr, IDI_APPLICATION);
 }
 
 bool WindowsSupport::SetBackground(bool enabled) {
@@ -388,8 +422,7 @@ bool WindowsSupport::SetBackground(bool enabled) {
   tray_.uID = 1;
   tray_.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
   tray_.uCallbackMessage = kTrayMessage;
-  tray_.hIcon = reinterpret_cast<HICON>(SendMessageW(window_, WM_GETICON, ICON_SMALL, 0));
-  if (tray_.hIcon == nullptr) tray_.hIcon = LoadIconW(nullptr, IDI_APPLICATION);
+  UpdateTrayIcon();
   wcscpy_s(tray_.szTip, L"Arcade Clipboard");
   if (!Shell_NotifyIconW(NIM_ADD, &tray_)) return false;
   tray_.uVersion = NOTIFYICON_VERSION_4;
@@ -409,6 +442,14 @@ bool WindowsSupport::SetTrayHosted(bool hosted) {
 
 std::optional<LRESULT> WindowsSupport::WindowProc(HWND window, UINT message, WPARAM, LPARAM lparam) {
   if (window != window_) return std::nullopt;
+  if (message == WM_SETTINGCHANGE && background_ && lparam != 0 &&
+      wcscmp(reinterpret_cast<const wchar_t*>(lparam), L"ImmersiveColorSet") == 0) {
+    // The taskbar theme changed: swap the white and black glyphs.
+    UpdateTrayIcon();
+    tray_.uFlags = NIF_ICON;
+    Shell_NotifyIconW(NIM_MODIFY, &tray_);
+    return std::nullopt;
+  }
   if (message == WM_CLIPBOARDUPDATE) {
     if (capture_enabled_) channel_->InvokeMethod("clipboardChanged", nullptr);
     return std::nullopt;
@@ -423,19 +464,20 @@ std::optional<LRESULT> WindowsSupport::WindowProc(HWND window, UINT message, WPA
   if (message != kTrayMessage) return std::nullopt;
   const UINT event = LOWORD(lparam);
   if (event == NIN_SELECT || event == NIN_KEYSELECT || event == WM_LBUTTONUP || event == WM_LBUTTONDBLCLK) {
-    // A click opens Settings, as in every Arcade app.
-    channel_->InvokeMethod("showSettings", nullptr);
+    // A left click opens the window (STANDARD §8).
+    channel_->InvokeMethod("showMainWindow", nullptr);
   } else if (event == WM_CONTEXTMENU || event == WM_RBUTTONUP) {
     POINT point = {};
     GetCursorPos(&point);
     HMENU menu = CreatePopupMenu();
     // The tray menu every Arcade app has.
-    AppendMenuW(menu, MF_STRING, 1, L"Open Clipboard");
-    AppendMenuW(menu, MF_STRING, 3, L"Open Settings");
-    AppendMenuW(menu, MF_STRING, 4, L"Restart Arcade Clipboard");
+    // The standard tray order (STANDARD §8): open, Settings, separator,
+    // app-level actions, Quit last.
+    AppendMenuW(menu, MF_STRING, 1, L"Open Arcade Clipboard");
+    AppendMenuW(menu, MF_STRING, 3, L"Settings");
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(menu, MF_STRING | (private_mode_ ? MF_CHECKED : MF_UNCHECKED), 5, L"Private mode");
-    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+    AppendMenuW(menu, MF_STRING, 4, L"Restart Arcade Clipboard");
     AppendMenuW(menu, MF_STRING, 2, L"Quit Arcade Clipboard");
     SetForegroundWindow(window);
     const UINT selected = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_NONOTIFY | TPM_RIGHTBUTTON, point.x, point.y, 0, window, nullptr);

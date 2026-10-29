@@ -16,8 +16,10 @@ abstract interface class CoreApi {
 }
 
 class RustCoreApi implements CoreApi {
-  bool _bridgeReady = false;
-  Future<void>? _bridgeInitialization;
+  // One bridge per process: flutter_rust_bridge refuses a second init, and
+  // main() asks the core before the app's own instance exists.
+  static bool _bridgeReady = false;
+  static Future<void>? _bridgeInitialization;
 
   @override
   Future<void> initializeBridge() async {

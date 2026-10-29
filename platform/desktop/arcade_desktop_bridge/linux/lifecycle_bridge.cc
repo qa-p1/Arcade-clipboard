@@ -110,21 +110,23 @@ void ConnectWindow(LinuxLifecycle* state) {
 
 void ViewMapped(GtkWidget*, gpointer data) { ConnectWindow(static_cast<LinuxLifecycle*>(data)); }
 
-// Open/settings/restart, Private mode, and quit.
-constexpr gint kMenuItems = 7;
-constexpr const char* kMenuLabels[] = {"", "Open Clipboard", "Open Settings", "Restart Arcade Clipboard", "",
-                                       "Private mode", "", "Quit Arcade Clipboard"};
-constexpr const char* kMenuActions[] = {nullptr, "showMainWindow", "showSettings", "restartRequested", nullptr,
-                                        "privateModeRequested", nullptr, "quitRequested"};
+// The standard tray order (STANDARD §8): open, Settings, separator,
+// app-level actions, Quit last.
+constexpr gint kMenuItems = 6;
+constexpr const char* kMenuLabels[] = {"", "Open Arcade Clipboard", "Settings", "", "Private mode",
+                                       "Restart Arcade Clipboard", "Quit Arcade Clipboard"};
+constexpr const char* kMenuActions[] = {nullptr, "showMainWindow", "showSettings", nullptr, "privateModeRequested",
+                                        "restartRequested", "quitRequested"};
 
-constexpr gint kPrivateModeItem = 5;
+constexpr gint kSeparatorItem = 3;
+constexpr gint kPrivateModeItem = 4;
 
 GVariant* MenuProperties(const LinuxLifecycle* state, gint id) {
   GVariantBuilder properties;
   g_variant_builder_init(&properties, G_VARIANT_TYPE("a{sv}"));
   if (id == 0) {
     g_variant_builder_add(&properties, "{sv}", "children-display", g_variant_new_string("submenu"));
-  } else if (id == 4 || id == 6) {
+  } else if (id == kSeparatorItem) {
     g_variant_builder_add(&properties, "{sv}", "type", g_variant_new_string("separator"));
   } else if (id > 0 && id <= kMenuItems) {
     g_variant_builder_add(&properties, "{sv}", "label", g_variant_new_string(kMenuLabels[id]));
@@ -155,17 +157,56 @@ void MenuEvent(LinuxLifecycle* state, gint id, const gchar* event) {
 void ItemMethod(GDBusConnection*, const gchar*, const gchar*, const gchar*, const gchar* method,
     GVariant*, GDBusMethodInvocation* invocation, gpointer data) {
   auto* state = static_cast<LinuxLifecycle*>(data);
-  // A click opens Settings, as in every Arcade app; hosts that can't draw
-  // the menu ask for it with ContextMenu, so that opens the window.
-  if (g_strcmp0(method, "Activate") == 0) {
-    Invoke(state, "showSettings");
-  } else if (g_strcmp0(method, "SecondaryActivate") == 0 || g_strcmp0(method, "ContextMenu") == 0) {
+  // A left click opens the window (STANDARD §8); hosts that can't draw the
+  // menu ask for it with ContextMenu, so that opens the window too.
+  if (g_strcmp0(method, "Activate") == 0 || g_strcmp0(method, "SecondaryActivate") == 0 ||
+      g_strcmp0(method, "ContextMenu") == 0) {
     Invoke(state, "showMainWindow");
   }
   g_dbus_method_invocation_return_value(invocation, nullptr);
 }
 
 GVariant* EmptyPixmaps() { return g_variant_new_array(G_VARIANT_TYPE("(iiay)"), nullptr, 0); }
+
+// The tray icon: Clipboard's glyph in white for the usual dark panels
+// (STANDARD §8), as ARGB32 in network byte order. Rendered by
+// scripts/sync-design.py into the app's assets; empty if it is missing.
+GVariant* TrayPixmaps() {
+  static GBytes* argb = nullptr;
+  static int width = 0, height = 0;
+  if (argb == nullptr) {
+    g_autofree gchar* exe = g_file_read_link("/proc/self/exe", nullptr);
+    g_autofree gchar* dir = exe ? g_path_get_dirname(exe) : g_strdup(".");
+    g_autofree gchar* path =
+        g_build_filename(dir, "data", "flutter_assets", "assets", "arcade", "tray", "tray-white.png", nullptr);
+    g_autoptr(GdkPixbuf) loaded = gdk_pixbuf_new_from_file(path, nullptr);
+    g_autoptr(GdkPixbuf) pixbuf = loaded ? gdk_pixbuf_add_alpha(loaded, FALSE, 0, 0, 0) : nullptr;
+    if (pixbuf == nullptr) {
+      argb = g_bytes_new(nullptr, 0);
+    } else {
+      width = gdk_pixbuf_get_width(pixbuf);
+      height = gdk_pixbuf_get_height(pixbuf);
+      const int stride = gdk_pixbuf_get_rowstride(pixbuf);
+      const guchar* pixels = gdk_pixbuf_read_pixels(pixbuf);
+      auto* out = static_cast<guchar*>(g_malloc(static_cast<gsize>(width) * height * 4));
+      for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+          const guchar* rgba = pixels + y * stride + x * 4;
+          guchar* pixel = out + (static_cast<gsize>(y) * width + x) * 4;
+          pixel[0] = rgba[3];
+          pixel[1] = rgba[0];
+          pixel[2] = rgba[1];
+          pixel[3] = rgba[2];
+        }
+      }
+      argb = g_bytes_new_take(out, static_cast<gsize>(width) * height * 4);
+    }
+  }
+  if (g_bytes_get_size(argb) == 0) return EmptyPixmaps();
+  GVariant* data = g_variant_new_from_bytes(G_VARIANT_TYPE("ay"), argb, TRUE);
+  GVariant* pixmap = g_variant_new("(ii@ay)", width, height, data);
+  return g_variant_new_array(G_VARIANT_TYPE("(iiay)"), &pixmap, 1);
+}
 
 GVariant* ItemProperty(GDBusConnection*, const gchar*, const gchar*, const gchar*, const gchar* name,
     GError**, gpointer data) {
@@ -174,10 +215,13 @@ GVariant* ItemProperty(GDBusConnection*, const gchar*, const gchar*, const gchar
   if (g_strcmp0(name, "Id") == 0) return g_variant_new_string("arcade-clipboard");
   if (g_strcmp0(name, "Title") == 0) return g_variant_new_string("Arcade Clipboard");
   if (g_strcmp0(name, "Status") == 0) return g_variant_new_string(state->background && !state->tray_hosted ? "Active" : "Passive");
-  if (g_strcmp0(name, "IconName") == 0) return g_variant_new_string("edit-paste");
+  // A pixmap rather than a theme icon name, so the tray shows Clipboard's glyph.
+  if (g_strcmp0(name, "IconName") == 0) return g_variant_new_string("");
+  if (g_strcmp0(name, "IconPixmap") == 0) return TrayPixmaps();
   if (g_strcmp0(name, "Menu") == 0) return g_variant_new_object_path("/Menu");
   if (g_strcmp0(name, "ItemIsMenu") == 0) return g_variant_new_boolean(FALSE);
-  if (g_strcmp0(name, "ToolTip") == 0) return g_variant_new("(s@a(iiay)ss)", "edit-paste", EmptyPixmaps(), "Arcade Clipboard", "Shared clipboard");
+  if (g_strcmp0(name, "ToolTip") == 0) return g_variant_new("(s@a(iiay)ss)", "", EmptyPixmaps(), "Arcade Clipboard",
+                                                               "An encrypted copy history, synced across your own devices.");
   if (g_str_has_suffix(name, "Pixmap")) return EmptyPixmaps();
   return g_variant_new_string("");
 }

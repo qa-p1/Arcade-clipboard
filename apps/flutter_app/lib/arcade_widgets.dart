@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'design/arcade_theme.dart';
+import 'design/arcade_widgets.dart';
 import 'models.dart';
 import 'services/app_controller.dart';
 import 'services/link_service.dart';
@@ -11,22 +13,22 @@ class ArcadeGlyph extends StatelessWidget {
   final String peer;
   final Color? color;
   final double size;
-  static const accents = {
-    'arcade.box': Color(0xFF7C5CFF),
-    'arcade.lens': Color(0xFF2BB3A3),
-    'arcade.look': Color(0xFF3B82F6),
-    'arcade.wheel': Color(0xFFF59E0B),
-    'arcade.tools': Color(0xFF64748B),
-    'arcade.shelf': Color(0xFF94A8FF),
-    'arcade.find': Color(0xFF22C55E),
-  };
+
+  /// [peer]'s accent from the kit, for the current brightness.
+  static Color accentOf(BuildContext context, String peer) {
+    final accent = arcadeAccents[peer];
+    if (accent == null) return arcadeColors(context).muted;
+    return Theme.of(context).brightness == Brightness.dark
+        ? accent.dark
+        : accent.light;
+  }
+
   @override
   Widget build(BuildContext context) => SizedBox(
       width: size,
       height: size,
       child: CustomPaint(
-          painter: _GlyphPainter(
-              peer, color ?? Theme.of(context).colorScheme.onSurface)));
+          painter: _GlyphPainter(peer, color ?? accentOf(context, peer))));
 }
 
 class _GlyphPainter extends CustomPainter {
@@ -141,8 +143,7 @@ class LinkActionLabel extends StatelessWidget {
                   style: Theme.of(context).textTheme.bodySmall),
             ])),
         const SizedBox(width: 8),
-        Text('Ctrl+Alt+${action.shortcut}',
-            style: Theme.of(context).textTheme.labelSmall),
+        ArcadeKeyCombo(['Ctrl', 'Alt', action.shortcut]),
       ]));
 }
 
@@ -152,17 +153,27 @@ class LinkWorkStatus extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!controller.link.busy) return const SizedBox.shrink();
-    return Column(children: [
-      LinearProgressIndicator(
-          value: controller.link.progressFraction, minHeight: 2),
-      Row(children: [
-        Expanded(
-            child: Text(controller.link.progressMessage ?? 'Working…',
-                maxLines: 1, overflow: TextOverflow.ellipsis)),
-        TextButton(
-            onPressed: controller.link.cancel, child: const Text('Cancel'))
+    return Padding(
+      padding: const EdgeInsets.only(bottom: ArcadeTokens.space12),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        LinearProgressIndicator(
+            value: controller.link.progressFraction, minHeight: 2),
+        const SizedBox(height: ArcadeTokens.space6),
+        Row(children: [
+          Expanded(
+              child: Text(controller.link.progressMessage ?? 'Working…',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: ArcadeTokens.textSmall
+                      .copyWith(color: arcadeColors(context).muted))),
+          ArcadeButton(
+              label: 'Cancel',
+              small: true,
+              variant: ArcadeButtonVariant.ghost,
+              onPressed: controller.link.cancel),
+        ]),
       ]),
-    ]);
+    );
   }
 }
 
@@ -174,131 +185,148 @@ class WaitingPhoto extends StatelessWidget {
     final photo = controller.waitingPhoto;
     if (photo == null) return const SizedBox.shrink();
     final offers = controller.linkActions(photo);
-    return Wrap(
-        spacing: 8,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          const Text('Image too large to sync'),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: ArcadeTokens.space12),
+      child: ArcadeNotice(
+        'This image is too large to sync. Compress it with another Arcade app, or discard it.',
+        tone: ArcadeTone.warn,
+        action: Wrap(spacing: ArcadeTokens.space8, children: [
           for (final action in offers)
             Tooltip(
                 message: action.disabledReason ??
                     'Compress this photo; the result joins your devices.',
-                child: TextButton.icon(
-                    icon: ArcadeGlyph(action.peer),
-                    label: Text('${action.title} ↗'),
+                child: ArcadeButton(
+                    label: '${action.title} ↗',
+                    small: true,
                     onPressed: action.enabled
                         ? () => controller.invokeItemAction(photo, action)
                         : null)),
-          TextButton(
+          ArcadeButton(
+              label: 'Discard',
+              small: true,
+              variant: ArcadeButtonVariant.ghost,
               onPressed:
-                  controller.link.busy ? null : controller.dismissWaitingPhoto,
-              child: const Text('Discard')),
-        ]);
+                  controller.link.busy ? null : controller.dismissWaitingPhoto),
+        ]),
+      ),
+    );
   }
 }
 
-class ConnectedAppsPage extends StatelessWidget {
-  const ConnectedAppsPage({super.key, required this.controller});
+/// Settings › Connected apps: the shared Link page (STANDARD §6). The master
+/// switch, a notice while it is off, one row per other Arcade app, then the
+/// connection details and "How it works".
+class ConnectedAppsSection extends StatelessWidget {
+  const ConnectedAppsSection({super.key, required this.controller});
   final AppController controller;
 
+  static const guideUrl =
+      'https://github.com/qa-p1/Arcade-clipboard/blob/main/docs/user/with-other-apps.md';
+
   @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-      animation: controller,
-      builder: (context, _) {
-        final link = controller.link;
-        final dark = Theme.of(context).brightness == Brightness.dark;
-        // Shared tokens.json: panel radius 12, light/dark raised surfaces.
-        final raised = dark ? const Color(0xFF1C2027) : const Color(0xFFF5F6F8);
-        return Scaffold(
-            appBar: AppBar(title: const Text('Connected apps')),
-            body: Center(
-                child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 760),
-                    child:
-                        ListView(padding: const EdgeInsets.all(20), children: [
-                      SwitchListTile.adaptive(
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('Connect with other Arcade apps'),
-                        value: link.enabled,
-                        onChanged: controller.working
-                            ? null
-                            : controller.setLinkEnabled,
-                      ),
-                      const SizedBox(height: 16),
-                      for (final peer in link.peers)
-                        Container(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                              color: raised,
-                              borderRadius: BorderRadius.circular(12)),
-                          child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(children: [
-                                  ArcadeGlyph(peer['id'] as String,
-                                      color: ArcadeGlyph.accents[peer['id']]),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                      child: Text(peer['name'] as String,
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .titleMedium)),
-                                  Text(
-                                      '${peer['state']}${peer['state'] == 'Running' ? ' · v${peer['version']}' : ''}'),
-                                ]),
-                                if (peer['state'] == 'Not installed') ...[
-                                  const SizedBox(height: 8),
-                                  Text(peer['pitch'] as String),
-                                  TextButton(
-                                      onPressed: controller.working || link.busy
-                                          ? null
-                                          : () => controller.getArcadeApp(
-                                              peer['id'] as String),
-                                      child: const Text('Get')),
-                                ] else ...[
-                                  if (peer['link_enabled'] == false)
-                                    const Padding(
-                                        padding: EdgeInsets.only(top: 8),
-                                        child: Text(
-                                            'Connections are off in this app.')),
-                                  Material(
-                                      color: Colors.transparent,
-                                      child: SwitchListTile.adaptive(
-                                        contentPadding: EdgeInsets.zero,
-                                        title: const Text(
-                                            'Use with Arcade Clipboard'),
-                                        value: link.uses(peer['id'] as String),
-                                        onChanged: !link.enabled ||
-                                                controller.working
-                                            ? null
-                                            : (value) =>
-                                                controller.setLinkPeerEnabled(
-                                                    peer['id'] as String,
-                                                    value),
-                                      )),
-                                ],
-                              ]),
-                        ),
-                      LinkWorkStatus(controller: controller),
-                      ExpansionTile(
-                        tilePadding: EdgeInsets.zero,
-                        title: const Text('Diagnostics'),
-                        children: [
-                          Align(
-                              alignment: Alignment.centerLeft,
-                              child: SelectableText(
-                                'Registry: ${link.diagnostics['registry'] ?? 'Starting…'}\n'
-                                'Endpoint: ${link.diagnostics['listening'] == true ? 'Listening' : 'Off'}\n'
-                                'Registry notifications: ${link.diagnostics['watching'] == true ? 'On' : 'Unavailable'}\n'
-                                'Last error: ${link.diagnostics['last_error'] ?? 'None'}',
-                              )),
-                        ],
-                      ),
-                      if (controller.error != null)
-                        Text(controller.error!,
-                            style: TextStyle(
-                                color: Theme.of(context).colorScheme.error)),
-                    ]))));
-      });
+  Widget build(BuildContext context) {
+    final link = controller.link;
+    final c = arcadeColors(context);
+    final busy = controller.working || link.busy;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      if (!link.enabled)
+        Padding(
+          padding: const EdgeInsets.only(bottom: ArcadeTokens.space12),
+          child: ArcadeNotice('Connections are off in this app.',
+              tone: ArcadeTone.warn,
+              action: ArcadeButton(
+                  label: 'Turn on',
+                  small: true,
+                  onPressed:
+                      busy ? null : () => controller.setLinkEnabled(true))),
+        ),
+      ArcadeListSection(title: 'Connected apps', children: [
+        ArcadeSwitchRow(
+          title: 'Connect with other Arcade apps',
+          subtitle:
+              'Send clips to other apps and take results back into your history.',
+          value: link.enabled,
+          onChanged: controller.working ? null : controller.setLinkEnabled,
+        ),
+        for (final peer in link.peers)
+          Builder(builder: (context) {
+            final id = peer['id'] as String;
+            final state = peer['state'] as String? ?? 'Not installed';
+            final (label, tone) = switch (state) {
+              'Running' => ('Connected', ArcadeTone.ok),
+              'Not installed' => ('Not installed', ArcadeTone.neutral),
+              _ => ('Not running', ArcadeTone.neutral),
+            };
+            return ArcadeRow(
+              title: peer['name'] as String? ?? id,
+              subtitle: switch ((
+                peer['link_enabled'],
+                state,
+                peer['version']
+              )) {
+                (false, _, _) => 'Connections are off in that app.',
+                (_, 'Not installed', _) => peer['pitch'] as String? ?? '',
+                (_, _, final String version) when version.isNotEmpty =>
+                  'Version $version',
+                _ => null,
+              },
+              leading: ArcadeGlyphTile(child: ArcadeGlyph(id)),
+              trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                ArcadeBadge(label, tone: tone, dot: tone == ArcadeTone.ok),
+                const SizedBox(width: ArcadeTokens.space8),
+                if (state == 'Not installed')
+                  ArcadeButton(
+                      label: 'Install',
+                      small: true,
+                      onPressed:
+                          busy ? null : () => controller.getArcadeApp(id))
+                else
+                  Semantics(
+                    label: 'Use ${peer['name']} with Arcade Clipboard',
+                    child: Switch(
+                      value: link.uses(id),
+                      onChanged: !link.enabled || controller.working
+                          ? null
+                          : (value) => controller.setLinkPeerEnabled(id, value),
+                    ),
+                  ),
+              ]),
+            );
+          }),
+      ]),
+      LinkWorkStatus(controller: controller),
+      Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: EdgeInsets.zero,
+          title: Text('Connection details',
+              style: ArcadeTokens.textSmall.copyWith(color: c.muted)),
+          children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: SelectableText(
+                'Registry: ${link.diagnostics['registry'] ?? 'Starting…'}\n'
+                'Endpoint: ${link.diagnostics['listening'] == true ? 'Listening' : 'Off'}\n'
+                'Registry notifications: ${link.diagnostics['watching'] == true ? 'On' : 'Unavailable'}\n'
+                'Last error: ${link.diagnostics['last_error'] ?? 'None'}\n'
+                '${[
+                  for (final peer in link.peers)
+                    '${peer['name']}: ${peer['state']}${peer['state'] == 'Running' ? ' ${peer['version']}' : ''}'
+                ].join('\n')}',
+                style: ArcadeTokens.textSmall.copyWith(color: c.muted),
+              ),
+            ),
+          ],
+        ),
+      ),
+      Align(
+        alignment: Alignment.centerLeft,
+        child: ArcadeButton(
+            label: 'How it works',
+            variant: ArcadeButtonVariant.ghost,
+            small: true,
+            onPressed: () => controller.openUrl(guideUrl)),
+      ),
+    ]);
+  }
 }

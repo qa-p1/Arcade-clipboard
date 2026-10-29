@@ -4,9 +4,8 @@ import 'dart:io';
 import 'dart:isolate';
 import 'dart:typed_data';
 
-import 'package:shared_preferences/shared_preferences.dart';
-
 import '../models.dart';
+import 'app_settings.dart';
 import 'core_api.dart';
 import 'diagnostics.dart';
 
@@ -54,6 +53,9 @@ class LinkService {
   /// Requests from other Arcade apps that need the UI.
   Future<void> Function()? onQuit;
   Future<void> Function()? onShow;
+  Future<void> Function()? onOverlay;
+  Future<void> Function()? onHide;
+  Future<void> Function()? onToggle;
 
   /// `clipboard.pick`: open the picker for `caller`; the choice goes back
   /// through [answerPick].
@@ -114,7 +116,7 @@ class LinkService {
   bool uses(String peer) => _enabled && !_disabledPeers.contains(peer);
 
   Future<void> load() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await AppSettings.instance();
     _enabled = prefs.getBool('link_enabled') ?? true;
     _disabledPeers = prefs.getStringList('link_disabled_peers') ?? const [];
   }
@@ -151,6 +153,13 @@ class LinkService {
           await onQuit?.call();
         case 'show':
           await onShow?.call();
+        // `--overlay`, `--hide` and `--toggle` from a second launch.
+        case 'overlay':
+          await onOverlay?.call();
+        case 'hide':
+          await onHide?.call();
+        case 'toggle':
+          await onToggle?.call();
         case 'pick':
           await onPick?.call(event['request'] as int,
               event['caller_name'] as String? ?? 'another app');
@@ -214,7 +223,7 @@ class LinkService {
   }
 
   Future<void> setEnabled(bool value, String shortcut) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await AppSettings.instance();
     await prefs.setBool('link_enabled', value);
     _enabled = value;
     onChanged?.call();
@@ -226,7 +235,7 @@ class LinkService {
       ..._disabledPeers.where((id) => id != peer),
       if (!value) peer
     ];
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await AppSettings.instance();
     await prefs.setStringList('link_disabled_peers', _disabledPeers);
     onChanged?.call();
     await configure(shortcut);

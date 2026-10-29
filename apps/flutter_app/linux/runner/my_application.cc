@@ -22,9 +22,9 @@ struct _MyApplication {
 };
 
 // A second launch forwards to the running instance through these actions:
-// `clipboard` shows the main window, `clipboard --overlay` opens the picker,
-// `clipboard --settings` opens Settings,
-// `clipboard --quit` quits.
+// `clipboard` (or `--show`) shows the main window, `--hide` hides it,
+// `--toggle` does either, `--overlay` opens the picker, `--settings` opens
+// Settings and `--quit` quits.
 static void forward_instance_action(GSimpleAction* action, GVariant*, gpointer user_data) {
   MyApplication* self = MY_APPLICATION(user_data);
   if (self->instance_channel == nullptr) return;
@@ -168,10 +168,14 @@ static gboolean my_application_local_command_line(GApplication* application,
   for (gchar** argument = self->dart_entrypoint_arguments; *argument != nullptr; ++argument) {
     if (g_strcmp0(*argument, "--background") == 0) self->start_hidden = TRUE;
     if (g_strcmp0(*argument, "--quit") == 0) quit = TRUE;
-    if (g_strcmp0(*argument, "--version") == 0 || g_strcmp0(*argument, "--arcade-manifest") == 0) query = TRUE;
+    if (g_strcmp0(*argument, "--version") == 0 || g_strcmp0(*argument, "--arcade-manifest") == 0 ||
+        g_strcmp0(*argument, "--status") == 0 || g_strcmp0(*argument, "--restart") == 0) {
+      query = TRUE;
+    }
   }
-  // --version and --arcade-manifest answer from this process (Dart prints
-  // and exits before any window is shown); never forward them.
+  // --version, --arcade-manifest, --status and --restart answer from this
+  // process (Dart prints, or asks over the Link, and exits before any
+  // window is shown); never forward them.
   if (query) {
     self->start_hidden = TRUE;
     g_application_set_flags(application, G_APPLICATION_NON_UNIQUE);
@@ -211,21 +215,31 @@ static gboolean my_application_local_command_line(GApplication* application,
   }
 
   if (g_application_get_is_remote(application)) {
-    gboolean overlay = FALSE;
-    gboolean settings = FALSE;
+    const gchar* action = "show";
     for (gchar** argument = self->dart_entrypoint_arguments; *argument != nullptr; ++argument) {
-      if (g_strcmp0(*argument, "--overlay") == 0) overlay = TRUE;
-      if (g_strcmp0(*argument, "--settings") == 0) settings = TRUE;
+      if (g_strcmp0(*argument, "--overlay") == 0) action = "overlay";
+      else if (g_strcmp0(*argument, "--settings") == 0 && g_strcmp0(action, "overlay") != 0) action = "settings";
+      else if (g_strcmp0(*argument, "--hide") == 0 && g_strcmp0(action, "show") == 0) action = "hide";
+      else if (g_strcmp0(*argument, "--toggle") == 0 && g_strcmp0(action, "show") == 0) action = "toggle";
     }
     // Login autostart must not pop the window of an already running app.
-    if (!self->start_hidden || overlay) {
-      g_action_group_activate_action(G_ACTION_GROUP(application),
-                                     overlay ? "overlay" : settings ? "settings" : "show", nullptr);
+    if (!self->start_hidden || g_strcmp0(action, "overlay") == 0) {
+      g_action_group_activate_action(G_ACTION_GROUP(application), action, nullptr);
       GDBusConnection* bus = g_application_get_dbus_connection(application);
       if (bus != nullptr) g_dbus_connection_flush_sync(bus, nullptr, nullptr);
     }
     *exit_status = 0;
     return TRUE;
+  }
+
+  // `--hide` with nothing running has nothing to hide. Development profiles
+  // aren't unique, so there Dart asks over the Link instead.
+  const bool unique = !(g_application_get_flags(application) & G_APPLICATION_NON_UNIQUE);
+  for (gchar** argument = self->dart_entrypoint_arguments; unique && *argument != nullptr; ++argument) {
+    if (g_strcmp0(*argument, "--hide") == 0) {
+      *exit_status = 0;
+      return TRUE;
+    }
   }
 
   g_application_activate(application);
@@ -241,6 +255,8 @@ static void my_application_startup(GApplication* application) {
       {"show", forward_instance_action, nullptr, nullptr, nullptr, {0}},
       {"overlay", forward_instance_action, nullptr, nullptr, nullptr, {0}},
       {"settings", forward_instance_action, nullptr, nullptr, nullptr, {0}},
+      {"hide", forward_instance_action, nullptr, nullptr, nullptr, {0}},
+      {"toggle", forward_instance_action, nullptr, nullptr, nullptr, {0}},
       {"quit", forward_instance_action, nullptr, nullptr, nullptr, {0}},
   };
   g_action_map_add_action_entries(G_ACTION_MAP(application), actions,

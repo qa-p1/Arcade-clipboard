@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Builds this OS's installer into dist/ (STANDARD §10): the AppImage on Linux,
+# the Inno Setup installer on Windows (needs ISCC), the DMG on macOS. The
+# version comes from Cargo.toml.
+set -euo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+version="$(python3 -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("Cargo.toml").read_text())["workspace"]["package"]["version"])')"
+case "$(uname -s)" in
+  Linux)
+    bash scripts/dev build-linux
+    bash scripts/dev build-appimage --version "$version"
+    ;;
+  Darwin)
+    bash scripts/dev build-macos
+    python3 scripts/package-desktop.py --version "$version" --platform macos
+    ;;
+  MINGW* | MSYS* | CYGWIN*)
+    bash scripts/dev build-windows
+    python3 scripts/package-desktop.py --version "$version" --platform windows
+    ;;
+  *) echo "Unsupported OS: $(uname -s)" >&2; exit 1 ;;
+esac

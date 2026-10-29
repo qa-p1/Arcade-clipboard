@@ -9,7 +9,7 @@ if ! pkg-config --exists keybinder-3.0 && [[ -f .tools/native/usr/lib/pkgconfig/
   export PKG_CONFIG_PATH="$arcade_root/.tools/native/usr/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
 fi
 pkg-config --exists gtk+-3.0 keybinder-3.0 || {
-  echo 'Install GTK 3 and keybinder development packages; see docs/development.md.' >&2; exit 1;
+  echo 'Install GTK 3 and keybinder development packages; see docs/dev/development.md.' >&2; exit 1;
 }
 (cd apps/flutter_app && flutter pub get --enforce-lockfile && flutter build linux --release)
 arcade_bundle="$arcade_root/apps/flutter_app/build/linux/x64/release/bundle"

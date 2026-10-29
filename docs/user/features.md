@@ -20,7 +20,9 @@ Clipboard skips sources that mark their clipboard contents as sensitive, such as
 
 ## Paste from the picker
 
-Open the picker with the global shortcut. Type to search, move through results with the arrow keys, and press Enter. On supported desktops, Clipboard returns focus to the app you were using and pastes the clip. If automatic paste is unavailable, the clip is copied and you can paste it yourself.
+Open the picker with the global shortcut. Type to search, move through results with the arrow keys, and press Enter. On supported desktops, Clipboard returns focus to the app you were using and pastes the clip. If automatic paste is unavailable, the clip is copied and you can paste it yourself. Press **Ctrl+Enter** (**⌘+Enter** on macOS) to paste the clip as plain text.
+
+![The picker with a search field, recent clips and the key hints at the bottom](images/picker.png)
 
 A received clip only enters history. Clipboard does not replace the system clipboard until you choose that clip.
 
@@ -30,9 +32,13 @@ Pair with a QR code and compare the six-digit verification number. Devices disco
 
 The device that created the mesh can approve new devices and remove members. There is no account or cloud clipboard server.
 
+![The Devices page listing this device and a paired laptop](images/devices.png)
+
 ## Use sharing on phones
 
 On iPhone and iPad, use the share extension or clipboard keyboard to add or choose content. Sync continues only while the iOS app is open. Android includes a share target and clipboard keyboard in its build, but the app has not been run on an Android device.
+
+![The history on a phone, with the bottom navigation bar](images/mobile-history.png)
 
 ## Open and use clips with other apps
 

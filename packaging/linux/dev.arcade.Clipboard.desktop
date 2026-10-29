@@ -1,0 +1,16 @@
+[Desktop Entry]
+Type=Application
+Name=Arcade Clipboard
+Comment=An encrypted copy history, synced across your own devices.
+Keywords=clipboard;copy;paste;history;sync;devices;
+Exec=AppRun
+Icon=dev.arcade.Clipboard
+Terminal=false
+Categories=Utility;TextTools;
+StartupWMClass=dev.arcade.Clipboard
+X-Arcade-Id=arcade.clipboard
+Actions=Settings;
+
+[Desktop Action Settings]
+Name=Settings
+Exec=AppRun --settings

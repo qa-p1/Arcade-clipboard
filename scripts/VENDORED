@@ -12,3 +12,62 @@ Arcade Link shared installer and shortcut assets are copied from commit
   spec/shortcuts.schema.json SHA-256 68e8ed4c5adae97895b215813f5a528b53f2b720bb428112e94ab35489269a1a
   spec/vectors/shortcuts.json SHA-256 2691d5b60314b7060bac5c219ada25edbfdc30829ea8a22d7496714afe2d4cc5
   assets/strings/install.json SHA-256 0c829174d2dd5e15930cd2c4c5cb791ab6f744a3dab13ed557161aabcacf5fce
+
+Arcade design kit files are copied unchanged from Arcade Link tag v0.4.3 (commit
+7d314b779941dbe3031adc7e60310fce7807a279) by scripts/sync-design.py; never edit them here.
+License: MIT OR Apache-2.0; Inter is under the SIL Open Font License 1.1.
+  apps/flutter_app/lib/design/arcade_format.dart SHA-256 7ffd1b47823a51e50eee82099eca6a7989e36a5e7a2f8cd930226b7e60ff845e
+  apps/flutter_app/lib/design/arcade_icons.dart SHA-256 47153ff522ed1aa3ee2e7d2597618902c61e38014e4d93feb421bdf71330f6be
+  apps/flutter_app/lib/design/arcade_theme.dart SHA-256 de6bfe6d185eb4638d22f1d8d5cabade35c3694beef25db4fb38c4560293b5be
+  apps/flutter_app/lib/design/arcade_widgets.dart SHA-256 b81cba67eec6096f24358ed2670a830d30563fcc63eed3c764b41b2de7e038af
+  apps/flutter_app/assets/fonts/InterVariable.ttf SHA-256 4989b125924991b90d05b2d16e0e388c48f7d5bb8b30539bbf9c755278d0ccaf
+  apps/flutter_app/assets/fonts/OFL.txt SHA-256 262481e844521b326f5ecd053e59b98c8b2da78c8ee1bdbb6e8174305e54935a
+  apps/flutter_app/assets/arcade/arcade.box.svg SHA-256 11405845a97dcec4150fb3943d03dbd11eeb086ded31a5cab27aa92b620838c1
+  apps/flutter_app/assets/arcade/arcade.clipboard.svg SHA-256 bbf1518dc224aa8f8df59f432cf5eb8b6e25b1f4a4e4676fe231d84770dac156
+  apps/flutter_app/assets/arcade/arcade.find.svg SHA-256 54c0b3e869912313a7b543175ad6bda5853b0bc8118d753e2c67de6dfdd07df9
+  apps/flutter_app/assets/arcade/arcade.lens.svg SHA-256 ba869f44636f28ea28ebd71c8e00b8206fd1eaa28ce23cfc628b8feac1bb556b
+  apps/flutter_app/assets/arcade/arcade.look.svg SHA-256 ce15684dfd003b0beb7e21a6e8c5a080433a0e25b804e48f024f3ba17794279b
+  apps/flutter_app/assets/arcade/arcade.shelf.svg SHA-256 42ff3fbca18365d18875061617446aca6876bf5f740160412663d3460f81e0cc
+  apps/flutter_app/assets/arcade/arcade.tools.svg SHA-256 dd2aa2c70bb8ebe8b597eb8440dfc032a548ff43f90f2ffd08ec00cd02b4fac2
+  apps/flutter_app/assets/arcade/arcade.wheel.svg SHA-256 6718ccee834c345aac4b4a71ea83461412e5f4ae6f24179ab897192cf243ce63
+  apps/flutter_app/assets/arcade/tokens.json SHA-256 7d9c59fde70e5b9d0ca2d37f8968b400bbe74e79982aa12f3ba2b49b9d4ca364
+  packaging/linux/dev.arcade.Clipboard.svg SHA-256 63fb05cc120d1fc08f9fec9df73c8cfe44362b48dfd9746f4bdb8f4b064ab265
+  apps/flutter_app/windows/runner/resources/app_icon.ico SHA-256 0f0d2bdfe58c0bbebf2fe1d61370d44015cd8ac131a64420392c102c8e52df2f
+  assets/logo.png SHA-256 ecb43b61e6cf43bced2179a18d2c63111ebb56519ae6259cce049fe8062a8598
+  apps/flutter_app/android/app/src/main/res/mipmap-mdpi/ic_launcher.png SHA-256 35cd0deadfe5e7b648ae5df4c417bdceb22c89d5d12401154134ee52c785f99e
+  apps/flutter_app/android/app/src/main/res/mipmap-mdpi/ic_launcher_background.png SHA-256 fd53840af9c5a69a4c27f79c246b449cf6eca3bc39e646eb0a2ed95bad808ce6
+  apps/flutter_app/android/app/src/main/res/mipmap-mdpi/ic_launcher_foreground.png SHA-256 47d98a8d6f55a22eff3d19ae9058ce7a0a48d7f0018aa996214bca0c57282ff8
+  apps/flutter_app/android/app/src/main/res/mipmap-hdpi/ic_launcher.png SHA-256 66067163a02a49c9446296bfabca04f817113b56e7a3f6b71777e573c7d34f20
+  apps/flutter_app/android/app/src/main/res/mipmap-hdpi/ic_launcher_background.png SHA-256 9955601d894ce7db10b744673b6700a77093e1ddbf27159152f2e360b866dd43
+  apps/flutter_app/android/app/src/main/res/mipmap-hdpi/ic_launcher_foreground.png SHA-256 4fb23ad3b83193cc4ac4cc78ec978e4737940dd3c4079089d493182fac943a25
+  apps/flutter_app/android/app/src/main/res/mipmap-xhdpi/ic_launcher.png SHA-256 0226f8324c1e59dd91512e98140aca6af26909154ec40b457b3866ffc1079947
+  apps/flutter_app/android/app/src/main/res/mipmap-xhdpi/ic_launcher_background.png SHA-256 935a34a8fde3e63155dcd2999a6048d9f63c4c2eb5494061f77873a9fb2531a3
+  apps/flutter_app/android/app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.png SHA-256 821ef122275d5049ff2be23921229e49a2583ccde78b3a3604db718b6bd27c05
+  apps/flutter_app/android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png SHA-256 fee0cbe0a3dc2cd081a43c6c30b0b0559464bebcec07b71eda068d0dae092a2e
+  apps/flutter_app/android/app/src/main/res/mipmap-xxhdpi/ic_launcher_background.png SHA-256 66c3972f9799761a1ade1b703c337f839e229c42349838243cb937d61df2ab67
+  apps/flutter_app/android/app/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png SHA-256 ca90775516725ea25e457ed918cb153eb7e0657a309e7daecc0bb08ff78b02c9
+  apps/flutter_app/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png SHA-256 cf6cca24dbd897c4db4a910c4162ca83299ff9f0c1ed77cd8b53513d79e5917b
+  apps/flutter_app/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_background.png SHA-256 63585ea541d57c93b36a674e8f967dcd423802517ae230d605131782919f936e
+  apps/flutter_app/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png SHA-256 c1795339fa4fa7dc7beecdbec64ec6be54473fa9a4fa983ba843652976c75e95
+  apps/flutter_app/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_16.png SHA-256 251b406f191fc5cc61cebb73c22fea77d63d35b20a593fe2ba8b19a028d5e70b
+  apps/flutter_app/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_32.png SHA-256 57ef9cc522ce0638b8f0bc09cd2e988815a12591e797c57741dc63db8e9c7843
+  apps/flutter_app/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_64.png SHA-256 00ea6c8096668af36746769d3138a8e0499d481cb8f6e91cc40ecb242d63c1f4
+  apps/flutter_app/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_128.png SHA-256 21555d07f9d41b60bf940382d74747c13aaee1343abd192b1f60ae3b55b97f64
+  apps/flutter_app/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_256.png SHA-256 1fe1194d1767b37c5e13086e7d7031ad9d98774b407e7d81aab67fa0847faf11
+  apps/flutter_app/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_512.png SHA-256 3bb85026c56fa8a8fccdb6a4cd74098d7a265e02ed882ad41f679ad6a4ead948
+  apps/flutter_app/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_1024.png SHA-256 0f0c4a5232c7b9e0a31d5916978ae82c7b989a83d91fc6ad166c97f80b98e44f
+  apps/flutter_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-20x20@1x.png SHA-256 90c937c91e4d0de74372c0c4922f82e238844453239bc062e021e00ac1ecfe49
+  apps/flutter_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-20x20@2x.png SHA-256 920937db1cd51a6cc3d8b2d58bb50dbff9a42262657a0d57dcc54957983a50ee
+  apps/flutter_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-20x20@3x.png SHA-256 4dff954a1993b6406a0fddbc59e7ae655248ceeb3268a4ee50bd1008a6789b62
+  apps/flutter_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-29x29@1x.png SHA-256 c63bd60e0765d8f8fd9ae4814173d2e598a7cf78bf4a8a26e93cf10dc2abc120
+  apps/flutter_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-29x29@2x.png SHA-256 1ba4a437c65457d0b934e6f1ee34eefad5a54ac86db63d1e74e8808e60e900c6
+  apps/flutter_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-29x29@3x.png SHA-256 090644f1dd4359c3cdab7637f7098ee47ec36a2db53364f2b077f6db3aa1ef61
+  apps/flutter_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-40x40@1x.png SHA-256 920937db1cd51a6cc3d8b2d58bb50dbff9a42262657a0d57dcc54957983a50ee
+  apps/flutter_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-40x40@2x.png SHA-256 58517cae0e0f53f5b6a3b280f17e1b694bcc94b5a969da2943832aed7fcdb750
+  apps/flutter_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-40x40@3x.png SHA-256 0273a78d0534856eac48066a1fcee6bcf571aa7909282f4d36e661f42dbfb8f9
+  apps/flutter_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-60x60@2x.png SHA-256 0273a78d0534856eac48066a1fcee6bcf571aa7909282f4d36e661f42dbfb8f9
+  apps/flutter_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-60x60@3x.png SHA-256 8b9b1ea5f2cf19cb4b180d50d2134f3e1ca2b9acf94d9db86e3fe58f2149481d
+  apps/flutter_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-76x76@1x.png SHA-256 89c2e94056d229e100bf4a574a41acfa3353b16ae616bc80c86d5b5da0266c56
+  apps/flutter_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-76x76@2x.png SHA-256 34df9f502529801c6ca36e1475f779e36076054168b0ad610f8cd52e0feef337
+  apps/flutter_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-83.5x83.5@2x.png SHA-256 30bff5f6bccb9f97d03ae81b355c0f058583c675bf98eacc3cf5f07c124e988f
+  apps/flutter_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-1024x1024@1x.png SHA-256 bcf9561c7131094bee14c3dc62ce99776c2173a7b7e0482033f0b2d195d49dc8

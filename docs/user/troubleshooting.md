@@ -24,17 +24,19 @@ Other Wayland compositors do not let an app register a global shortcut or type i
 
 ## The global shortcut is unavailable
 
-Open Settings and choose a different shortcut if another app or the compositor already owns it. On Linux Wayland desktops other than Hyprland, bind **arcade-clipboard --overlay** from the desktop’s keyboard-shortcut settings.
+Open **Settings → Shortcuts** and choose a different shortcut if another app or the compositor already owns it. On Linux Wayland desktops other than Hyprland, bind **arcade-clipboard --overlay** from the desktop’s keyboard-shortcut settings.
 
 ## Clipboard cannot open or unlock its profile on Linux
 
 Make sure a Secret Service provider such as GNOME Keyring or KWallet is running and its keyring is unlocked. Clipboard stores its device identity there and does not silently create a replacement identity when the key is missing.
 
-On Wayland, check that **wl-clipboard** is installed. On X11, automatic paste needs the X11 integration tools listed in the [Linux platform guide](../linux.md).
+On Wayland, check that **wl-clipboard** is installed. On X11, automatic paste needs the X11 integration tools listed in the [Linux platform guide](https://github.com/qa-p1/Arcade-clipboard/blob/main/docs/dev/linux.md).
 
 ## I am on Windows or macOS
 
 Both desktop builds and core tests pass in CI, but neither app has been run interactively on a real desktop. Installers are not yet verified. If a desktop-specific problem occurs, report it with the operating-system version and app logs.
+
+On macOS, version 0.3.0 has a new app identifier (`dev.arcade.Clipboard`), so macOS asks again for the permissions it had granted the old one: choose **Settings → General → Paste into other apps → Allow access** again, and turn **Start at login** off and on if it no longer starts at login.
 
 ## Sync on iPhone or Android
 

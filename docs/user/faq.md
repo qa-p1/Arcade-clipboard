@@ -31,3 +31,14 @@ No. Private mode pauses desktop capture and blocks sending clip content. It leav
 Linux, with Hyprland, was tested end to end on real hardware. Windows and macOS builds and Rust core tests pass in CI, but neither desktop app has been run interactively on those systems. The installers are not yet verified.
 
 The Android build has not been tested on a device. On iPhone and iPad, iOS limits sync to periods when the app is open.
+
+## Where does Clipboard keep its data?
+
+In the Arcade folders every Arcade app uses:
+
+| | Linux | Windows | macOS |
+| --- | --- | --- | --- |
+| History, devices, logs | `~/.local/share/arcade/clipboard/` | `%APPDATA%\Arcade\Clipboard\` | `~/Library/Application Support/Arcade/Clipboard/` |
+| Settings | `~/.config/arcade/clipboard/settings.json` | `%APPDATA%\Arcade\Clipboard\settings.json` | `~/Library/Application Support/Arcade/Clipboard/settings.json` |
+
+Device keys stay in the system keyring. Version 0.3.0 moves the folders older versions used on its first start, and keeps the old ones if anything fails.

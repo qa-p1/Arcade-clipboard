@@ -287,3 +287,17 @@ int? _integer(Object? value) {
   if (value is String) return int.tryParse(value);
   return null;
 }
+
+/// Settings › About details from the core.
+class AboutInfo {
+  const AboutInfo(
+      {required this.version,
+      required this.channel,
+      required this.toolsInstalled,
+      required this.diagnosticsHeader});
+
+  final String version;
+  final String channel;
+  final bool toolsInstalled;
+  final String diagnosticsHeader;
+}

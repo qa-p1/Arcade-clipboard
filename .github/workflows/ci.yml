@@ -43,10 +43,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: App dev/Arcade-clipboard -> target
-      - name: Documentation, shortcuts and vendored checksums
-        run: python3 scripts/check-docs.py
-      - run: bash scripts/dev.sh rust-check
-      - run: bash scripts/dev.sh rust-test
+      - name: Docs, vendored checksums, rustfmt, clippy and tests
+        run: bash scripts/check rust
   linux:
     name: Linux build and AppImage smoke
     runs-on: ubuntu-24.04
@@ -70,14 +68,14 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: App dev/Arcade-clipboard -> target
-      - run: bash scripts/dev.sh flutter-check
-      - run: bash scripts/dev.sh flutter-test
+      - name: Dart format, flutter analyze and tests
+        run: bash scripts/check flutter
       - name: Build Linux release bundle
-        run: bash scripts/dev.sh build-linux
+        run: bash scripts/dev build-linux
       - name: Build pinned AppImage
         run: |
           release_version="$(python3 -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("Cargo.toml").read_text())["workspace"]["package"]["version"])')"
-          bash scripts/dev.sh build-appimage --version "$release_version"
+          bash scripts/dev build-appimage --version "$release_version"
           sha256sum "dist/Arcade-Clipboard-$release_version-x86_64.AppImage" > "dist/Arcade-Clipboard-$release_version-x86_64.AppImage.sha256"
       - name: Smoke test AppImage CLI under Xvfb
         run: |
@@ -108,6 +106,8 @@ jobs:
             -o "$RUNNER_TEMP/lifecycle_bridge_test"
           /usr/bin/python3 "$RUNNER_TEMP/link/tools/e2e.py" run -- "$RUNNER_TEMP/lifecycle_bridge_test"
           /usr/bin/python3 "$RUNNER_TEMP/link/tools/e2e.py" run -- /usr/bin/python3 tests/tray-registration.py apps/flutter_app/build/linux/x64/release/bundle/clipboard "$RUNNER_TEMP/link/target/release/arcade-link" clipboard
+      - name: Folder move from 0.2 (isolated)
+        run: /usr/bin/python3 "$RUNNER_TEMP/link/tools/e2e.py" run -- xvfb-run -a /usr/bin/python3 tests/folder-migration.py apps/flutter_app/build/linux/x64/release/bundle/clipboard
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: Arcade-Clipboard-linux-x64
@@ -118,6 +118,73 @@ jobs:
             App dev/Arcade-clipboard/dist/Arcade-Clipboard-*.AppImage.sha256
           if-no-files-found: error
           retention-days: 14
+
+  android:
+    name: Android release build and signing check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      RUSTUP_TOOLCHAIN: '1.98.1'
+      ANDROID_NDK_VERSION: '28.2.13676358'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          path: App dev/Arcade-clipboard
+      - uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: '3.47.2'
+          channel: stable
+          cache: true
+      - name: Install Rust, the Android targets and the NDK
+        run: |
+          rustup toolchain install 1.98.1 --profile minimal --target aarch64-linux-android --target x86_64-linux-android
+          # Piping yes in would fail under pipefail once yes gets SIGPIPE.
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$ANDROID_NDK_VERSION" < <(yes) > /dev/null
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/$ANDROID_NDK_VERSION" >> "$GITHUB_ENV"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: App dev/Arcade-clipboard -> target
+      - name: Build the Rust core for Android
+        run: python3 scripts/build-android-core.py
+      - name: Release key (the CI secret, or a throwaway key where secrets are unavailable)
+        env:
+          KEYSTORE: ${{ secrets.ARCADE_ANDROID_KEYSTORE }}
+          KEYSTORE_PASSWORD: ${{ secrets.ARCADE_ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ARCADE_ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ARCADE_ANDROID_KEY_PASSWORD }}
+        run: |
+          store="$RUNNER_TEMP/release.jks"
+          if [[ -n "$KEYSTORE" ]]; then
+            printf '%s' "$KEYSTORE" | base64 -d > "$store"
+          else
+            KEYSTORE_PASSWORD="$(openssl rand -hex 16)"; KEY_PASSWORD="$KEYSTORE_PASSWORD"; KEY_ALIAS=ci
+            keytool -genkeypair -keystore "$store" -storetype PKCS12 -alias "$KEY_ALIAS" -keyalg RSA -keysize 3072 \
+              -validity 30 -storepass "$KEYSTORE_PASSWORD" -keypass "$KEY_PASSWORD" -dname "CN=Arcade Clipboard CI" > /dev/null
+          fi
+          echo "::add-mask::$KEYSTORE_PASSWORD"
+          echo "::add-mask::$KEY_PASSWORD"
+          {
+            echo "ARCADE_ANDROID_KEYSTORE_FILE=$store"
+            echo "ARCADE_ANDROID_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
+            echo "ARCADE_ANDROID_KEY_ALIAS=$KEY_ALIAS"
+            echo "ARCADE_ANDROID_KEY_PASSWORD=$KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
+      - name: Build the release APK
+        working-directory: App dev/Arcade-clipboard/apps/flutter_app
+        run: flutter pub get --enforce-lockfile && flutter build apk --release
+      - name: The APK is signed with the release key, not the debug key (C2)
+        run: |
+          apk=apps/flutter_app/build/app/outputs/flutter-apk/app-release.apk
+          apksigner="$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)apksigner"
+          certs="$("$apksigner" verify --print-certs "$apk")"
+          printf '%s\n' "$certs" | grep 'certificate DN'
+          expected="$(keytool -list -v -keystore "$ARCADE_ANDROID_KEYSTORE_FILE" -storepass "$ARCADE_ANDROID_KEYSTORE_PASSWORD" -alias "$ARCADE_ANDROID_KEY_ALIAS" | sed -n 's/^.*SHA256: //p' | tr -d ':' | tr 'A-F' 'a-f')"
+          printf '%s\n' "$certs" | grep -q "certificate SHA-256 digest: $expected" || { echo "the APK isn't signed with the release key"; exit 1; }
+          ! printf '%s\n' "$certs" | grep -q 'CN=Android Debug' || { echo 'the APK is signed with the debug key'; exit 1; }
 
   windows:
     name: Windows build and installer smoke (CI only, not a real desktop)
@@ -151,8 +218,8 @@ jobs:
       - name: Test Rust core and build the Flutter desktop app with its core
         run: |
           python3 scripts/check-docs.py
-          bash scripts/dev.sh rust-test
-          bash scripts/dev.sh build-windows
+          bash scripts/dev rust-test
+          bash scripts/dev build-windows
       - name: Package Windows Inno installer
         id: windows-package
         run: |
@@ -199,8 +266,8 @@ jobs:
       - name: Test Rust core and build the Flutter desktop app with its core
         run: |
           python3 scripts/check-docs.py
-          bash scripts/dev.sh rust-test
-          bash scripts/dev.sh build-macos
+          bash scripts/dev rust-test
+          bash scripts/dev build-macos
       - name: Package and smoke-test macOS DMG (CI only, not a real desktop)
         run: |
           release_version="$(python3 -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("Cargo.toml").read_text())["workspace"]["package"]["version"])')"

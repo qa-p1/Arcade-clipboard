@@ -83,23 +83,23 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Settings').last);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Connected apps'));
-    await tester.pumpAndSettle();
-    expect(find.text('Connect with other Arcade apps'), findsOneWidget);
-    expect(find.text('Use with Arcade Clipboard'), findsOneWidget);
-    expect(find.text('Running · v1.0.0'), findsOneWidget);
-    expect(find.text('Get'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-    await tester.pageBack();
-    await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('Picker shortcut'), 150,
+    await tester.scrollUntilVisible(
+        find.text('Connect with other Arcade apps'), 250,
         scrollable: find.byType(Scrollable).first);
-    await tester.ensureVisible(
-        find.widgetWithText(TextButton, fixture.controller.shortcut));
     await tester.pumpAndSettle();
-    await tester
-        .tap(find.widgetWithText(TextButton, fixture.controller.shortcut));
+    expect(find.bySemanticsLabel('Use Arcade Box with Arcade Clipboard'),
+        findsOneWidget);
+    expect(find.text('Version 1.0.0'), findsOneWidget);
+    expect(find.text('Connected'), findsOneWidget);
+    expect(find.text('Install'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    final recorder = find.bySemanticsLabel(RegExp(r'^Shortcut '));
+    await tester.scrollUntilVisible(recorder, -250,
+        scrollable: find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
+    await tester.tap(recorder);
     await tester.pump();
+    expect(find.text('Press keys…'), findsOneWidget);
     await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
     await tester.sendKeyDownEvent(LogicalKeyboardKey.altLeft);
     await tester.sendKeyEvent(LogicalKeyboardKey.space);
@@ -111,7 +111,7 @@ void main() {
     await fixture.controller.addText('A synthetic text clip');
     await fixture.controller.openOverlay();
     await tester.pumpAndSettle();
-    expect(find.text('Clean text ↗ · Ctrl+Alt+T'), findsOneWidget);
+    expect(find.text('Clean text'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -126,15 +126,17 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Set up Arcade Clipboard'), findsOneWidget);
-    await tester.tap(find.text('Create mesh'));
+    await tester.tap(find.text('Start on this device'));
     await tester.pumpAndSettle();
-    expect(find.text('Your clipboard is empty'), findsOneWidget);
+    await tester.tap(find.text('Start on this device').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Copy something and it shows up here'), findsOneWidget);
 
-    await tester.tap(find.text('Add clip'));
+    await tester.tap(find.text('Add clip').first);
     await tester.pumpAndSettle();
     await tester.enterText(
         find.byType(TextField).last, 'Meeting notes for tomorrow');
-    await tester.tap(find.widgetWithText(FilledButton, 'Add clip').last);
+    await tester.tap(find.text('Add clip').last);
     await tester.pumpAndSettle();
     expect(find.text('Meeting notes for tomorrow'), findsOneWidget);
 
@@ -172,7 +174,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
 
-    await tester.scrollUntilVisible(find.text('Theme'), 250,
+    await tester.scrollUntilVisible(find.text('Appearance'), -250,
         scrollable: find.byType(Scrollable).first);
     await tester.pumpAndSettle();
     expect(find.text('System'), findsOneWidget);
@@ -192,7 +194,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Devices').first);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Add device').first);
+    await tester.tap(find.text('Invite a device').first);
     await tester.pumpAndSettle();
 
     fixture.core.setPendingPairings([
@@ -209,8 +211,9 @@ void main() {
     ]);
     await fixture.controller.refreshStatus();
     await tester.pumpAndSettle();
-    expect(find.text('628 140'), findsWidgets);
-    await tester.tap(find.widgetWithText(FilledButton, 'Approve').last);
+    expect(find.bySemanticsLabel('Verification code 628 140'), findsWidgets);
+    expect(find.text('628'), findsWidgets);
+    await tester.tap(find.text('Allow').last);
     await tester.pumpAndSettle();
     expect(
         fixture.core.calls.any((call) =>
@@ -241,7 +244,8 @@ void main() {
     await fixture.controller.openOverlay();
     await tester.pumpAndSettle();
 
-    expect(find.text('Arcade Clipboard'), findsOneWidget);
+    expect(find.text('Search clips'), findsOneWidget);
+    expect(find.text('Paste as plain text'), findsOneWidget);
     await tester.sendKeyEvent(LogicalKeyboardKey.end);
     await tester.pump();
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
@@ -260,6 +264,14 @@ void main() {
     await fixture.controller.openOverlay();
     await tester.pumpAndSettle();
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(fixture.controller.overlayOpen, isFalse);
+
+    // Clicking elsewhere closes it too (the desktop reports the blur).
+    await fixture.controller.openOverlay();
+    await tester.pumpAndSettle();
+    expect(fixture.controller.overlayOpen, isTrue);
+    await fixture.desktop.onOverlayFocusLost!();
     await tester.pumpAndSettle();
     expect(fixture.controller.overlayOpen, isFalse);
     expect(tester.takeException(), isNull);

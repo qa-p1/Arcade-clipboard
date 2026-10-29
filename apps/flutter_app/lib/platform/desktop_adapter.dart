@@ -74,7 +74,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
   DesktopAdapter({ArcadeDesktopBridge? bridge})
       : _bridge = bridge ?? ArcadeDesktopBridge();
 
-  static const Size _overlaySize = Size(430, 510);
+  static const Size _overlaySize = Size(480, 520);
   static const Duration _pasteSuppressionLifetime = Duration(seconds: 3);
   static const Duration _commandTimeout = Duration(seconds: 3);
   static const Duration _captureWatcherStartupGrace =
@@ -136,7 +136,8 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
   }
 
   /// Whether global shortcuts go through Hyprland's runtime binds.
-  bool get shortcutsViaHyprland => Platform.isLinux && _isWayland && _isHyprland;
+  bool get shortcutsViaHyprland =>
+      Platform.isLinux && _isWayland && _isHyprland;
 
   Future<void> setBackgroundEnabled(bool enabled) async {
     await _bridge.setBackgroundEnabled(enabled);
@@ -152,6 +153,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
   Future<void> setLaunchAtLogin(bool enabled) =>
       _bridge.setLaunchAtLogin(enabled);
   Future<bool> launchAtLoginEnabled() => _bridge.launchAtLoginEnabled();
+
   /// Linux login starts are kept unmapped by the runner itself; hiding a
   /// window before its first frame breaks the GL surface there.
   Future<void> hideMainWindow() async {
@@ -162,6 +164,16 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
     await windowManager.show();
     await windowManager.focus();
   }
+
+  /// `--toggle`: hides a visible window, shows a hidden one.
+  Future<void> toggleMainWindow() async {
+    if (await windowManager.isVisible()) {
+      await hideMainWindow();
+    } else {
+      await showMainWindow();
+    }
+  }
+
   Future<void> Function()? _onOverlayRequested;
 
   /// Runs application shutdown (core and desktop cleanup) before exit.
@@ -190,6 +202,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
     }
     await _quit();
   }
+
   final List<StreamSubscription<ProcessSignal>> _exitSignals = [];
   bool _quitting = false;
 
@@ -201,13 +214,13 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
     _quitting = true;
     Diagnostics.log('lifecycle', 'quitting');
     try {
-      await (onQuit?.call() ?? dispose())
-          .timeout(const Duration(seconds: 4));
+      await (onQuit?.call() ?? dispose()).timeout(const Duration(seconds: 4));
     } catch (_) {
       // Exit regardless; stale binds are guarded by PID start time.
     }
     exit(0);
   }
+
   DesktopCapabilities? _capabilities;
   HotKey? _registeredHotKey;
   StreamSubscription<ProcessSignal>? _signalSubscription;
@@ -226,6 +239,24 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
   bool _initialized = false;
   bool _captureEnabled = false;
   bool _overlayVisible = false;
+  DateTime? _overlayShownAt;
+
+  /// The quick picker closes when it loses focus (STANDARD §8).
+  Future<void> Function()? onOverlayFocusLost;
+
+  @override
+  void onWindowBlur() {
+    final shownAt = _overlayShownAt;
+    if (!_overlayVisible || shownAt == null) return;
+    // Focus can bounce while the window maps; only a later blur means the
+    // user went elsewhere.
+    if (DateTime.now().difference(shownAt) <
+        const Duration(milliseconds: 400)) {
+      return;
+    }
+    unawaited(onOverlayFocusLost?.call());
+  }
+
   bool _closed = false;
 
   void _setCapabilities(DesktopCapabilities value) {
@@ -249,7 +280,12 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
         detail: 'Desktop integration has not been initialized.',
       );
 
-  static String get defaultShortcut => switch (Platform.operatingSystem) {
+  /// The default on every desktop (STANDARD §10): Ctrl+Alt+V, ⌃⌥V on macOS.
+  static const String defaultShortcut = 'CTRL+ALT+V';
+
+  /// The default before 0.3.0, which profiles from then keep.
+  static String get previousDefaultShortcut =>
+      switch (Platform.operatingSystem) {
         'macos' => 'CMD+SHIFT+V',
         'windows' => 'CTRL+ALT+V',
         _ => 'CTRL+SHIFT+SPACE',
@@ -341,6 +377,10 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
           await _requestOverlay();
         } else if (call.method == 'show') {
           await showMainWindow();
+        } else if (call.method == 'hide') {
+          await hideMainWindow();
+        } else if (call.method == 'toggle') {
+          await toggleMainWindow();
         } else if (call.method == 'settings') {
           await showMainWindow();
           onOpenSettings?.call();
@@ -543,7 +583,8 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
     if (bytes.length == 1 && bytes[0] == 49) {
       final initial = _nextEventIsInitial;
       _nextEventIsInitial = false;
-      Diagnostics.log('capture', 'clipboard change event${initial ? ' (initial)' : ''}');
+      Diagnostics.log(
+          'capture', 'clipboard change event${initial ? ' (initial)' : ''}');
       unawaited(_enqueueRichCapture(initial: initial));
     }
   }
@@ -567,7 +608,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
     } catch (_) {
       _captureEnabled = false;
       throw const DesktopIntegrationException(
-        'Clipboard capture could not start. Check the wl-clipboard installation and restart the app.',
+        "Couldn't start clipboard capture. Check that wl-clipboard is installed, then restart the app.",
       );
     }
 
@@ -629,7 +670,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
       await _stopWaylandClipboardCapture();
       _captureEnabled = false;
       throw const DesktopIntegrationException(
-        'Clipboard capture could not start. Confirm wl-clipboard 2.2 or newer and compositor data-control support.',
+        "Couldn't start clipboard capture. It needs wl-clipboard 2.2 or newer and a compositor with data-control support.",
       );
     }
   }
@@ -702,7 +743,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
           await process.exitCode.timeout(_captureWatcherStopGrace);
         } on TimeoutException {
           throw const DesktopIntegrationException(
-            'Clipboard capture could not be stopped. Close the app only after the watcher exits.',
+            "Couldn't stop clipboard capture. Close the app only after the watcher exits.",
           );
         }
       }
@@ -717,7 +758,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
     final helper = _waylandCaptureHelper;
     if (helper == null) {
       throw const DesktopIntegrationException(
-          'The clipboard watcher could not be stopped safely.');
+          "Couldn't stop the clipboard watcher safely.");
     }
     try {
       final result = await Process.run(
@@ -727,12 +768,12 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
       );
       if (result.exitCode != 0) {
         throw const DesktopIntegrationException(
-            'The clipboard watcher could not be stopped safely.');
+            "Couldn't stop the clipboard watcher safely.");
       }
     } catch (error) {
       if (error is DesktopIntegrationException) rethrow;
       throw const DesktopIntegrationException(
-          'The clipboard watcher could not be stopped safely.');
+          "Couldn't stop the clipboard watcher safely.");
     }
   }
 
@@ -854,7 +895,23 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
     ));
   }
 
-  static const String _mainTitle = 'Arcade Clipboard';
+  String _mainTitle = 'Arcade Clipboard';
+
+  /// The window title, "`<Page>` — Arcade Clipboard" (STANDARD §8.1). The
+  /// picker borrows the window under its own title and restores this one.
+  Future<void> setPageTitle(String? page) async {
+    final title =
+        page == null ? 'Arcade Clipboard' : '$page — Arcade Clipboard';
+    if (title == _mainTitle) return;
+    _mainTitle = title;
+    if (!_initialized || _closed || _overlayVisible) return;
+    try {
+      await windowManager.setTitle(_mainTitle);
+    } catch (_) {
+      // A window that is going away keeps its old title.
+    }
+  }
+
   // Distinct from the main window's title so window rules can tell them apart.
   static const String _overlayTitle = 'Arcade Clipboard Picker';
 
@@ -911,6 +968,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
       await windowManager.show();
       await windowManager.focus();
       _overlayVisible = true;
+      _overlayShownAt = DateTime.now();
     } catch (error) {
       final snapshot = _windowSnapshot;
       if (snapshot != null) {
@@ -924,7 +982,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
       _overlayVisible = false;
       await _restoreTargetFocus();
       throw DesktopIntegrationException(
-          'The clipboard picker window could not open: $error');
+          "Couldn't open the quick picker: $error");
     }
   }
 
@@ -949,6 +1007,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
       await _ensureHyprlandPickerRule();
       await windowManager.show();
       _overlayVisible = true;
+      _overlayShownAt = DateTime.now();
       final own = await _ownHyprlandWindow();
       if (own != null) {
         if (own['floating'] != true) {
@@ -958,21 +1017,24 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
             'hl.dsp.window.center({ window = w })',
           ], legacy: [
             ['setfloating', 'address:${own['address']}'],
-            ['resizewindowpixel', 'exact ${_overlaySize.width.toInt()} ${_overlaySize.height.toInt()},address:${own['address']}'],
+            [
+              'resizewindowpixel',
+              'exact ${_overlaySize.width.toInt()} ${_overlaySize.height.toInt()},address:${own['address']}'
+            ],
             ['centerwindow', ''],
           ]);
         }
-        await _hyprlandWindowAction(own['address'] as String,
-            ['hl.dsp.focus({ window = w })'],
-            legacy: [
-              ['focuswindow', 'address:${own['address']}']
-            ]);
+        await _hyprlandWindowAction(own['address'] as String, [
+          'hl.dsp.focus({ window = w })'
+        ], legacy: [
+          ['focuswindow', 'address:${own['address']}']
+        ]);
       }
     } catch (error) {
       _overlayVisible = false;
       await _restoreHyprlandMainWindow(focusTarget: true);
       throw DesktopIntegrationException(
-          'The clipboard picker window could not open: $error');
+          "Couldn't open the quick picker: $error");
     }
   }
 
@@ -1007,13 +1069,17 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
       final height = _overlaySize.height.toInt();
       final result = await _runCommand('hyprctl', [
         'eval',
-        'if not rawget(_G, "ARCADE_CLIPBOARD_PICKER_RULE") then '
-            'hl.window_rule({ match = { class = "^dev[.]arcade[.]clipboard\$", title = "^$_overlayTitle\$" }, '
+        // The class is dev.arcade.Clipboard from 0.3.0 (STANDARD §10). The
+        // guard is new too: a session that ran 0.2 already set the old one
+        // for a rule matching the old class.
+        'if not rawget(_G, "ARCADE_CLIPBOARD_PICKER_RULE_V2") then '
+            'hl.window_rule({ match = { class = "^dev[.]arcade[.]Clipboard\$", title = "^$_overlayTitle\$" }, '
             'float = true, pin = true, center = true, size = "$width $height" }); '
-            'rawset(_G, "ARCADE_CLIPBOARD_PICKER_RULE", true) end'
+            'rawset(_G, "ARCADE_CLIPBOARD_PICKER_RULE_V2", true) end'
       ]);
       if (result.exitCode != 0) {
-        Diagnostics.log('overlay', 'picker rule rejected: ${_processError(result)}');
+        Diagnostics.log(
+            'overlay', 'picker rule rejected: ${_processError(result)}');
       }
     }
   }
@@ -1042,7 +1108,8 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
       {required List<List<String>> legacy}) async {
     if (!RegExp(r'^0x[0-9a-fA-F]+$').hasMatch(address)) return;
     if (await _detectHyprlandLua()) {
-      final body = luaActions.map((action) => 'hl.dispatch($action)').join('; ');
+      final body =
+          luaActions.map((action) => 'hl.dispatch($action)').join('; ');
       await _runCommand('hyprctl', [
         'eval',
         'local w = hl.get_window(${_luaString('address:$address')}); if w then $body end'
@@ -1056,6 +1123,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
 
   Future<void> hideOverlay() async {
     if (!_overlayVisible) return;
+    _overlayShownAt = null;
     if (Platform.isLinux && _isWayland && _isHyprland) {
       _overlayVisible = false;
       await _restoreHyprlandMainWindow(focusTarget: true);
@@ -1083,7 +1151,10 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
   /// mesh synchronization has no call path into this method.
   Future<void> _writeClipboardForUserAction(String text) => copyContent(
         formats: [
-          {'mimeType': 'text/plain', 'bytes': Uint8List.fromList(utf8.encode(text))}
+          {
+            'mimeType': 'text/plain',
+            'bytes': Uint8List.fromList(utf8.encode(text))
+          }
         ],
       );
 
@@ -1150,7 +1221,8 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
       await _dispatchHyprland('sendshortcut',
           '${target.pasteModifiers},V,address:${target.address}',
           modifiers: target.pasteModifiers);
-      Diagnostics.log('paste', 'sent ${target.pasteModifiers}+V to ${target.className}');
+      Diagnostics.log(
+          'paste', 'sent ${target.pasteModifiers}+V to ${target.className}');
       return;
     }
 
@@ -1196,7 +1268,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
         await _runCommand('xdotool', ['windowactivate', '--sync', target]);
     if (result.exitCode != 0) {
       throw const DesktopIntegrationException(
-          'The previous window could not be focused. The clip was copied instead.');
+          "Couldn't focus the previous window. The clip was copied instead.");
     }
   }
 
@@ -1213,7 +1285,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
         await _runCommand('xdotool', ['key', '--clearmodifiers', chord]);
     if (result.exitCode != 0) {
       throw const DesktopIntegrationException(
-          'Paste could not be sent. The clip was copied instead.');
+          "Couldn't paste. The clip was copied instead.");
     }
   }
 
@@ -1254,7 +1326,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
         await hotKeyManager.unregister(current);
       } catch (error) {
         throw DesktopIntegrationException(
-          'The previous shortcut could not be released, so the new binding was not installed. $error',
+          "Couldn't release the previous shortcut, so the new one wasn't set. $error",
         );
       }
     }
@@ -1275,7 +1347,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
           _setCapabilities(capabilities.copyWith(
             globalShortcut: false,
             detail:
-                'The shortcut could not be registered and the previous binding could not be restored. $error',
+                "Couldn't register the shortcut or restore the previous one. $error",
           ));
         }
       } else {
@@ -1284,7 +1356,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
           // A conflict can reject one key while the platform still supports
           // global bindings; leave retries enabled for another combination.
           detail:
-              'The requested shortcut could not be registered. ${_registrationError(error)}',
+              "Couldn't register the shortcut. ${_registrationError(error)}",
         ));
       }
       throw DesktopIntegrationException(_registrationError(error));
@@ -1365,8 +1437,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
                     'assert(b, "Hyprland rejected the shortcut"); _G[${_luaString(luaHandle!)}] = b'
               ]
             : ['keyword', 'bind', value]);
-    _requireHyprlandOk(
-        result, 'The Hyprland shortcut could not be registered.');
+    _requireHyprlandOk(result, "Couldn't register the Hyprland shortcut.");
     final replacement = _HyprlandBinding(
       modifiers: shortcut.hyprlandModifiers,
       key: shortcut.hyprlandKey,
@@ -1388,12 +1459,12 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
           // Keep both references so dispose can retry cleanup. The old binding
           // remains authoritative; both commands carry PID/start-time guards.
           throw DesktopIntegrationException(
-            'The new shortcut was registered, but the old binding could not be removed and rollback also failed. '
+            "Couldn't remove the old shortcut after registering the new one, and undoing it failed too. "
             'The previous shortcut remains active. $error $rollbackError',
           );
         }
         throw DesktopIntegrationException(
-          'The new shortcut could not replace the previous binding. The previous shortcut remains active. $error',
+          "Couldn't replace the previous shortcut. It stays active. $error",
         );
       }
     }
@@ -1427,7 +1498,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
         lua
             ? ['eval', _removeHyprlandLuaHandle(handle)]
             : ['keyword', 'unbind', '${binding.modifiers},${binding.key}']);
-    _requireHyprlandOk(result, 'The Hyprland shortcut could not be removed.');
+    _requireHyprlandOk(result, "Couldn't remove the Hyprland shortcut.");
   }
 
   Future<void> _removeStaleOwnedHyprlandBinds(List<_HyprlandBind> binds) async {
@@ -1466,8 +1537,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
                         markerText, bind.modifierMask, bind.key))
                   ]
                 : ['keyword', 'unbind', '${modifiers.join(' ')},${bind.key}']);
-        _requireHyprlandOk(
-            result, 'A stale Arcade shortcut could not be removed.');
+        _requireHyprlandOk(result, "Couldn't remove an old Arcade shortcut.");
       } catch (_) {
         // Continue cleanup for the remaining app-owned binds.
       }
@@ -1510,7 +1580,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
     final result = await _runCommand('hyprctl', ['-j', 'activewindow']);
     if (result.exitCode != 0) {
       throw DesktopIntegrationException(
-          'Hyprland could not identify the focused app: ${_processError(result)}');
+          "Couldn't find the focused app through Hyprland: ${_processError(result)}");
     }
     dynamic value;
     try {
@@ -1532,8 +1602,9 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
           'Hyprland did not provide the focused app PID. Copy fallback is available.');
     }
     final startTicks = await _processStartTicks(pid);
-    final className =
-        value is Map && value['class'] is String ? value['class'] as String : '';
+    final className = value is Map && value['class'] is String
+        ? value['class'] as String
+        : '';
     return _HyprlandTarget(
         address: address.toLowerCase(),
         pid: pid,
@@ -1552,7 +1623,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
     final result = await _runCommand('hyprctl', ['-j', 'clients']);
     if (result.exitCode != 0) {
       throw DesktopIntegrationException(
-          'Hyprland could not verify the previous window: ${_processError(result)}');
+          "Couldn't check the previous window through Hyprland: ${_processError(result)}");
     }
     dynamic clients;
     try {
@@ -1586,8 +1657,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
     if (!await _detectHyprlandLua()) {
       final result =
           await _runCommand('hyprctl', ['dispatch', dispatcher, argument]);
-      _requireHyprlandOk(
-          result, 'Hyprland could not complete the paste action.');
+      _requireHyprlandOk(result, "Couldn't paste through Hyprland.");
       return;
     }
     final target = _hyprlandTarget;
@@ -1608,7 +1678,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
         'assert(w and w.pid == ${target.pid}, "The paste target is no longer available"); '
         'local r = hl.dispatch($action); assert(r and r.ok, r and r.error or "Hyprland rejected the paste action")';
     final result = await _runCommand('hyprctl', ['eval', expression]);
-    _requireHyprlandOk(result, 'Hyprland could not complete the paste action.');
+    _requireHyprlandOk(result, "Couldn't paste through Hyprland.");
   }
 
   Future<bool> _detectHyprlandLua() async {
@@ -1653,27 +1723,27 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
             'The target Hyprland app process is no longer available.');
       }
       throw const DesktopIntegrationException(
-          'Could not safely verify the target Hyprland app process.');
+          "Couldn't safely check the target app's process.");
     } catch (_) {
       throw const DesktopIntegrationException(
-          'Could not safely verify the target Hyprland app process.');
+          "Couldn't safely check the target app's process.");
     }
     final closingParenthesis = stat.lastIndexOf(')');
     if (closingParenthesis < 0) {
       throw const DesktopIntegrationException(
-          'Could not safely register a Hyprland shortcut for this process.');
+          "Couldn't safely register a Hyprland shortcut for this process.");
     }
     final fields =
         stat.substring(closingParenthesis + 1).trim().split(RegExp(r'\s+'));
     // /proc/PID/stat fields 3..22 follow the process name; starttime is field 22.
     if (fields.length <= 19) {
       throw const DesktopIntegrationException(
-          'Could not safely register a Hyprland shortcut for this process.');
+          "Couldn't safely register a Hyprland shortcut for this process.");
     }
     final ticks = int.tryParse(fields[19]);
     if (ticks == null) {
       throw const DesktopIntegrationException(
-          'Could not safely register a Hyprland shortcut for this process.');
+          "Couldn't safely register a Hyprland shortcut for this process.");
     }
     return ticks;
   }
@@ -1765,13 +1835,13 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
       if (!names.contains(target) || seen.contains(mime)) continue;
       if (mime == 'image/jpeg' && seen.contains('image/png')) continue;
       seen.add(mime);
-      final bytes = await _runBytes(
-          wlPaste, ['--no-newline', '--type', target],
+      final bytes = await _runBytes(wlPaste, ['--no-newline', '--type', target],
           maxBytes: 32 * 1024 * 1024 - total);
       if (bytes == null || bytes.isEmpty) continue;
       total += bytes.length;
       if (mime == 'text/uri-list') {
-        files.addAll(_localPathsFromUriList(utf8.decode(bytes, allowMalformed: true)));
+        files.addAll(
+            _localPathsFromUriList(utf8.decode(bytes, allowMalformed: true)));
         continue;
       }
       formats.add({'mimeType': mime, 'bytes': bytes});
@@ -1816,8 +1886,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
     late final List<int> data;
     if (files.isNotEmpty) {
       arguments = ['--type', 'text/uri-list'];
-      data = utf8.encode(
-          files.map((path) => '${Uri.file(path)}\r\n').join());
+      data = utf8.encode(files.map((path) => '${Uri.file(path)}\r\n').join());
     } else if (bytesFor('image/png') case final png?) {
       arguments = ['--type', 'image/png'];
       data = png;
@@ -1837,8 +1906,8 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
     }
     // wl-copy forks a server that inherits stdout; redirect it so this call
     // completes when the selection is set instead of when it is replaced.
-    final result = await _runBytes(
-        '/bin/sh', ['-c', r'exec "$0" "$@" >/dev/null 2>&1', wlCopy, ...arguments],
+    final result = await _runBytes('/bin/sh',
+        ['-c', r'exec "$0" "$@" >/dev/null 2>&1', wlCopy, ...arguments],
         input: data, maxBytes: 4096, timeout: const Duration(seconds: 3));
     return result != null;
   }
@@ -1967,7 +2036,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
     final platformDetail = Platform.isLinux
         ? 'On Linux X11, install the keybinder-3.0 runtime library. Wayland shortcuts are supported here only on Hyprland.'
         : 'Another application or the operating system may already use this combination.';
-    return 'The shortcut could not be registered. $platformDetail $error';
+    return "Couldn't register the shortcut. $platformDetail $error";
   }
 
   String _desktopDetail(
@@ -1986,7 +2055,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
     if (platform == 'linux-wayland-hyprland') {
       final integration = globalShortcut && paste
           ? 'Hyprland shortcut and direct paste are active.'
-          : 'Hyprland could not be reached through hyprctl.';
+          : "Couldn't reach Hyprland through hyprctl.";
       final capture = _waylandCaptureAvailable
           ? 'Copies are captured automatically while capture is on.'
           : _waylandCaptureDetail();
@@ -2380,7 +2449,8 @@ String _luaString(String value) {
 }
 
 /// Window classes of terminal emulators, which paste with Ctrl+Shift+V.
-bool isTerminalWindowClass(String value) => RegExp(
+bool isTerminalWindowClass(String value) =>
+    RegExp(
       r'(^|[.\-_ ])(kitty|foot|footclient|alacritty|wezterm|ghostty|konsole|'
       r'console|terminal|term|xterm|urxvt|rxvt|st-256color|tilix|terminator|'
       r'terminology|contour|rio|blackbox|warp|tabby|hyper|cool-retro-term)'

@@ -44,8 +44,8 @@ platform, architecture, installer kind, install arguments and SHA-256) and
 ## Local Linux packaging verification
 
 ```sh
-CARGO_BUILD_JOBS=3 bash scripts/dev.sh build-linux
-bash scripts/dev.sh build-appimage --version 0.1.0
+CARGO_BUILD_JOBS=3 bash scripts/dev build-linux
+bash scripts/dev build-appimage --version 0.1.0
 python3 scripts/package-desktop.py --platform linux --version 0.1.0
 python3 scripts/arcade-release.py --id arcade.clipboard --version 0.1.0 \
   --channel stable --windows-installer inno \

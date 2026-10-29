@@ -29,14 +29,14 @@ Download the file for your system from [Releases](https://github.com/qa-p1/Arcad
 | Linux x64 (transition release only) | `Arcade-Clipboard_<version>_linux_x64.tar.gz` | Extract it and run `bash install-linux.sh`; it copies the bundle into `~/.local/share/arcade-clipboard` and adds a per-user launcher entry. Planned to be removed after one release. |
 | Windows x64 | `Arcade-Clipboard_<version>_windows_x64-setup.exe` | Run Setup. Installs for your user without admin, adds a Start menu entry, optional desktop shortcut and start at login, and puts `arcade-clipboard` on PATH. |
 | macOS (universal) | `Arcade-Clipboard_<version>_macos_universal.dmg` | Open the dmg and drag Arcade Clipboard to Applications. Run from the dmg or Downloads, it offers to move itself to Applications. |
-| iPhone, iPad | unsigned IPA (CI artifact) | Sign and install it with your own signing tool. See [iPhone setup](docs/ios.md). |
+| iPhone, iPad | unsigned IPA (CI artifact) | Sign and install it with your own signing tool. See [iPhone setup](docs/dev/ios.md). |
 
 - Scripted Linux install: `--install --silent --no-launch`. `--repair` restores integration. Scripted Windows install: `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CURRENTUSER`. A silent install removes the AppImage it was started from only when that file is in your Downloads folder; add `--keep-download` to keep it there too. Files elsewhere are never removed.
 - Linux needs GTK 3 and an unlocked Secret Service keyring (GNOME Keyring, KWallet) for the device identity. Wayland capture needs `wl-clipboard` 2.2 or newer; X11 paste needs `xdotool`.
 - Builds are unsigned. On Windows, SmartScreen may warn: choose **More info → Run anyway**. On macOS the app is not notarized: right-click it and choose **Open** the first time.
 - If FUSE is missing on Linux, run the AppImage with `--appimage-extract-and-run`.
 
-Every desktop release includes `arcade-release.json` and `SHA256SUMS.txt`. See [Getting started](docs/user/getting-started.md) and [release packages](docs/releases.md).
+Every desktop release includes `arcade-release.json` and `SHA256SUMS.txt`. See [Getting started](docs/user/getting-started.md) and [release packages](docs/dev/releases.md).
 
 ## Features
 
@@ -69,7 +69,7 @@ Other apps can send content to your devices with **Send to my devices**, or open
 
 When Arcade Tools is running, its tray icon hosts Clipboard's menu, including **Private mode**. When Tools quits or stops hosting, Clipboard's own icon returns. With "Connect with other Arcade apps" off, Clipboard always shows its own icon.
 
-See [how Clipboard works with other Arcade apps](docs/user/with-other-apps.md) and the [Arcade Link reference](docs/arcade-link.md).
+See [how Clipboard works with other Arcade apps](docs/user/with-other-apps.md) and the [Arcade Link reference](docs/dev/link.md).
 
 ## Usage
 
@@ -77,7 +77,7 @@ See [how Clipboard works with other Arcade apps](docs/user/with-other-apps.md) a
 2. On the second device choose **Join an existing mesh** and scan the code or type it.
 3. Compare the six-digit verification number on both devices and approve on each.
 
-Open the picker with **Ctrl+Shift+Space** on Linux, **Ctrl+Alt+V** on Windows, **Cmd+Shift+V** on macOS. Type to search, move with the arrow keys and press **Enter** to paste. On Wayland compositors without in-app shortcut support, bind `arcade-clipboard --overlay` yourself. See the [shortcut reference](docs/user/shortcuts.md).
+Open the picker with **Ctrl+Alt+V** (**⌃⌥V** on macOS). Type to search, move with the arrow keys and press **Enter** to paste, or **Ctrl+Enter** (**⌘↩**) to paste as plain text. If you used Clipboard before 0.3.0, it keeps the shortcut you had. On Wayland compositors without in-app shortcut support, bind `arcade-clipboard --overlay` yourself. See the [shortcut reference](docs/user/shortcuts.md).
 
 Clipboard stays in the background so it can capture copies and receive clips. Its tray icon opens Settings; choose **Quit Arcade Clipboard** from the tray menu to stop it.
 
@@ -129,7 +129,7 @@ Your encrypted data is kept unless you add `--remove-data`.
 | Windows | Yes | Yes | Yes | Yes | CI build (desktop app and Rust core tests); not run interactively |
 | macOS | Yes | Yes | Yes, needs Accessibility | Yes | CI build (desktop app and Rust core tests); not run interactively |
 
-See [Platforms](docs/platforms.md) and the [Linux guide](docs/linux.md).
+See [Platforms](docs/dev/platforms.md) and the [Linux guide](docs/dev/linux.md).
 
 ## Build from source
 
@@ -149,26 +149,26 @@ sudo apt-get install clang cmake ninja-build pkg-config \
 ```
 
 ```bash
-bash scripts/dev.sh desktop        # run the Linux app in debug mode
-bash scripts/dev.sh build-linux    # release bundle and transition tarball
-bash scripts/dev.sh test           # Rust workspace tests and Flutter tests
-bash scripts/dev.sh check          # rustfmt, Clippy and flutter analyze
+bash scripts/dev desktop        # run the Linux app in debug mode
+bash scripts/dev build-linux    # release bundle and transition tarball
+bash scripts/dev test           # Rust workspace tests and Flutter tests
+bash scripts/dev check          # rustfmt, Clippy and flutter analyze
 ```
 
-See the [development guide](docs/development.md) for all commands, CI and debugging.
+See the [development guide](docs/dev/development.md) for all commands, CI and debugging.
 
 ## Documentation
 
-- [User guide](docs/user/): [getting started](docs/user/getting-started.md), [features](docs/user/features.md), [shortcuts](docs/user/shortcuts.md), [FAQ](docs/user/faq.md), [troubleshooting](docs/user/troubleshooting.md)
-- [Development guide](docs/development.md): build, tests, CI, debugging
-- [Linux guide](docs/linux.md): requirements, desktop integration and troubleshooting
-- [Architecture](docs/architecture.md): app, Rust core, native code, capture and sync
-- [Protocol](docs/protocol.md): pairing, wire format, item kinds and convergence
-- [Security](docs/security.md): threat model, key storage and limits
-- [Arcade Link](docs/arcade-link.md): desktop actions, peer behavior and the optional Arcade Tools hub
-- [Relay deployment](docs/relay-deployment.md): run a relay with Docker, Caddy or Cloudflare
-- [Platforms](docs/platforms.md) and [iPhone setup](docs/ios.md)
-- [Release packages](docs/releases.md)
+- [User guide](docs/user): [getting started](docs/user/getting-started.md), [features](docs/user/features.md), [shortcuts](docs/user/shortcuts.md), [FAQ](docs/user/faq.md), [troubleshooting](docs/user/troubleshooting.md)
+- [Development guide](docs/dev/development.md): build, tests, CI, debugging
+- [Linux guide](docs/dev/linux.md): requirements, desktop integration and troubleshooting
+- [Architecture](docs/dev/architecture.md): app, Rust core, native code, capture and sync
+- [Protocol](docs/dev/protocol.md): pairing, wire format, item kinds and convergence
+- [Security](docs/dev/security.md): threat model, key storage and limits
+- [Arcade Link](docs/dev/link.md): desktop actions, peer behavior and the optional Arcade Tools hub
+- [Relay deployment](docs/dev/relay-deployment.md): run a relay with Docker, Caddy or Cloudflare
+- [Platforms](docs/dev/platforms.md) and [iPhone setup](docs/dev/ios.md)
+- [Release packages](docs/dev/releases.md)
 - [Status](docs/STATUS.md): implementation and verification record
 - [Changelog](CHANGELOG.md)
 
