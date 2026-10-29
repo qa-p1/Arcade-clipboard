@@ -86,4 +86,4 @@ WebSocket connection with TLS (`wss://`) outside loopback development. The
 The service is a single process with in-memory rendezvous state. It provides no
 durable queue, horizontal coordination or registered invite issuer. A non-root
 Docker image, internal-only Rust service and Caddy HTTPS Compose deployment are
-included. Follow [domain and Cloudflare setup](../../docs/relay-deployment.md).
+included. Follow [domain and Cloudflare setup](../../docs/dev/relay-deployment.md).

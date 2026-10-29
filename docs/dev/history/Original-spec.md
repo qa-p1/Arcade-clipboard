@@ -1,6 +1,6 @@
 Do not treat this as a prototype, hackathon demo, AI wrapper, or UI mockup.
 
-> Original product brief; its features are goals, not implementation claims. Current implementation and limits: [status](docs/STATUS.md).
+> Original product brief; its features are goals, not implementation claims. Current implementation and limits: [status](../../STATUS.md).
 
 Build a genuinely useful, polished consumer application.
 
@@ -1671,11 +1671,11 @@ DOCUMENTATION
 Maintain at least:
 
 README.md
-docs/architecture.md
-docs/protocol.md
-docs/security.md
+docs/dev/architecture.md
+docs/dev/protocol.md
+docs/dev/security.md
 docs/platform-limitations.md
-docs/development.md
+docs/dev/development.md
 
 Architecture documentation must reflect actual implementation, not hypothetical intentions.
 

@@ -13,11 +13,14 @@ class ArcadeGlyph extends StatelessWidget {
   final String peer;
   final Color? color;
   final double size;
+
   /// [peer]'s accent from the kit, for the current brightness.
   static Color accentOf(BuildContext context, String peer) {
     final accent = arcadeAccents[peer];
     if (accent == null) return arcadeColors(context).muted;
-    return Theme.of(context).brightness == Brightness.dark ? accent.dark : accent.light;
+    return Theme.of(context).brightness == Brightness.dark
+        ? accent.dark
+        : accent.light;
   }
 
   @override
@@ -25,8 +28,7 @@ class ArcadeGlyph extends StatelessWidget {
       width: size,
       height: size,
       child: CustomPaint(
-          painter: _GlyphPainter(
-              peer, color ?? accentOf(context, peer))));
+          painter: _GlyphPainter(peer, color ?? accentOf(context, peer))));
 }
 
 class _GlyphPainter extends CustomPainter {
@@ -154,13 +156,21 @@ class LinkWorkStatus extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: ArcadeTokens.space12),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        LinearProgressIndicator(value: controller.link.progressFraction, minHeight: 2),
+        LinearProgressIndicator(
+            value: controller.link.progressFraction, minHeight: 2),
         const SizedBox(height: ArcadeTokens.space6),
         Row(children: [
           Expanded(
               child: Text(controller.link.progressMessage ?? 'Working…',
-                  maxLines: 1, overflow: TextOverflow.ellipsis, style: ArcadeTokens.textSmall.copyWith(color: arcadeColors(context).muted))),
-          ArcadeButton(label: 'Cancel', small: true, variant: ArcadeButtonVariant.ghost, onPressed: controller.link.cancel),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: ArcadeTokens.textSmall
+                      .copyWith(color: arcadeColors(context).muted))),
+          ArcadeButton(
+              label: 'Cancel',
+              small: true,
+              variant: ArcadeButtonVariant.ghost,
+              onPressed: controller.link.cancel),
         ]),
       ]),
     );
@@ -183,13 +193,20 @@ class WaitingPhoto extends StatelessWidget {
         action: Wrap(spacing: ArcadeTokens.space8, children: [
           for (final action in offers)
             Tooltip(
-                message: action.disabledReason ?? 'Compress this photo; the result joins your devices.',
+                message: action.disabledReason ??
+                    'Compress this photo; the result joins your devices.',
                 child: ArcadeButton(
                     label: '${action.title} ↗',
                     small: true,
-                    onPressed: action.enabled ? () => controller.invokeItemAction(photo, action) : null)),
+                    onPressed: action.enabled
+                        ? () => controller.invokeItemAction(photo, action)
+                        : null)),
           ArcadeButton(
-              label: 'Discard', small: true, variant: ArcadeButtonVariant.ghost, onPressed: controller.link.busy ? null : controller.dismissWaitingPhoto),
+              label: 'Discard',
+              small: true,
+              variant: ArcadeButtonVariant.ghost,
+              onPressed:
+                  controller.link.busy ? null : controller.dismissWaitingPhoto),
         ]),
       ),
     );
@@ -203,7 +220,8 @@ class ConnectedAppsSection extends StatelessWidget {
   const ConnectedAppsSection({super.key, required this.controller});
   final AppController controller;
 
-  static const guideUrl = 'https://github.com/qa-p1/Arcade-clipboard/blob/main/docs/user/with-other-apps.md';
+  static const guideUrl =
+      'https://github.com/qa-p1/Arcade-clipboard/blob/main/docs/user/with-other-apps.md';
 
   @override
   Widget build(BuildContext context) {
@@ -216,12 +234,17 @@ class ConnectedAppsSection extends StatelessWidget {
           padding: const EdgeInsets.only(bottom: ArcadeTokens.space12),
           child: ArcadeNotice('Connections are off in this app.',
               tone: ArcadeTone.warn,
-              action: ArcadeButton(label: 'Turn on', small: true, onPressed: busy ? null : () => controller.setLinkEnabled(true))),
+              action: ArcadeButton(
+                  label: 'Turn on',
+                  small: true,
+                  onPressed:
+                      busy ? null : () => controller.setLinkEnabled(true))),
         ),
       ArcadeListSection(title: 'Connected apps', children: [
         ArcadeSwitchRow(
           title: 'Connect with other Arcade apps',
-          subtitle: 'Send clips to other apps and take results back into your history.',
+          subtitle:
+              'Send clips to other apps and take results back into your history.',
           value: link.enabled,
           onChanged: controller.working ? null : controller.setLinkEnabled,
         ),
@@ -236,10 +259,15 @@ class ConnectedAppsSection extends StatelessWidget {
             };
             return ArcadeRow(
               title: peer['name'] as String? ?? id,
-              subtitle: switch ((peer['link_enabled'], state, peer['version'])) {
+              subtitle: switch ((
+                peer['link_enabled'],
+                state,
+                peer['version']
+              )) {
                 (false, _, _) => 'Connections are off in that app.',
                 (_, 'Not installed', _) => peer['pitch'] as String? ?? '',
-                (_, _, final String version) when version.isNotEmpty => 'Version $version',
+                (_, _, final String version) when version.isNotEmpty =>
+                  'Version $version',
                 _ => null,
               },
               leading: ArcadeGlyphTile(child: ArcadeGlyph(id)),
@@ -247,13 +275,19 @@ class ConnectedAppsSection extends StatelessWidget {
                 ArcadeBadge(label, tone: tone, dot: tone == ArcadeTone.ok),
                 const SizedBox(width: ArcadeTokens.space8),
                 if (state == 'Not installed')
-                  ArcadeButton(label: 'Install', small: true, onPressed: busy ? null : () => controller.getArcadeApp(id))
+                  ArcadeButton(
+                      label: 'Install',
+                      small: true,
+                      onPressed:
+                          busy ? null : () => controller.getArcadeApp(id))
                 else
                   Semantics(
                     label: 'Use ${peer['name']} with Arcade Clipboard',
                     child: Switch(
                       value: link.uses(id),
-                      onChanged: !link.enabled || controller.working ? null : (value) => controller.setLinkPeerEnabled(id, value),
+                      onChanged: !link.enabled || controller.working
+                          ? null
+                          : (value) => controller.setLinkPeerEnabled(id, value),
                     ),
                   ),
               ]),
@@ -265,7 +299,8 @@ class ConnectedAppsSection extends StatelessWidget {
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
           tilePadding: EdgeInsets.zero,
-          title: Text('Connection details', style: ArcadeTokens.textSmall.copyWith(color: c.muted)),
+          title: Text('Connection details',
+              style: ArcadeTokens.textSmall.copyWith(color: c.muted)),
           children: [
             Align(
               alignment: Alignment.centerLeft,
@@ -274,7 +309,10 @@ class ConnectedAppsSection extends StatelessWidget {
                 'Endpoint: ${link.diagnostics['listening'] == true ? 'Listening' : 'Off'}\n'
                 'Registry notifications: ${link.diagnostics['watching'] == true ? 'On' : 'Unavailable'}\n'
                 'Last error: ${link.diagnostics['last_error'] ?? 'None'}\n'
-                '${[for (final peer in link.peers) '${peer['name']}: ${peer['state']}${peer['state'] == 'Running' ? ' ${peer['version']}' : ''}'].join('\n')}',
+                '${[
+                  for (final peer in link.peers)
+                    '${peer['name']}: ${peer['state']}${peer['state'] == 'Running' ? ' ${peer['version']}' : ''}'
+                ].join('\n')}',
                 style: ArcadeTokens.textSmall.copyWith(color: c.muted),
               ),
             ),
@@ -283,7 +321,11 @@ class ConnectedAppsSection extends StatelessWidget {
       ),
       Align(
         alignment: Alignment.centerLeft,
-        child: ArcadeButton(label: 'How it works', variant: ArcadeButtonVariant.ghost, small: true, onPressed: () => controller.openUrl(guideUrl)),
+        child: ArcadeButton(
+            label: 'How it works',
+            variant: ArcadeButtonVariant.ghost,
+            small: true,
+            onPressed: () => controller.openUrl(guideUrl)),
       ),
     ]);
   }

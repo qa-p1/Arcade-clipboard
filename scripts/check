@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# Exactly what CI checks (STANDARD §10):
+#   scripts/check          every check, then (on Linux) the release bundle and
+#                          the 0.2 folder move under Xvfb
+#   scripts/check rust     CI's "rust" job: docs, vendored hashes, rustfmt,
+#                          clippy -D warnings, cargo test
+#   scripts/check flutter  CI's Flutter checks: dart format, flutter analyze
+#                          (infos are fatal), flutter test
+set -euo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+rust() {
+  python3 scripts/check-docs.py
+  bash scripts/dev rust-check
+  bash scripts/dev rust-test
+}
+
+flutter_checks() {
+  (
+    cd apps/flutter_app
+    # The vendored design kit and the generated bridge keep their own format.
+    mapfile -t files < <(git ls-files --cached --others --exclude-standard lib test | grep '\.dart$' | grep -v '^lib/design/\|^lib/src/rust/')
+    dart format --output=none --set-exit-if-changed "${files[@]}"
+    flutter analyze
+    flutter test
+  )
+}
+
+linux_bundle() {
+  bash scripts/dev build-linux
+  xvfb-run -a python3 tests/folder-migration.py apps/flutter_app/build/linux/x64/release/bundle/clipboard
+}
+
+case "${1:-all}" in
+  rust) rust ;;
+  flutter) flutter_checks ;;
+  all)
+    rust
+    flutter_checks
+    if [[ "$(uname -s)" == Linux ]]; then linux_bundle; fi
+    ;;
+  *) echo "usage: scripts/check [rust|flutter]" >&2; exit 2 ;;
+esac

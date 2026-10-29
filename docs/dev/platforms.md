@@ -20,7 +20,7 @@ See [Linux](linux.md).
 
 ## Other Arcade apps (Arcade Link)
 
-On Linux, Windows and macOS, Clipboard works with the other Arcade apps through [Arcade Link](arcade-link.md): "Send to my devices" in Lens, Look and Box, and choosing a clip from history in Box and Wheel. iPhone, iPad and Android are not Link participants (apps there can't reach each other over local sockets, and background work is limited). They still benefit: content a desktop app sends with "Send to my devices" arrives in their history like any other clip.
+On Linux, Windows and macOS, Clipboard works with the other Arcade apps through [Arcade Link](link.md): "Send to my devices" in Lens, Look and Box, and choosing a clip from history in Box and Wheel. iPhone, iPad and Android are not Link participants (apps there can't reach each other over local sockets, and background work is limited). They still benefit: content a desktop app sends with "Send to my devices" arrives in their history like any other clip.
 
 ## iPhone and iPad
 
@@ -45,11 +45,11 @@ To build: install the Android SDK and NDK plus the Rust Android targets, run `py
 
 ## Windows
 
-The Windows plugin uses the native clipboard listener for capture and supports text, HTML, RTF, images and files. The shortcut defaults to **Ctrl+Alt+V**. Before pasting, the app checks that the remembered window still belongs to the same process, then restores focus and sends Ctrl+V. It includes a tray icon and launch at login: an installed copy toggles the installer's Startup shortcut and records it in its receipt; a portable copy uses the `ArcadeClipboard` Run value. Build with `bash scripts/dev.sh build-windows` on Windows; CMake compiles and bundles the Rust library. The `windows-latest` CI job builds it and runs the Rust core tests.
+The Windows plugin uses the native clipboard listener for capture and supports text, HTML, RTF, images and files. The shortcut defaults to **Ctrl+Alt+V**. Before pasting, the app checks that the remembered window still belongs to the same process, then restores focus and sends Ctrl+V. It includes a tray icon and launch at login: an installed copy toggles the installer's Startup shortcut and records it in its receipt; a portable copy uses the `ArcadeClipboard` Run value. Build with `bash scripts/dev build-windows` on Windows; CMake compiles and bundles the Rust library. The `windows-latest` CI job builds it and runs the Rust core tests.
 
 ## macOS
 
-The macOS plugin watches the pasteboard for changes while capture is on. The shortcut defaults to **Cmd+Shift+V**. Pasting into another app requires Accessibility permission, which **Settings → Allow automatic paste** requests; without it, the chosen clip is copied and you press Cmd+V. The app lives in the menu bar and uses `SMAppService` for launch at login. Build with `bash scripts/dev.sh build-macos`; it builds the Flutter app, bundles the Rust library and applies an ad-hoc signature. The `macos-latest` CI job builds it and runs the Rust core tests.
+The macOS plugin watches the pasteboard for changes while capture is on. The shortcut defaults to **Cmd+Shift+V**. Pasting into another app requires Accessibility permission, which **Settings → Allow automatic paste** requests; without it, the chosen clip is copied and you press Cmd+V. The app lives in the menu bar and uses `SMAppService` for launch at login. Build with `bash scripts/dev build-macos`; it builds the Flutter app, bundles the Rust library and applies an ad-hoc signature. The `macos-latest` CI job builds it and runs the Rust core tests.
 
 ## Limits on every platform
 

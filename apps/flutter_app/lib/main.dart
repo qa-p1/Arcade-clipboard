@@ -4,11 +4,11 @@ import 'dart:io';
 import 'package:arcade_desktop_bridge/arcade_desktop_bridge.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app.dart';
 import 'platform/desktop_adapter.dart';
 import 'services/app_controller.dart';
+import 'services/app_settings.dart';
 import 'services/core_api.dart';
 import 'services/desktop_commands.dart';
 
@@ -73,12 +73,18 @@ Future<int> _command(List<String> arguments) async {
       final version = await core.invoke('version');
       out.writeln('Arcade Clipboard ${version['version']}');
     } else if (arguments.contains('--arcade-manifest')) {
-      final prefs = await SharedPreferences.getInstance();
+      final override = Platform.environment['ARCADE_DATA_DIR']?.trim() ?? '';
+      await useArcadeFolders(() => core.invoke('app_dirs'),
+          override: override.isNotEmpty
+              ? override
+              : const String.fromEnvironment('ARCADE_DATA_DIR').trim());
+      final prefs = await AppSettings.instance();
       final manifest = await core.invoke('link_manifest', {
         'link': {
           'enabled': prefs.getBool('link_enabled') ?? true,
           'disabled_peers': prefs.getStringList('link_disabled_peers') ?? [],
-          'shortcut': prefs.getString('mesh_shortcut') ?? DesktopAdapter.defaultShortcut,
+          'shortcut': prefs.getString('mesh_shortcut') ??
+              DesktopAdapter.defaultShortcut,
         },
       });
       out.writeln(const JsonEncoder.withIndent('  ').convert(manifest));
@@ -96,8 +102,7 @@ Future<int> _command(List<String> arguments) async {
         final result =
             await Process.run('/usr/bin/open', [installed['launch'] as String]);
         if (result.exitCode != 0) {
-          throw StateError(
-              "Couldn't open the installed app: ${result.stderr}");
+          throw StateError("Couldn't open the installed app: ${result.stderr}");
         }
       }
     } else {
@@ -112,5 +117,3 @@ Future<int> _command(List<String> arguments) async {
     return 1;
   }
 }
-
-

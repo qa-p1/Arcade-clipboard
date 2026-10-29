@@ -12,7 +12,8 @@ class _DevicesPage extends StatelessWidget {
     return _PageFrame(children: [
       ArcadePageHead(
         title: 'Devices',
-        subtitle: 'Devices in your mesh share clips with each other, end-to-end encrypted.',
+        subtitle:
+            'Devices in your mesh share clips with each other, end-to-end encrypted.',
         actions: [
           if (controller.canManageDevices || controller.devicesLoading)
             ArcadeButton(
@@ -35,13 +36,19 @@ class _DevicesPage extends StatelessWidget {
       ]),
       if (controller.pairings.isNotEmpty) ...[
         _sectionGap,
-        ArcadeListSection(title: 'Pairing requests', meta: formatCount(controller.pairings.length), children: [
-          for (final pairing in controller.pairings) _PairingRequestTile(controller: controller, pairing: pairing),
-        ]),
+        ArcadeListSection(
+            title: 'Pairing requests',
+            meta: formatCount(controller.pairings.length),
+            children: [
+              for (final pairing in controller.pairings)
+                _PairingRequestTile(controller: controller, pairing: pairing),
+            ]),
       ],
       _sectionGap,
       if (controller.devicesLoading && controller.devices.isEmpty)
-        const ArcadeListSection(title: 'Trusted devices', children: [ArcadeSkeletonRow(), ArcadeSkeletonRow()])
+        const ArcadeListSection(
+            title: 'Trusted devices',
+            children: [ArcadeSkeletonRow(), ArcadeSkeletonRow()])
       else if (controller.devices.isEmpty)
         ArcadeEmptyState(
           icon: 'monitor',
@@ -51,17 +58,25 @@ class _DevicesPage extends StatelessWidget {
               : 'Devices the mesh owner adds show up here.',
           actions: [
             if (controller.canManageDevices)
-              ArcadeButton(label: 'Invite a device', icon: 'plus', onPressed: canInvite ? () => _addDevice(context) : null),
+              ArcadeButton(
+                  label: 'Invite a device',
+                  icon: 'plus',
+                  onPressed: canInvite ? () => _addDevice(context) : null),
           ],
         )
       else
-        ArcadeListSection(title: 'Trusted devices', meta: formatCount(controller.devices.length), children: [
-          for (final device in controller.devices)
-            _TrustedDeviceRow(
-              device: device,
-              onRemove: controller.canManageDevices && !device.isOwner ? () => _confirmRemove(context, device) : null,
-            ),
-        ]),
+        ArcadeListSection(
+            title: 'Trusted devices',
+            meta: formatCount(controller.devices.length),
+            children: [
+              for (final device in controller.devices)
+                _TrustedDeviceRow(
+                  device: device,
+                  onRemove: controller.canManageDevices && !device.isOwner
+                      ? () => _confirmRemove(context, device)
+                      : null,
+                ),
+            ]),
     ]);
   }
 
@@ -72,7 +87,8 @@ class _DevicesPage extends StatelessWidget {
     if (invite == null) return;
     await showDialog<void>(
       context: context,
-      builder: (context) => _InviteDialog(invite: invite, controller: controller),
+      builder: (context) =>
+          _InviteDialog(invite: invite, controller: controller),
     );
   }
 
@@ -80,7 +96,8 @@ class _DevicesPage extends StatelessWidget {
     final remove = await confirmArcadeDestroy(
       context,
       title: 'Remove “${device.name}”?',
-      message: 'It stops receiving clips from your mesh. Clips it already has stay on it.',
+      message:
+          'It stops receiving clips from your mesh. Clips it already has stay on it.',
       confirmLabel: 'Remove device',
     );
     if (remove) await controller.revokeDevice(device);
@@ -115,7 +132,11 @@ class _PairingRequestTile extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.all(ArcadeTokens.space12),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        ArcadeNotice(message, title: title, tone: awaitingConfirmation && inbound ? ArcadeTone.warn : ArcadeTone.neutral),
+        ArcadeNotice(message,
+            title: title,
+            tone: awaitingConfirmation && inbound
+                ? ArcadeTone.warn
+                : ArcadeTone.neutral),
         if (pairing.verificationCode.isNotEmpty) ...[
           const SizedBox(height: ArcadeTokens.space10),
           _VerificationCode(code: pairing.verificationCode),
@@ -125,23 +146,34 @@ class _PairingRequestTile extends StatelessWidget {
             padding: const EdgeInsets.only(top: ArcadeTokens.space6),
             child: ListenableBuilder(
               listenable: _RelativeClock.instance,
-              builder: (context, _) => Text('Expires ${_relativeExpiry(expiresAt)}',
-                  style: ArcadeTokens.textSmall.copyWith(color: arcadeColors(context).faint)),
+              builder: (context, _) => Text(
+                  'Expires ${_relativeExpiry(expiresAt)}',
+                  style: ArcadeTokens.textSmall
+                      .copyWith(color: arcadeColors(context).faint)),
             ),
           ),
         if (inbound && awaitingConfirmation) ...[
           const SizedBox(height: ArcadeTokens.space10),
-          Wrap(spacing: ArcadeTokens.space8, alignment: WrapAlignment.end, children: [
-            ArcadeButton(
-              label: 'Decline',
-              onPressed: controller.working ? null : () => controller.confirmPairing(pairing.sessionId, accept: false),
-            ),
-            ArcadeButton(
-              label: 'Allow',
-              variant: ArcadeButtonVariant.primary,
-              onPressed: controller.working ? null : () => controller.confirmPairing(pairing.sessionId, accept: true),
-            ),
-          ]),
+          Wrap(
+              spacing: ArcadeTokens.space8,
+              alignment: WrapAlignment.end,
+              children: [
+                ArcadeButton(
+                  label: 'Decline',
+                  onPressed: controller.working
+                      ? null
+                      : () => controller.confirmPairing(pairing.sessionId,
+                          accept: false),
+                ),
+                ArcadeButton(
+                  label: 'Allow',
+                  variant: ArcadeButtonVariant.primary,
+                  onPressed: controller.working
+                      ? null
+                      : () => controller.confirmPairing(pairing.sessionId,
+                          accept: true),
+                ),
+              ]),
         ],
       ]),
     );
@@ -164,10 +196,13 @@ class _VerificationCode extends StatelessWidget {
         child: Wrap(spacing: ArcadeTokens.space8, children: [
           for (final group in groups)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: ArcadeTokens.space12, vertical: ArcadeTokens.space6),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: ArcadeTokens.space12,
+                  vertical: ArcadeTokens.space6),
               decoration: BoxDecoration(
                 color: c.panel,
-                borderRadius: const BorderRadius.all(Radius.circular(ArcadeTokens.radiusSm)),
+                borderRadius: const BorderRadius.all(
+                    Radius.circular(ArcadeTokens.radiusSm)),
                 border: Border(
                   top: BorderSide(color: c.lineStrong),
                   left: BorderSide(color: c.lineStrong),
@@ -197,22 +232,28 @@ class _TrustedDeviceRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final online = device.state.toLowerCase() == 'online' || device.state.toLowerCase() == 'connected';
+    final online = device.state.toLowerCase() == 'online' ||
+        device.state.toLowerCase() == 'connected';
     return ListenableBuilder(
       listenable: _RelativeClock.instance,
       builder: (context, _) => ArcadeRow(
         title: device.name,
-        subtitle: '${device.platform}${device.lastSeen == null ? '' : ' · seen ${_relativeTime(device.lastSeen!).toLowerCase()}'}',
+        subtitle:
+            '${device.platform}${device.lastSeen == null ? '' : ' · seen ${_relativeTime(device.lastSeen!).toLowerCase()}'}',
         leading: _PlatformGlyph(platform: device.platform),
         trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-          ArcadeBadge(online ? 'Online' : 'Offline', tone: online ? ArcadeTone.ok : ArcadeTone.neutral, dot: online),
+          ArcadeBadge(online ? 'Online' : 'Offline',
+              tone: online ? ArcadeTone.ok : ArcadeTone.neutral, dot: online),
           if (onRemove != null)
             PopupMenuButton<String>(
               tooltip: 'Device actions',
               icon: ArcadeIcon('more', color: arcadeColors(context).muted),
               onSelected: (_) => onRemove!(),
               itemBuilder: (_) => [
-                PopupMenuItem(value: 'remove', child: Text('Remove device', style: TextStyle(color: arcadeColors(context).danger))),
+                PopupMenuItem(
+                    value: 'remove',
+                    child: Text('Remove device',
+                        style: TextStyle(color: arcadeColors(context).danger))),
               ],
             ),
         ]),
@@ -229,9 +270,15 @@ class _PlatformGlyph extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = platform.toLowerCase();
-    final phone = name.contains('ios') || name.contains('iphone') || name.contains('ipad') || name.contains('android');
+    final phone = name.contains('ios') ||
+        name.contains('iphone') ||
+        name.contains('ipad') ||
+        name.contains('android');
     return ArcadeGlyphTile(
-      child: phone ? Icon(Icons.smartphone_outlined, size: ArcadeTokens.iconSize, color: arcadeColors(context).muted) : const ArcadeIcon('monitor'),
+      child: phone
+          ? Icon(Icons.smartphone_outlined,
+              size: ArcadeTokens.iconSize, color: arcadeColors(context).muted)
+          : const ArcadeIcon('monitor'),
     );
   }
 }

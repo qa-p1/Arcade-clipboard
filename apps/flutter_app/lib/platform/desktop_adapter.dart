@@ -136,7 +136,8 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
   }
 
   /// Whether global shortcuts go through Hyprland's runtime binds.
-  bool get shortcutsViaHyprland => Platform.isLinux && _isWayland && _isHyprland;
+  bool get shortcutsViaHyprland =>
+      Platform.isLinux && _isWayland && _isHyprland;
 
   Future<void> setBackgroundEnabled(bool enabled) async {
     await _bridge.setBackgroundEnabled(enabled);
@@ -152,6 +153,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
   Future<void> setLaunchAtLogin(bool enabled) =>
       _bridge.setLaunchAtLogin(enabled);
   Future<bool> launchAtLoginEnabled() => _bridge.launchAtLoginEnabled();
+
   /// Linux login starts are kept unmapped by the runner itself; hiding a
   /// window before its first frame breaks the GL surface there.
   Future<void> hideMainWindow() async {
@@ -162,6 +164,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
     await windowManager.show();
     await windowManager.focus();
   }
+
   Future<void> Function()? _onOverlayRequested;
 
   /// Runs application shutdown (core and desktop cleanup) before exit.
@@ -190,6 +193,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
     }
     await _quit();
   }
+
   final List<StreamSubscription<ProcessSignal>> _exitSignals = [];
   bool _quitting = false;
 
@@ -201,13 +205,13 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
     _quitting = true;
     Diagnostics.log('lifecycle', 'quitting');
     try {
-      await (onQuit?.call() ?? dispose())
-          .timeout(const Duration(seconds: 4));
+      await (onQuit?.call() ?? dispose()).timeout(const Duration(seconds: 4));
     } catch (_) {
       // Exit regardless; stale binds are guarded by PID start time.
     }
     exit(0);
   }
+
   DesktopCapabilities? _capabilities;
   HotKey? _registeredHotKey;
   StreamSubscription<ProcessSignal>? _signalSubscription;
@@ -253,7 +257,8 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
   static const String defaultShortcut = 'CTRL+ALT+V';
 
   /// The default before 0.3.0, which profiles from then keep.
-  static String get previousDefaultShortcut => switch (Platform.operatingSystem) {
+  static String get previousDefaultShortcut =>
+      switch (Platform.operatingSystem) {
         'macos' => 'CMD+SHIFT+V',
         'windows' => 'CTRL+ALT+V',
         _ => 'CTRL+SHIFT+SPACE',
@@ -547,7 +552,8 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
     if (bytes.length == 1 && bytes[0] == 49) {
       final initial = _nextEventIsInitial;
       _nextEventIsInitial = false;
-      Diagnostics.log('capture', 'clipboard change event${initial ? ' (initial)' : ''}');
+      Diagnostics.log(
+          'capture', 'clipboard change event${initial ? ' (initial)' : ''}');
       unawaited(_enqueueRichCapture(initial: initial));
     }
   }
@@ -962,15 +968,18 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
             'hl.dsp.window.center({ window = w })',
           ], legacy: [
             ['setfloating', 'address:${own['address']}'],
-            ['resizewindowpixel', 'exact ${_overlaySize.width.toInt()} ${_overlaySize.height.toInt()},address:${own['address']}'],
+            [
+              'resizewindowpixel',
+              'exact ${_overlaySize.width.toInt()} ${_overlaySize.height.toInt()},address:${own['address']}'
+            ],
             ['centerwindow', ''],
           ]);
         }
-        await _hyprlandWindowAction(own['address'] as String,
-            ['hl.dsp.focus({ window = w })'],
-            legacy: [
-              ['focuswindow', 'address:${own['address']}']
-            ]);
+        await _hyprlandWindowAction(own['address'] as String, [
+          'hl.dsp.focus({ window = w })'
+        ], legacy: [
+          ['focuswindow', 'address:${own['address']}']
+        ]);
       }
     } catch (error) {
       _overlayVisible = false;
@@ -1017,7 +1026,8 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
             'rawset(_G, "ARCADE_CLIPBOARD_PICKER_RULE", true) end'
       ]);
       if (result.exitCode != 0) {
-        Diagnostics.log('overlay', 'picker rule rejected: ${_processError(result)}');
+        Diagnostics.log(
+            'overlay', 'picker rule rejected: ${_processError(result)}');
       }
     }
   }
@@ -1046,7 +1056,8 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
       {required List<List<String>> legacy}) async {
     if (!RegExp(r'^0x[0-9a-fA-F]+$').hasMatch(address)) return;
     if (await _detectHyprlandLua()) {
-      final body = luaActions.map((action) => 'hl.dispatch($action)').join('; ');
+      final body =
+          luaActions.map((action) => 'hl.dispatch($action)').join('; ');
       await _runCommand('hyprctl', [
         'eval',
         'local w = hl.get_window(${_luaString('address:$address')}); if w then $body end'
@@ -1087,7 +1098,10 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
   /// mesh synchronization has no call path into this method.
   Future<void> _writeClipboardForUserAction(String text) => copyContent(
         formats: [
-          {'mimeType': 'text/plain', 'bytes': Uint8List.fromList(utf8.encode(text))}
+          {
+            'mimeType': 'text/plain',
+            'bytes': Uint8List.fromList(utf8.encode(text))
+          }
         ],
       );
 
@@ -1154,7 +1168,8 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
       await _dispatchHyprland('sendshortcut',
           '${target.pasteModifiers},V,address:${target.address}',
           modifiers: target.pasteModifiers);
-      Diagnostics.log('paste', 'sent ${target.pasteModifiers}+V to ${target.className}');
+      Diagnostics.log(
+          'paste', 'sent ${target.pasteModifiers}+V to ${target.className}');
       return;
     }
 
@@ -1369,8 +1384,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
                     'assert(b, "Hyprland rejected the shortcut"); _G[${_luaString(luaHandle!)}] = b'
               ]
             : ['keyword', 'bind', value]);
-    _requireHyprlandOk(
-        result, "Couldn't register the Hyprland shortcut.");
+    _requireHyprlandOk(result, "Couldn't register the Hyprland shortcut.");
     final replacement = _HyprlandBinding(
       modifiers: shortcut.hyprlandModifiers,
       key: shortcut.hyprlandKey,
@@ -1470,8 +1484,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
                         markerText, bind.modifierMask, bind.key))
                   ]
                 : ['keyword', 'unbind', '${modifiers.join(' ')},${bind.key}']);
-        _requireHyprlandOk(
-            result, "Couldn't remove an old Arcade shortcut.");
+        _requireHyprlandOk(result, "Couldn't remove an old Arcade shortcut.");
       } catch (_) {
         // Continue cleanup for the remaining app-owned binds.
       }
@@ -1536,8 +1549,9 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
           'Hyprland did not provide the focused app PID. Copy fallback is available.');
     }
     final startTicks = await _processStartTicks(pid);
-    final className =
-        value is Map && value['class'] is String ? value['class'] as String : '';
+    final className = value is Map && value['class'] is String
+        ? value['class'] as String
+        : '';
     return _HyprlandTarget(
         address: address.toLowerCase(),
         pid: pid,
@@ -1590,8 +1604,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
     if (!await _detectHyprlandLua()) {
       final result =
           await _runCommand('hyprctl', ['dispatch', dispatcher, argument]);
-      _requireHyprlandOk(
-          result, "Couldn't paste through Hyprland.");
+      _requireHyprlandOk(result, "Couldn't paste through Hyprland.");
       return;
     }
     final target = _hyprlandTarget;
@@ -1769,13 +1782,13 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
       if (!names.contains(target) || seen.contains(mime)) continue;
       if (mime == 'image/jpeg' && seen.contains('image/png')) continue;
       seen.add(mime);
-      final bytes = await _runBytes(
-          wlPaste, ['--no-newline', '--type', target],
+      final bytes = await _runBytes(wlPaste, ['--no-newline', '--type', target],
           maxBytes: 32 * 1024 * 1024 - total);
       if (bytes == null || bytes.isEmpty) continue;
       total += bytes.length;
       if (mime == 'text/uri-list') {
-        files.addAll(_localPathsFromUriList(utf8.decode(bytes, allowMalformed: true)));
+        files.addAll(
+            _localPathsFromUriList(utf8.decode(bytes, allowMalformed: true)));
         continue;
       }
       formats.add({'mimeType': mime, 'bytes': bytes});
@@ -1820,8 +1833,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
     late final List<int> data;
     if (files.isNotEmpty) {
       arguments = ['--type', 'text/uri-list'];
-      data = utf8.encode(
-          files.map((path) => '${Uri.file(path)}\r\n').join());
+      data = utf8.encode(files.map((path) => '${Uri.file(path)}\r\n').join());
     } else if (bytesFor('image/png') case final png?) {
       arguments = ['--type', 'image/png'];
       data = png;
@@ -1841,8 +1853,8 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
     }
     // wl-copy forks a server that inherits stdout; redirect it so this call
     // completes when the selection is set instead of when it is replaced.
-    final result = await _runBytes(
-        '/bin/sh', ['-c', r'exec "$0" "$@" >/dev/null 2>&1', wlCopy, ...arguments],
+    final result = await _runBytes('/bin/sh',
+        ['-c', r'exec "$0" "$@" >/dev/null 2>&1', wlCopy, ...arguments],
         input: data, maxBytes: 4096, timeout: const Duration(seconds: 3));
     return result != null;
   }
@@ -2384,7 +2396,8 @@ String _luaString(String value) {
 }
 
 /// Window classes of terminal emulators, which paste with Ctrl+Shift+V.
-bool isTerminalWindowClass(String value) => RegExp(
+bool isTerminalWindowClass(String value) =>
+    RegExp(
       r'(^|[.\-_ ])(kitty|foot|footclient|alacritty|wezterm|ghostty|konsole|'
       r'console|terminal|term|xterm|urxvt|rxvt|st-256color|tilix|terminator|'
       r'terminology|contour|rio|blackbox|warp|tabby|hyper|cool-retro-term)'

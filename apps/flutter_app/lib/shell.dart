@@ -48,8 +48,10 @@ class _AppHomeState extends State<_AppHome> {
         _Section.settings => _SettingsPage(controller: controller),
       };
       final shortcuts = <ShortcutActivator, VoidCallback>{
-        const SingleActivator(LogicalKeyboardKey.comma, control: true): _openSettings,
-        const SingleActivator(LogicalKeyboardKey.comma, meta: true): _openSettings,
+        const SingleActivator(LogicalKeyboardKey.comma, control: true):
+            _openSettings,
+        const SingleActivator(LogicalKeyboardKey.comma, meta: true):
+            _openSettings,
       };
       if (phone) {
         final c = arcadeColors(context);
@@ -64,14 +66,18 @@ class _AppHomeState extends State<_AppHome> {
               selectedIndex: _section.index,
               onDestinationSelected: (index) => _select(_Section.values[index]),
               destinations: [
-                const NavigationDestination(icon: ArcadeIcon('clipboard', size: 20), label: 'History'),
+                const NavigationDestination(
+                    icon: ArcadeIcon('clipboard', size: 20), label: 'History'),
                 NavigationDestination(
                   icon: controller.pairings.isEmpty
                       ? const ArcadeIcon('monitor', size: 20)
-                      : Badge(label: Text('${controller.pairings.length}'), child: const ArcadeIcon('monitor', size: 20)),
+                      : Badge(
+                          label: Text('${controller.pairings.length}'),
+                          child: const ArcadeIcon('monitor', size: 20)),
                   label: 'Devices',
                 ),
-                const NavigationDestination(icon: ArcadeIcon('settings', size: 20), label: 'Settings'),
+                const NavigationDestination(
+                    icon: ArcadeIcon('settings', size: 20), label: 'Settings'),
               ],
             ),
           ),
@@ -84,7 +90,11 @@ class _AppHomeState extends State<_AppHome> {
           body: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _Sidebar(controller: controller, selected: _section, onSelected: _select, collapsed: collapsed),
+              _Sidebar(
+                  controller: controller,
+                  selected: _section,
+                  onSelected: _select,
+                  collapsed: collapsed),
               Expanded(child: SafeArea(child: page)),
             ],
           ),
@@ -95,7 +105,11 @@ class _AppHomeState extends State<_AppHome> {
 }
 
 class _Sidebar extends StatelessWidget {
-  const _Sidebar({required this.controller, required this.selected, required this.onSelected, required this.collapsed});
+  const _Sidebar(
+      {required this.controller,
+      required this.selected,
+      required this.onSelected,
+      required this.collapsed});
 
   final AppController controller;
   final _Section selected;
@@ -113,13 +127,15 @@ class _Sidebar extends StatelessWidget {
         collapsed: collapsed,
         version: controller.appVersion,
         footer: collapsed
-            ? Tooltip(message: label, child: Center(child: ArcadeDot(tone: tone)))
+            ? Tooltip(
+                message: label, child: Center(child: ArcadeDot(tone: tone)))
             : Row(children: [
                 ArcadeDot(tone: tone),
                 const SizedBox(width: ArcadeTokens.space8),
                 Expanded(
                   child: Text(label,
-                      overflow: TextOverflow.ellipsis, style: ArcadeTokens.textSmall.copyWith(color: c.muted)),
+                      overflow: TextOverflow.ellipsis,
+                      style: ArcadeTokens.textSmall.copyWith(color: c.muted)),
                 ),
               ]),
         items: [
@@ -134,7 +150,9 @@ class _Sidebar extends StatelessWidget {
             icon: 'monitor',
             label: 'Devices',
             collapsed: collapsed,
-            count: controller.pairings.isNotEmpty ? controller.pairings.length : null,
+            count: controller.pairings.isNotEmpty
+                ? controller.pairings.length
+                : null,
             selected: selected == _Section.devices,
             onTap: () => onSelected(_Section.devices),
           ),
@@ -162,13 +180,16 @@ class _PageFrame extends StatelessWidget {
     final phone = MediaQuery.sizeOf(context).width < 600;
     return SingleChildScrollView(
       padding: phone
-          ? const EdgeInsets.fromLTRB(ArcadeTokens.space16, ArcadeTokens.space20, ArcadeTokens.space16, ArcadeTokens.space32)
+          ? const EdgeInsets.fromLTRB(ArcadeTokens.space16,
+              ArcadeTokens.space20, ArcadeTokens.space16, ArcadeTokens.space32)
           : const EdgeInsets.fromLTRB(36, ArcadeTokens.space32, 36, 72),
       child: Align(
         alignment: Alignment.topCenter,
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: ArcadeTokens.contentMax),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
+          child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: children),
         ),
       ),
     );
@@ -187,9 +208,12 @@ class _LoadingView extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const SizedBox.square(dimension: 22, child: CircularProgressIndicator(strokeWidth: 2)),
+              const SizedBox.square(
+                  dimension: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2)),
               const SizedBox(height: ArcadeTokens.space16),
-              Text('Opening Arcade Clipboard…', style: Theme.of(context).textTheme.bodyMedium),
+              Text('Opening Arcade Clipboard…',
+                  style: Theme.of(context).textTheme.bodyMedium),
             ],
           ),
         ),
@@ -203,7 +227,8 @@ class _Messages extends StatelessWidget {
   final AppController controller;
 
   @override
-  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+  Widget build(BuildContext context) =>
+      Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         if (controller.error != null)
           Padding(
             padding: const EdgeInsets.only(bottom: ArcadeTokens.space12),
@@ -216,7 +241,12 @@ class _Messages extends StatelessWidget {
               controller.notice!,
               tone: ArcadeTone.ok,
               action: ArcadeButton(
-                  label: 'Dismiss', icon: 'x', iconOnly: true, small: true, variant: ArcadeButtonVariant.ghost, onPressed: controller.dismissNotice),
+                  label: 'Dismiss',
+                  icon: 'x',
+                  iconOnly: true,
+                  small: true,
+                  variant: ArcadeButtonVariant.ghost,
+                  onPressed: controller.dismissNotice),
             ),
           ),
       ]);
@@ -234,9 +264,13 @@ class _RelativeClock extends ChangeNotifier with WidgetsBindingObserver {
 
   void _update() {
     final state = WidgetsBinding.instance.lifecycleState;
-    final run = hasListeners && (state == null || state == AppLifecycleState.resumed || state == AppLifecycleState.inactive);
+    final run = hasListeners &&
+        (state == null ||
+            state == AppLifecycleState.resumed ||
+            state == AppLifecycleState.inactive);
     if (run) {
-      _timer ??= Timer.periodic(const Duration(seconds: 30), (_) => notifyListeners());
+      _timer ??=
+          Timer.periodic(const Duration(seconds: 30), (_) => notifyListeners());
     } else {
       _timer?.cancel();
       _timer = null;
@@ -264,7 +298,8 @@ class _RelativeClock extends ChangeNotifier with WidgetsBindingObserver {
 }
 
 /// "Just now", "5 min ago", "Yesterday 14:05" (the kit's wording).
-String _relativeTime(DateTime time) => formatRelative(time.millisecondsSinceEpoch);
+String _relativeTime(DateTime time) =>
+    formatRelative(time.millisecondsSinceEpoch);
 
 /// "in 5 min", "in 2 h" for invites and pairing requests.
 String _relativeExpiry(DateTime time) {
@@ -275,10 +310,17 @@ String _relativeExpiry(DateTime time) {
 
 /// The sync status shown in the sidebar footer and on the devices page.
 (String, ArcadeTone) _syncState(AppController controller) {
-  if (controller.status?.paused == true) return ('Private mode', ArcadeTone.warn);
-  if (controller.hasMesh && controller.devices.isEmpty) return ('Ready', ArcadeTone.ok);
+  if (controller.status?.paused == true) {
+    return ('Private mode', ArcadeTone.warn);
+  }
+  if (controller.hasMesh && controller.devices.isEmpty) {
+    return ('Ready', ArcadeTone.ok);
+  }
   final connection = (controller.status?.connection ?? 'offline').toLowerCase();
-  if (connection == 'online' || connection == 'connected' || connection == 'lan' || connection == 'relay') {
+  if (connection == 'online' ||
+      connection == 'connected' ||
+      connection == 'lan' ||
+      connection == 'relay') {
     return switch (controller.status?.transport) {
       'lan' => ('Synced on the local network', ArcadeTone.ok),
       'relay' => ('Synced through the relay', ArcadeTone.ok),

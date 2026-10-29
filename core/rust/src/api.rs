@@ -18,15 +18,23 @@ fn about() -> Value {
     let environment = arcade_link::install::Environment::discover().ok();
     let channel = environment
         .as_ref()
-        .and_then(|e| e.receipts().read(arcade_link::ids::CLIPBOARD).ok().flatten())
+        .and_then(|e| {
+            e.receipts()
+                .read(arcade_link::ids::CLIPBOARD)
+                .ok()
+                .flatten()
+        })
         .map_or_else(|| "stable".to_string(), |receipt| receipt.channel);
     let tools_installed = environment.as_ref().is_some_and(|e| {
         arcade_link::Registry::load(&e.locations)
             .get(arcade_link::ids::TOOLS)
             .is_some_and(|m| m.executable_exists() && m.settings.link_enabled)
     });
-    let mut header =
-        arcade_link::diagnostics::Header::new(arcade_link::ids::CLIPBOARD, crate::VERSION, &channel);
+    let mut header = arcade_link::diagnostics::Header::new(
+        arcade_link::ids::CLIPBOARD,
+        crate::VERSION,
+        &channel,
+    );
     header.peers_from(&arcade_link::Locations::discover());
     serde_json::json!({
         "version": crate::VERSION,
@@ -41,6 +49,29 @@ fn about() -> Value {
 fn about() -> Value {
     serde_json::json!({"version": crate::VERSION, "channel": "stable", "toolsInstalled": false,
         "diagnostics": format!("Arcade Clipboard {}\nChannel: stable\n", crate::VERSION)})
+}
+
+/// Clipboard's folders from Link's paths module (STANDARD §10): first moves
+/// any folder an older version used (copy, verify, then remove; a failed
+/// copy leaves it in place), then names the config, data and cache folders.
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+fn app_dirs() -> Value {
+    let migration = arcade_link::paths::migrate_app_dirs(arcade_link::ids::CLIPBOARD);
+    let dirs = arcade_link::paths::app_dirs(arcade_link::ids::CLIPBOARD);
+    let path = |p: &std::path::Path| p.to_string_lossy().into_owned();
+    serde_json::json!({
+        "config": path(&dirs.config),
+        "data": path(&dirs.data),
+        "cache": path(&dirs.cache),
+        "moved": migration.moved.iter().map(|(from, to)| serde_json::json!({"from": path(from), "to": path(to)})).collect::<Vec<_>>(),
+        "kept": migration.kept.iter().map(|(from, reason)| serde_json::json!({"from": path(from), "reason": reason})).collect::<Vec<_>>(),
+    })
+}
+
+/// Phones keep the platform's app folders.
+#[cfg(any(target_os = "android", target_os = "ios"))]
+fn app_dirs() -> Value {
+    Value::Null
 }
 
 fn core_slot() -> &'static Mutex<Option<Arc<Core>>> {
@@ -277,7 +308,10 @@ pub async fn call(request: String) -> Result<String, String> {
         // shared diagnostics header (STANDARD §10). No clip content or keys.
         "about" => tokio::task::spawn_blocking(about)
             .await
-            .map_err(|_| "Could not read the app details".to_string())?,
+            .map_err(|_| "Couldn't read the app details".to_string())?,
+        "app_dirs" => tokio::task::spawn_blocking(app_dirs)
+            .await
+            .map_err(|_| "Couldn't find the app's folders".to_string())?,
         "shutdown" => {
             // Before the lifecycle lock, which waits for pending long-polls:
             // the endpoint must disappear promptly on quit.

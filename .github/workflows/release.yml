@@ -111,12 +111,12 @@ jobs:
       - name: Build desktop app and Rust core
         env:
           PLATFORM: ${{ matrix.platform }}
-        run: bash scripts/dev.sh "build-$PLATFORM"
+        run: bash scripts/dev "build-$PLATFORM"
       - name: Build Linux AppImage
         if: matrix.platform == 'linux'
         env:
           RELEASE_VERSION: ${{ needs.version.outputs.version }}
-        run: bash scripts/dev.sh build-appimage --version "$RELEASE_VERSION"
+        run: bash scripts/dev build-appimage --version "$RELEASE_VERSION"
       - name: Package Linux assets, Inno installer, or dmg
         env:
           RELEASE_VERSION: ${{ needs.version.outputs.version }}

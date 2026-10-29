@@ -5,7 +5,7 @@ arcade_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$arcade_root"
 
 usage() {
-  echo 'Usage: bash scripts/dev.sh build-appimage --version VERSION [--bundle PATH] [--output-dir PATH]' >&2
+  echo 'Usage: bash scripts/dev build-appimage --version VERSION [--bundle PATH] [--output-dir PATH]' >&2
   exit 2
 }
 
@@ -22,7 +22,7 @@ while (($#)); do
 done
 [[ "$version" =~ ^[0-9][0-9A-Za-z.+-]*$ ]] || usage
 [[ -x "$bundle/clipboard" && -x "$bundle/arcade-clipboard" && -d "$bundle/lib" && -d "$bundle/data" ]] || {
-  echo "Missing Flutter release bundle at $bundle; run bash scripts/dev.sh build-linux first." >&2
+  echo "Missing Flutter release bundle at $bundle; run bash scripts/dev build-linux first." >&2
   exit 1
 }
 command -v curl >/dev/null || { echo 'curl is required to download appimagetool.' >&2; exit 1; }
@@ -55,17 +55,17 @@ cp -a "$bundle/." "$appdir/usr/lib/arcade-clipboard/"
 # The self-installer and --install/--uninstall/--repair entry point.
 cargo build --release --locked -p arcade-clipboard-launcher
 install -m 755 "$arcade_root/target/release/arcade-clipboard-launcher" "$appdir/usr/lib/arcade-clipboard/arcade-clipboard-launcher"
-install -m 644 packaging/linux/dev.arcade.clipboard.desktop "$appdir/dev.arcade.clipboard.desktop"
-install -m 644 packaging/linux/dev.arcade.clipboard.desktop "$appdir/usr/share/applications/dev.arcade.clipboard.desktop"
+install -m 644 packaging/linux/dev.arcade.Clipboard.desktop "$appdir/dev.arcade.Clipboard.desktop"
+install -m 644 packaging/linux/dev.arcade.Clipboard.desktop "$appdir/usr/share/applications/dev.arcade.Clipboard.desktop"
 
 icon="$arcade_root/packaging/linux/dev.arcade.Clipboard.svg"
-install -m 644 "$icon" "$appdir/usr/share/icons/hicolor/scalable/apps/dev.arcade.clipboard.svg"
+install -m 644 "$icon" "$appdir/usr/share/icons/hicolor/scalable/apps/dev.arcade.Clipboard.svg"
 for size in 16 24 32 48 64 128 256 512; do
   icon_dir="$appdir/usr/share/icons/hicolor/${size}x${size}/apps"
   mkdir -p "$icon_dir"
-  rsvg-convert --width "$size" --height "$size" "$icon" > "$icon_dir/dev.arcade.clipboard.png"
+  rsvg-convert --width "$size" --height "$size" "$icon" > "$icon_dir/dev.arcade.Clipboard.png"
 done
-cp "$appdir/usr/share/icons/hicolor/256x256/apps/dev.arcade.clipboard.png" "$appdir/dev.arcade.clipboard.png"
+cp "$appdir/usr/share/icons/hicolor/256x256/apps/dev.arcade.Clipboard.png" "$appdir/dev.arcade.Clipboard.png"
 if [[ -f LICENSE ]]; then
   install -m 644 LICENSE "$appdir/usr/share/doc/arcade-clipboard/LICENSE"
 fi
@@ -92,8 +92,8 @@ APPRUN
 chmod 755 "$appdir/AppRun"
 
 if command -v desktop-file-validate >/dev/null; then
-  desktop-file-validate "$appdir/dev.arcade.clipboard.desktop"
-  desktop-file-validate "$appdir/usr/share/applications/dev.arcade.clipboard.desktop"
+  desktop-file-validate "$appdir/dev.arcade.Clipboard.desktop"
+  desktop-file-validate "$appdir/usr/share/applications/dev.arcade.Clipboard.desktop"
 fi
 
 python3 - "$bundle" <<'PY'

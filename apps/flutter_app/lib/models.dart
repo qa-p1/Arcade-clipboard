@@ -290,7 +290,11 @@ int? _integer(Object? value) {
 
 /// Settings › About details from the core.
 class AboutInfo {
-  const AboutInfo({required this.version, required this.channel, required this.toolsInstalled, required this.diagnosticsHeader});
+  const AboutInfo(
+      {required this.version,
+      required this.channel,
+      required this.toolsInstalled,
+      required this.diagnosticsHeader});
 
   final String version;
   final String channel;

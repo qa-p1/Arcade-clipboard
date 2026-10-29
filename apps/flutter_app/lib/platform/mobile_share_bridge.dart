@@ -31,17 +31,18 @@ class MobileShareBridge {
 
   void setDiscoveryHandler(
       Future<void> Function(Map<String, dynamic>)? handler) {
-    _channel.setMethodCallHandler(handler == null ? null : (call) async {
-      if (call.method == 'peerDiscovered' && call.arguments is Map) {
-        await handler(Map<String, dynamic>.from(call.arguments as Map));
-      }
-    });
+    _channel.setMethodCallHandler(handler == null
+        ? null
+        : (call) async {
+            if (call.method == 'peerDiscovered' && call.arguments is Map) {
+              await handler(Map<String, dynamic>.from(call.arguments as Map));
+            }
+          });
   }
 
   Future<void> configureDiscovery(Map<String, dynamic> configuration) =>
       _channel.invokeMethod<void>('configureDiscovery', configuration);
-  Future<void> stopDiscovery() =>
-      _channel.invokeMethod<void>('stopDiscovery');
+  Future<void> stopDiscovery() => _channel.invokeMethod<void>('stopDiscovery');
   Future<void> primeLocalNetwork() =>
       _channel.invokeMethod<void>('primeLocalNetwork');
 

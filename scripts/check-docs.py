@@ -33,6 +33,11 @@ def main():
                 continue  # External URLs are not fetched by this offline check.
             path = (file.parent / unquote(url.path)).resolve() if url.path else file
             checked += 1
+            # Tools shows the user guide offline: it may link only inside
+            # docs/user/ or to absolute URLs (STANDARD §10).
+            user = (ROOT / "docs/user").resolve()
+            if file.resolve().is_relative_to(user) and not path.is_relative_to(user):
+                errors.append(f"{file.relative_to(ROOT)}: {target} leaves docs/user/; use an absolute URL")
             if not path.exists():
                 errors.append(f"{file.relative_to(ROOT)}: missing {target}")
             elif url.fragment and path.suffix == ".md" and unquote(url.fragment) not in anchors(path):

@@ -34,8 +34,8 @@ entry. The tarball is planned to be dropped after this release.
 To build both release formats locally:
 
 ```bash
-bash scripts/dev.sh build-linux
-bash scripts/dev.sh build-appimage --version 0.1.0
+bash scripts/dev build-linux
+bash scripts/dev build-appimage --version 0.1.0
 ```
 
 `build-linux` creates the release bundle and transition tarball. `build-appimage`

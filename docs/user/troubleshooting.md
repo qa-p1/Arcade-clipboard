@@ -30,7 +30,7 @@ Open Settings and choose a different shortcut if another app or the compositor a
 
 Make sure a Secret Service provider such as GNOME Keyring or KWallet is running and its keyring is unlocked. Clipboard stores its device identity there and does not silently create a replacement identity when the key is missing.
 
-On Wayland, check that **wl-clipboard** is installed. On X11, automatic paste needs the X11 integration tools listed in the [Linux platform guide](../linux.md).
+On Wayland, check that **wl-clipboard** is installed. On X11, automatic paste needs the X11 integration tools listed in the [Linux platform guide](https://github.com/qa-p1/Arcade-clipboard/blob/main/docs/dev/linux.md).
 
 ## I am on Windows or macOS
 

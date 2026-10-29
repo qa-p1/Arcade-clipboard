@@ -31,7 +31,8 @@ class _MeshOverlayState extends State<MeshOverlay> {
   void _selectCurrent({bool plainText = false}) {
     final items = _visible;
     if (items.isEmpty) return;
-    unawaited(widget.controller.selectOverlayItem(items[_selectedIndex(items)], plainText: plainText && !_picking));
+    unawaited(widget.controller.selectOverlayItem(items[_selectedIndex(items)],
+        plainText: plainText && !_picking));
   }
 
   void _revealSelection(int index) {
@@ -50,7 +51,9 @@ class _MeshOverlayState extends State<MeshOverlay> {
       if (target != null) {
         unawaited(_scroll.animateTo(
           target.clamp(0.0, _scroll.position.maxScrollExtent).toDouble(),
-          duration: MediaQuery.disableAnimationsOf(context) ? Duration.zero : const Duration(milliseconds: 140),
+          duration: MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : const Duration(milliseconds: 140),
           curve: Curves.easeOut,
         ));
       }
@@ -93,113 +96,158 @@ class _MeshOverlayState extends State<MeshOverlay> {
             decoration: BoxDecoration(
               color: c.panel,
               border: Border.all(color: c.line),
-              borderRadius: const BorderRadius.all(Radius.circular(ArcadeTokens.radiusLg)),
+              borderRadius: const BorderRadius.all(
+                  Radius.circular(ArcadeTokens.radiusLg)),
             ),
             clipBehavior: Clip.antiAlias,
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(ArcadeTokens.space10, ArcadeTokens.space10, ArcadeTokens.space10, ArcadeTokens.space6),
-                child: CallbackShortcuts(
-                  bindings: {
-                    for (final key in const [
-                      LogicalKeyboardKey.arrowUp,
-                      LogicalKeyboardKey.arrowDown,
-                      LogicalKeyboardKey.home,
-                      LogicalKeyboardKey.end,
-                    ])
-                      SingleActivator(key): () => _handleKey(key),
-                    const SingleActivator(LogicalKeyboardKey.enter, control: true): () => _selectCurrent(plainText: true),
-                    const SingleActivator(LogicalKeyboardKey.enter, meta: true): () => _selectCurrent(plainText: true),
-                  },
-                  child: ArcadeSearchField(
-                    controller: _search,
-                    focusNode: _focus,
-                    height: ArcadeTokens.overlaySearch,
-                    hint: _picking ? 'Choose a clip for ${controller.linkPickFor}' : 'Search clips',
-                    onSubmitted: (_) => _selectCurrent(),
-                    onEscape: controller.dismissOverlay,
-                    onChanged: (value) {
-                      setState(() => _selectedItemId = null);
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        if (mounted && _scroll.hasClients) _scroll.jumpTo(0);
-                      });
-                      unawaited(controller.searchOverlay(value));
-                    },
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                        ArcadeTokens.space10,
+                        ArcadeTokens.space10,
+                        ArcadeTokens.space10,
+                        ArcadeTokens.space6),
+                    child: CallbackShortcuts(
+                      bindings: {
+                        for (final key in const [
+                          LogicalKeyboardKey.arrowUp,
+                          LogicalKeyboardKey.arrowDown,
+                          LogicalKeyboardKey.home,
+                          LogicalKeyboardKey.end,
+                        ])
+                          SingleActivator(key): () => _handleKey(key),
+                        const SingleActivator(LogicalKeyboardKey.enter,
+                                control: true):
+                            () => _selectCurrent(plainText: true),
+                        const SingleActivator(LogicalKeyboardKey.enter,
+                            meta: true): () => _selectCurrent(plainText: true),
+                      },
+                      child: ArcadeSearchField(
+                        controller: _search,
+                        focusNode: _focus,
+                        height: ArcadeTokens.overlaySearch,
+                        hint: _picking
+                            ? 'Choose a clip for ${controller.linkPickFor}'
+                            : 'Search clips',
+                        onSubmitted: (_) => _selectCurrent(),
+                        onEscape: controller.dismissOverlay,
+                        onChanged: (value) {
+                          setState(() => _selectedItemId = null);
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (mounted && _scroll.hasClients) {
+                              _scroll.jumpTo(0);
+                            }
+                          });
+                          unawaited(controller.searchOverlay(value));
+                        },
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              SizedBox(
-                height: ArcadeTokens.space2,
-                child: controller.overlaySearchLoading ? const LinearProgressIndicator(minHeight: ArcadeTokens.space2) : null,
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: ArcadeTokens.space10),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  LinkWorkStatus(controller: controller),
-                  WaitingPhoto(controller: controller),
-                  if (controller.error case final error?)
-                    Padding(
-                      padding: const EdgeInsets.only(top: ArcadeTokens.space6),
-                      child: ArcadeNotice(error, tone: ArcadeTone.danger),
-                    ),
-                  if (controller.notice case final notice?)
-                    Padding(
-                      padding: const EdgeInsets.only(top: ArcadeTokens.space6),
-                      child: ArcadeNotice(notice),
-                    ),
-                ]),
-              ),
-              Expanded(
-                child: items.isEmpty
-                    ? Center(
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.all(ArcadeTokens.space16),
-                          child: ArcadeEmptyState(
-                            icon: _search.text.isEmpty ? 'clipboard' : 'search',
-                            title: _search.text.isEmpty ? 'Nothing copied yet' : 'No matching clips',
-                            message: _search.text.isEmpty
-                                ? 'Copy something on any of your devices and it shows up here.'
-                                : 'Try a different word, or press Esc to clear the search.',
+                  SizedBox(
+                    height: ArcadeTokens.space2,
+                    child: controller.overlaySearchLoading
+                        ? const LinearProgressIndicator(
+                            minHeight: ArcadeTokens.space2)
+                        : null,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: ArcadeTokens.space10),
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          LinkWorkStatus(controller: controller),
+                          WaitingPhoto(controller: controller),
+                          if (controller.error case final error?)
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                  top: ArcadeTokens.space6),
+                              child:
+                                  ArcadeNotice(error, tone: ArcadeTone.danger),
+                            ),
+                          if (controller.notice case final notice?)
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                  top: ArcadeTokens.space6),
+                              child: ArcadeNotice(notice),
+                            ),
+                        ]),
+                  ),
+                  Expanded(
+                    child: items.isEmpty
+                        ? Center(
+                            child: SingleChildScrollView(
+                              padding:
+                                  const EdgeInsets.all(ArcadeTokens.space16),
+                              child: ArcadeEmptyState(
+                                icon: _search.text.isEmpty
+                                    ? 'clipboard'
+                                    : 'search',
+                                title: _search.text.isEmpty
+                                    ? 'Nothing copied yet'
+                                    : 'No matching clips',
+                                message: _search.text.isEmpty
+                                    ? 'Copy something on any of your devices and it shows up here.'
+                                    : 'Try a different word, or press Esc to clear the search.',
+                              ),
+                            ),
+                          )
+                        : ListView.builder(
+                            controller: _scroll,
+                            padding: const EdgeInsets.all(ArcadeTokens.space6),
+                            itemExtent:
+                                ArcadeTokens.rowOverlay + ArcadeTokens.space2,
+                            itemCount: items.length,
+                            itemBuilder: (context, index) => Padding(
+                              padding: const EdgeInsets.only(
+                                  bottom: ArcadeTokens.space2),
+                              child: _OverlayClipRow(
+                                item: items[index],
+                                selected: index == selectedIndex,
+                                onTap: () => unawaited(
+                                    controller.selectOverlayItem(items[index])),
+                                onHover: (hovering) {
+                                  if (hovering) {
+                                    setState(() =>
+                                        _selectedItemId = items[index].id);
+                                  }
+                                },
+                              ),
+                            ),
                           ),
-                        ),
-                      )
-                    : ListView.builder(
-                        controller: _scroll,
-                        padding: const EdgeInsets.all(ArcadeTokens.space6),
-                        itemExtent: ArcadeTokens.rowOverlay + ArcadeTokens.space2,
-                        itemCount: items.length,
-                        itemBuilder: (context, index) => Padding(
-                          padding: const EdgeInsets.only(bottom: ArcadeTokens.space2),
-                          child: _OverlayClipRow(
-                            item: items[index],
-                            selected: index == selectedIndex,
-                            onTap: () => unawaited(controller.selectOverlayItem(items[index])),
-                            onHover: (hovering) {
-                              if (hovering) setState(() => _selectedItemId = items[index].id);
-                            },
-                          ),
-                        ),
-                      ),
-              ),
-              if (items.isNotEmpty && controller.linkActions(items[selectedIndex]).isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: ArcadeTokens.space10, vertical: ArcadeTokens.space6),
-                  decoration: BoxDecoration(border: Border(top: BorderSide(color: c.line))),
-                  child: Wrap(spacing: ArcadeTokens.space6, runSpacing: ArcadeTokens.space6, children: [
-                    for (final action in controller.linkActions(items[selectedIndex]))
-                      _OverlayLinkAction(
-                        action: action,
-                        onPressed: action.enabled ? () => controller.invokeItemAction(items[selectedIndex], action) : null,
-                      ),
+                  ),
+                  if (items.isNotEmpty &&
+                      controller.linkActions(items[selectedIndex]).isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: ArcadeTokens.space10,
+                          vertical: ArcadeTokens.space6),
+                      decoration: BoxDecoration(
+                          border: Border(top: BorderSide(color: c.line))),
+                      child: Wrap(
+                          spacing: ArcadeTokens.space6,
+                          runSpacing: ArcadeTokens.space6,
+                          children: [
+                            for (final action
+                                in controller.linkActions(items[selectedIndex]))
+                              _OverlayLinkAction(
+                                action: action,
+                                onPressed: action.enabled
+                                    ? () => controller.invokeItemAction(
+                                        items[selectedIndex], action)
+                                    : null,
+                              ),
+                          ]),
+                    ),
+                  ArcadeHintBar([
+                    (const ['↑', '↓'], 'Select'),
+                    (const ['↵'], enterLabel),
+                    if (!_picking) ([mod, '↵'], 'Paste as plain text'),
+                    (const ['Esc'], 'Close'),
                   ]),
-                ),
-              ArcadeHintBar([
-                (const ['↑', '↓'], 'Select'),
-                (const ['↵'], enterLabel),
-                if (!_picking) ([mod, '↵'], 'Paste as plain text'),
-                (const ['Esc'], 'Close'),
-              ]),
-            ]),
+                ]),
           ),
         ),
       ),
@@ -209,10 +257,13 @@ class _MeshOverlayState extends State<MeshOverlay> {
   KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
     final keyboard = HardwareKeyboard.instance;
-    if (keyboard.isControlPressed && keyboard.isAltPressed && _visible.isNotEmpty) {
+    if (keyboard.isControlPressed &&
+        keyboard.isAltPressed &&
+        _visible.isNotEmpty) {
       final item = _visible[_selectedIndex(_visible)];
       for (final action in widget.controller.linkActions(item)) {
-        if (event.logicalKey.keyLabel.toUpperCase() == action.shortcut && action.enabled) {
+        if (event.logicalKey.keyLabel.toUpperCase() == action.shortcut &&
+            action.enabled) {
           widget.controller.invokeItemAction(item, action);
           return KeyEventResult.handled;
         }
@@ -229,8 +280,10 @@ class _MeshOverlayState extends State<MeshOverlay> {
     final items = _visible;
     if (items.isEmpty) return KeyEventResult.ignored;
     final int? next = switch (key) {
-      LogicalKeyboardKey.arrowDown => (_selectedIndex(items) + 1) % items.length,
-      LogicalKeyboardKey.arrowUp => (_selectedIndex(items) - 1 + items.length) % items.length,
+      LogicalKeyboardKey.arrowDown =>
+        (_selectedIndex(items) + 1) % items.length,
+      LogicalKeyboardKey.arrowUp =>
+        (_selectedIndex(items) - 1 + items.length) % items.length,
       LogicalKeyboardKey.home => 0,
       LogicalKeyboardKey.end => items.length - 1,
       _ => null,
@@ -249,7 +302,11 @@ class _MeshOverlayState extends State<MeshOverlay> {
 }
 
 class _OverlayClipRow extends StatelessWidget {
-  const _OverlayClipRow({required this.item, required this.selected, required this.onTap, required this.onHover});
+  const _OverlayClipRow(
+      {required this.item,
+      required this.selected,
+      required this.onTap,
+      required this.onHover});
 
   final ClipboardItem item;
   final bool selected;
@@ -263,16 +320,22 @@ class _OverlayClipRow extends StatelessWidget {
       listenable: _RelativeClock.instance,
       builder: (context, _) => ArcadeOverlayRow(
         title: item.preview.replaceAll(RegExp(r'\s+'), ' ').trim(),
-        leading: ArcadeIcon(clipGlyph(item.kind), color: selected ? c.accentText : c.muted),
+        leading: ArcadeIcon(clipGlyph(item.kind),
+            color: selected ? c.accentText : c.muted),
         trailing: Row(mainAxisSize: MainAxisSize.min, children: [
           if (item.pinned) ...[
-            ArcadeIcon('pin', size: ArcadeTokens.iconSize, color: c.faint, semanticLabel: 'Pinned'),
+            ArcadeIcon('pin',
+                size: ArcadeTokens.iconSize,
+                color: c.faint,
+                semanticLabel: 'Pinned'),
             const SizedBox(width: ArcadeTokens.space6),
           ],
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 160),
             child: Text('${item.sourceName} · ${_relativeTime(item.createdAt)}',
-                maxLines: 1, overflow: TextOverflow.ellipsis, style: ArcadeTokens.textCaption.copyWith(color: c.faint)),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: ArcadeTokens.textCaption.copyWith(color: c.faint)),
           ),
         ]),
         selected: selected,
@@ -298,16 +361,19 @@ class _OverlayLinkAction extends StatelessWidget {
       message: action.disabledReason ?? action.title,
       child: InkWell(
         onTap: onPressed,
-        borderRadius: const BorderRadius.all(Radius.circular(ArcadeTokens.radiusSm)),
+        borderRadius:
+            const BorderRadius.all(Radius.circular(ArcadeTokens.radiusSm)),
         hoverColor: c.hover,
         child: Opacity(
           opacity: onPressed == null ? 0.5 : 1,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: ArcadeTokens.space8, vertical: ArcadeTokens.space4),
+            padding: const EdgeInsets.symmetric(
+                horizontal: ArcadeTokens.space8, vertical: ArcadeTokens.space4),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               ArcadeGlyph(action.peer, size: ArcadeTokens.iconSize),
               const SizedBox(width: ArcadeTokens.space6),
-              Text(action.title, style: ArcadeTokens.textControl.copyWith(color: c.text)),
+              Text(action.title,
+                  style: ArcadeTokens.textControl.copyWith(color: c.text)),
               const SizedBox(width: ArcadeTokens.space8),
               ArcadeKeyCombo(['Ctrl', 'Alt', action.shortcut]),
             ]),

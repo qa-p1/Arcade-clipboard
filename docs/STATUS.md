@@ -114,9 +114,9 @@ release workflow's existing `scripts/package-desktop.py`. These checks are
 | Document | Contents |
 |---|---|
 | [README](../README.md) | Behavior, platform table, install, pairing |
-| [linux](linux.md), [ios](ios.md), [platforms](platforms.md) | Per-platform setup and limits |
-| [architecture](architecture.md), [protocol](protocol.md), [security](security.md) | Design, wire protocol, threat model |
-| [arcade-link](arcade-link.md) | Link actions, connected clip actions, verification |
-| [development](development.md) | Building, tests, CI |
-| [releases](releases.md), [relay-deployment](relay-deployment.md) | Packages and the relay |
-| [Original-spec](../Original-spec.md) | The original product brief (not an implementation record) |
+| [linux](dev/linux.md), [ios](dev/ios.md), [platforms](dev/platforms.md) | Per-platform setup and limits |
+| [architecture](dev/architecture.md), [protocol](dev/protocol.md), [security](dev/security.md) | Design, wire protocol, threat model |
+| [arcade-link](dev/link.md) | Link actions, connected clip actions, verification |
+| [development](dev/development.md) | Building, tests, CI |
+| [releases](dev/releases.md), [relay-deployment](dev/relay-deployment.md) | Packages and the relay |
+| [Original-spec](dev/history/Original-spec.md) | The original product brief (not an implementation record) |

@@ -63,7 +63,7 @@ def package(app, output):
             raise ValueError(f'IPA archive failed integrity check: {bad}')
     digest = hashlib.sha256(output.read_bytes()).hexdigest()
     output.with_suffix('.ipa.sha256').write_text(f'{digest}  {output.name}\n')
-    shutil.copyfile(Path(__file__).resolve().parents[1] / 'docs/ios.md',
+    shutil.copyfile(Path(__file__).resolve().parents[1] / 'docs/dev/ios.md',
                     output.parent / 'iPhone-installation.md')
     print(f'Unsigned IPA: {output.resolve()}')
 

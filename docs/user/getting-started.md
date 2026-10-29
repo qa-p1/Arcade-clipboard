@@ -26,7 +26,7 @@ Open the dmg and drag Clipboard to Applications. If you run it from the dmg or D
 
 ### iPhone and iPad
 
-The iOS app is distributed as an unsigned IPA that you must sign and install with your own signing tool. Follow the [iPhone setup guide](../ios.md).
+The iOS app is distributed as an unsigned IPA that you must sign and install with your own signing tool. Follow the [iPhone setup guide](https://github.com/qa-p1/Arcade-clipboard/blob/main/docs/dev/ios.md).
 
 Android builds exist, but have not been tested on a device; there is no verified install workflow to recommend yet.
 

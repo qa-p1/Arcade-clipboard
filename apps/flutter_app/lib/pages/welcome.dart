@@ -24,7 +24,8 @@ class _WelcomeViewState extends State<_WelcomeView> {
   @override
   void initState() {
     super.initState();
-    _deviceName.text = widget.controller.status?.deviceName ?? Platform.localHostname;
+    _deviceName.text =
+        widget.controller.status?.deviceName ?? Platform.localHostname;
   }
 
   @override
@@ -50,64 +51,85 @@ class _WelcomeViewState extends State<_WelcomeView> {
             padding: const EdgeInsets.all(ArcadeTokens.space24),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 560),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                // The hero: 52 px mark, display title, one sentence.
-                Center(
-                  child: ArcadeGlyphTile(
-                    size: ArcadeTokens.tileLg,
-                    color: c.accent,
-                    child: ArcadeIcon('clipboard', size: 26, color: c.accentText),
-                  ),
-                ),
-                const SizedBox(height: ArcadeTokens.space16),
-                Text('Set up Arcade Clipboard',
-                    textAlign: TextAlign.center, style: ArcadeTokens.textDisplay.copyWith(color: c.text)),
-                const SizedBox(height: ArcadeTokens.space8),
-                Text(
-                  'Copy on one of your devices and paste on another. No account, end-to-end encrypted.',
-                  textAlign: TextAlign.center,
-                  style: ArcadeTokens.textBody.copyWith(color: c.muted),
-                ),
-                const SizedBox(height: ArcadeTokens.space32),
-                if (_setup == _Setup.choose)
-                  LayoutBuilder(builder: (context, constraints) {
-                    final cards = [
-                      _ChoiceCard(
-                        icon: 'plus',
-                        title: 'Start on this device',
-                        text: 'Create your mesh here, then invite your other devices.',
-                        onTap: controller.working ? null : () => _choose(_Setup.start),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // The hero: 52 px mark, display title, one sentence.
+                    Center(
+                      child: ArcadeGlyphTile(
+                        size: ArcadeTokens.tileLg,
+                        color: c.accent,
+                        child: ArcadeIcon('clipboard',
+                            size: 26, color: c.accentText),
                       ),
-                      _ChoiceCard(
-                        icon: 'qr',
-                        title: 'Join your other device',
-                        text: 'Scan or paste the invite from a device that already uses Arcade Clipboard.',
-                        onTap: controller.working ? null : () => _choose(_Setup.join),
-                      ),
-                    ];
-                    return constraints.maxWidth >= 480
-                        ? IntrinsicHeight(
-                            child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                            Expanded(child: cards[0]),
-                            const SizedBox(width: ArcadeTokens.space12),
-                            Expanded(child: cards[1]),
-                          ]))
-                        : Column(children: [cards[0], const SizedBox(height: ArcadeTokens.space12), cards[1]]);
-                  })
-                else
-                  _setupForm(context),
-                const SizedBox(height: ArcadeTokens.space16),
-                if (controller.working) const LinearProgressIndicator(minHeight: 2),
-                _Messages(controller: controller),
-                if (controller.error != null && !controller.ready)
-                  Center(
-                    child: ArcadeButton(
-                      label: 'Try again',
-                      icon: 'refresh',
-                      onPressed: controller.working ? null : () => controller.start(),
                     ),
-                  ),
-              ]),
+                    const SizedBox(height: ArcadeTokens.space16),
+                    Text('Set up Arcade Clipboard',
+                        textAlign: TextAlign.center,
+                        style:
+                            ArcadeTokens.textDisplay.copyWith(color: c.text)),
+                    const SizedBox(height: ArcadeTokens.space8),
+                    Text(
+                      'Copy on one of your devices and paste on another. No account, end-to-end encrypted.',
+                      textAlign: TextAlign.center,
+                      style: ArcadeTokens.textBody.copyWith(color: c.muted),
+                    ),
+                    const SizedBox(height: ArcadeTokens.space32),
+                    if (_setup == _Setup.choose)
+                      LayoutBuilder(builder: (context, constraints) {
+                        final cards = [
+                          _ChoiceCard(
+                            icon: 'plus',
+                            title: 'Start on this device',
+                            text:
+                                'Create your mesh here, then invite your other devices.',
+                            onTap: controller.working
+                                ? null
+                                : () => _choose(_Setup.start),
+                          ),
+                          _ChoiceCard(
+                            icon: 'qr',
+                            title: 'Join your other device',
+                            text:
+                                'Scan or paste the invite from a device that already uses Arcade Clipboard.',
+                            onTap: controller.working
+                                ? null
+                                : () => _choose(_Setup.join),
+                          ),
+                        ];
+                        return constraints.maxWidth >= 480
+                            ? IntrinsicHeight(
+                                child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                    Expanded(child: cards[0]),
+                                    const SizedBox(width: ArcadeTokens.space12),
+                                    Expanded(child: cards[1]),
+                                  ]))
+                            : Column(children: [
+                                cards[0],
+                                const SizedBox(height: ArcadeTokens.space12),
+                                cards[1]
+                              ]);
+                      })
+                    else
+                      _setupForm(context),
+                    const SizedBox(height: ArcadeTokens.space16),
+                    if (controller.working)
+                      const LinearProgressIndicator(minHeight: 2),
+                    _Messages(controller: controller),
+                    if (controller.error != null && !controller.ready)
+                      Center(
+                        child: ArcadeButton(
+                          label: 'Try again',
+                          icon: 'refresh',
+                          onPressed: controller.working
+                              ? null
+                              : () => controller.start(),
+                        ),
+                      ),
+                  ]),
             ),
           ),
         ),
@@ -119,84 +141,120 @@ class _WelcomeViewState extends State<_WelcomeView> {
     final controller = widget.controller;
     final join = _setup == _Setup.join;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      ArcadeListSection(title: join ? 'Join your other device' : 'Start on this device', children: [
-        ArcadeRow(
-          title: 'Device name',
-          subtitle: 'Helps you recognise this device on the others.',
-          extra: TextField(
-            controller: _deviceName,
-            textInputAction: TextInputAction.next,
-            decoration: const InputDecoration(hintText: 'e.g. Studio Mac'),
-          ),
-        ),
-        if (!join && controller.desktopAvailable)
-          ArcadeSwitchRow(
-            title: 'Add what you copy on this computer',
-            subtitle: 'Text, images and files you copy are added and synced. Use Private mode for anything you don’t want shared.',
-            value: controller.automaticDesktopCapture,
-            onChanged: controller.working ? null : controller.setAutomaticDesktopCapture,
-          ),
-        if (join)
-          ArcadeRow(
-            title: 'Invite',
-            subtitle: 'On your other device, open Devices › Invite a device.',
-            extra: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Wrap(spacing: ArcadeTokens.space8, runSpacing: ArcadeTokens.space8, children: [
-                if (Platform.isAndroid || Platform.isIOS || Platform.isMacOS)
-                  ArcadeButton(
-                    label: 'Scan QR code',
-                    icon: 'qr',
-                    small: true,
-                    onPressed: controller.working
-                        ? null
-                        : () async {
-                            final value = await Navigator.of(context).push<String>(MaterialPageRoute(builder: (_) => const _PairingScanner()));
-                            if (value != null && mounted) setState(() => _invite.text = value);
-                          },
-                  ),
-                ArcadeButton(
-                  label: _importingQr ? 'Reading QR image…' : 'Import QR image',
-                  icon: 'image',
-                  small: true,
-                  busy: _importingQr,
-                  onPressed: _importingQr ? null : _importQrImage,
-                ),
-              ]),
-              const SizedBox(height: ArcadeTokens.space8),
-              TextField(
-                controller: _invite,
-                minLines: 2,
-                maxLines: 4,
-                textInputAction: TextInputAction.done,
-                decoration: const InputDecoration(hintText: 'Or paste the invite shown on your other device'),
+      ArcadeListSection(
+          title: join ? 'Join your other device' : 'Start on this device',
+          children: [
+            ArcadeRow(
+              title: 'Device name',
+              subtitle: 'Helps you recognise this device on the others.',
+              extra: TextField(
+                controller: _deviceName,
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(hintText: 'e.g. Studio Mac'),
               ),
-              if (_qrImportError != null) ...[
-                const SizedBox(height: ArcadeTokens.space8),
-                ArcadeNotice(_qrImportError!, tone: ArcadeTone.danger),
-              ],
-            ]),
-          ),
-      ]),
+            ),
+            if (!join && controller.desktopAvailable)
+              ArcadeSwitchRow(
+                title: 'Add what you copy on this computer',
+                subtitle:
+                    'Text, images and files you copy are added and synced. Use Private mode for anything you don’t want shared.',
+                value: controller.automaticDesktopCapture,
+                onChanged: controller.working
+                    ? null
+                    : controller.setAutomaticDesktopCapture,
+              ),
+            if (join)
+              ArcadeRow(
+                title: 'Invite',
+                subtitle:
+                    'On your other device, open Devices › Invite a device.',
+                extra: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Wrap(
+                          spacing: ArcadeTokens.space8,
+                          runSpacing: ArcadeTokens.space8,
+                          children: [
+                            if (Platform.isAndroid ||
+                                Platform.isIOS ||
+                                Platform.isMacOS)
+                              ArcadeButton(
+                                label: 'Scan QR code',
+                                icon: 'qr',
+                                small: true,
+                                onPressed: controller.working
+                                    ? null
+                                    : () async {
+                                        final value = await Navigator.of(
+                                                context)
+                                            .push<String>(MaterialPageRoute(
+                                                builder: (_) =>
+                                                    const _PairingScanner()));
+                                        if (value != null && mounted) {
+                                          setState(() => _invite.text = value);
+                                        }
+                                      },
+                              ),
+                            ArcadeButton(
+                              label: _importingQr
+                                  ? 'Reading QR image…'
+                                  : 'Import QR image',
+                              icon: 'image',
+                              small: true,
+                              busy: _importingQr,
+                              onPressed: _importingQr ? null : _importQrImage,
+                            ),
+                          ]),
+                      const SizedBox(height: ArcadeTokens.space8),
+                      TextField(
+                        controller: _invite,
+                        minLines: 2,
+                        maxLines: 4,
+                        textInputAction: TextInputAction.done,
+                        decoration: const InputDecoration(
+                            hintText:
+                                'Or paste the invite shown on your other device'),
+                      ),
+                      if (_qrImportError != null) ...[
+                        const SizedBox(height: ArcadeTokens.space8),
+                        ArcadeNotice(_qrImportError!, tone: ArcadeTone.danger),
+                      ],
+                    ]),
+              ),
+          ]),
       if (join && controller.currentJoin != null) ...[
         const SizedBox(height: ArcadeTokens.space16),
-        _JoinVerificationCard(controller: controller, pairing: controller.currentJoin!),
+        _JoinVerificationCard(
+            controller: controller, pairing: controller.currentJoin!),
       ],
       const SizedBox(height: ArcadeTokens.space16),
-      Wrap(alignment: WrapAlignment.end, spacing: ArcadeTokens.space8, children: [
-        ArcadeButton(label: 'Back', variant: ArcadeButtonVariant.ghost, onPressed: controller.working ? null : () => _choose(_Setup.choose)),
-        if (join)
-          ArcadeButton(
-            label: 'Join',
-            variant: ArcadeButtonVariant.primary,
-            onPressed: controller.working ? null : () => controller.joinMesh(invite: _invite.text, deviceName: _deviceName.text),
-          )
-        else
-          ArcadeButton(
-            label: 'Start on this device',
-            variant: ArcadeButtonVariant.primary,
-            onPressed: controller.working ? null : () => controller.createMesh(_deviceName.text),
-          ),
-      ]),
+      Wrap(
+          alignment: WrapAlignment.end,
+          spacing: ArcadeTokens.space8,
+          children: [
+            ArcadeButton(
+                label: 'Back',
+                variant: ArcadeButtonVariant.ghost,
+                onPressed:
+                    controller.working ? null : () => _choose(_Setup.choose)),
+            if (join)
+              ArcadeButton(
+                label: 'Join',
+                variant: ArcadeButtonVariant.primary,
+                onPressed: controller.working
+                    ? null
+                    : () => controller.joinMesh(
+                        invite: _invite.text, deviceName: _deviceName.text),
+              )
+            else
+              ArcadeButton(
+                label: 'Start on this device',
+                variant: ArcadeButtonVariant.primary,
+                onPressed: controller.working
+                    ? null
+                    : () => controller.createMesh(_deviceName.text),
+              ),
+          ]),
     ]);
   }
 
@@ -240,7 +298,11 @@ class _WelcomeViewState extends State<_WelcomeView> {
 
 /// A welcome choice: glyph tile, title, one sentence; the whole card clicks.
 class _ChoiceCard extends StatelessWidget {
-  const _ChoiceCard({required this.icon, required this.title, required this.text, required this.onTap});
+  const _ChoiceCard(
+      {required this.icon,
+      required this.title,
+      required this.text,
+      required this.onTap});
 
   final String icon;
   final String title;
@@ -257,10 +319,12 @@ class _ChoiceCard extends StatelessWidget {
         hoverColor: c.hover,
         child: Padding(
           padding: const EdgeInsets.all(ArcadeTokens.space16),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             ArcadeGlyphTile(child: ArcadeIcon(icon, color: c.accent)),
             const SizedBox(height: ArcadeTokens.space12),
-            Text(title, style: ArcadeTokens.textHeading.copyWith(color: c.text)),
+            Text(title,
+                style: ArcadeTokens.textHeading.copyWith(color: c.text)),
             const SizedBox(height: ArcadeTokens.space4),
             Text(text, style: ArcadeTokens.textSmall.copyWith(color: c.muted)),
           ]),
@@ -271,7 +335,8 @@ class _ChoiceCard extends StatelessWidget {
 }
 
 class _JoinVerificationCard extends StatelessWidget {
-  const _JoinVerificationCard({required this.controller, required this.pairing});
+  const _JoinVerificationCard(
+      {required this.controller, required this.pairing});
 
   final AppController controller;
   final PairingRequest pairing;
@@ -283,7 +348,8 @@ class _JoinVerificationCard extends StatelessWidget {
     return ArcadeListSection(children: [
       Padding(
         padding: const EdgeInsets.all(ArcadeTokens.space12),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        child:
+            Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           ArcadeNotice(
             awaitingConfirmation
                 ? 'Compare this code with ${pairing.peerName}. Allow only if both screens show the same code.'
@@ -305,21 +371,31 @@ class _JoinVerificationCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: ArcadeTokens.space6),
               child: Text('Expires ${_relativeExpiry(expiresAt)}',
-                  style: ArcadeTokens.textSmall.copyWith(color: arcadeColors(context).faint)),
+                  style: ArcadeTokens.textSmall
+                      .copyWith(color: arcadeColors(context).faint)),
             ),
           if (awaitingConfirmation) ...[
             const SizedBox(height: ArcadeTokens.space10),
-            Wrap(alignment: WrapAlignment.end, spacing: ArcadeTokens.space8, children: [
-              ArcadeButton(
-                label: 'Cancel',
-                onPressed: controller.working ? null : () => controller.confirmPairing(pairing.sessionId, accept: false),
-              ),
-              ArcadeButton(
-                label: 'Allow',
-                variant: ArcadeButtonVariant.primary,
-                onPressed: controller.working ? null : () => controller.confirmPairing(pairing.sessionId, accept: true),
-              ),
-            ]),
+            Wrap(
+                alignment: WrapAlignment.end,
+                spacing: ArcadeTokens.space8,
+                children: [
+                  ArcadeButton(
+                    label: 'Cancel',
+                    onPressed: controller.working
+                        ? null
+                        : () => controller.confirmPairing(pairing.sessionId,
+                            accept: false),
+                  ),
+                  ArcadeButton(
+                    label: 'Allow',
+                    variant: ArcadeButtonVariant.primary,
+                    onPressed: controller.working
+                        ? null
+                        : () => controller.confirmPairing(pairing.sessionId,
+                            accept: true),
+                  ),
+                ]),
           ],
         ]),
       ),
@@ -334,7 +410,9 @@ class _PairingScanner extends StatefulWidget {
 }
 
 class _PairingScannerState extends State<_PairingScanner> {
-  final _camera = MobileScannerController(formats: const [BarcodeFormat.qrCode], detectionSpeed: DetectionSpeed.noDuplicates);
+  final _camera = MobileScannerController(
+      formats: const [BarcodeFormat.qrCode],
+      detectionSpeed: DetectionSpeed.noDuplicates);
   bool _scanned = false;
 
   @override
@@ -351,7 +429,8 @@ class _PairingScannerState extends State<_PairingScanner> {
       body: Column(children: [
         Padding(
           padding: const EdgeInsets.all(ArcadeTokens.space20),
-          child: Text('On your other device, open Devices › Invite a device, then point the camera at its QR code.',
+          child: Text(
+              'On your other device, open Devices › Invite a device, then point the camera at its QR code.',
               style: ArcadeTokens.textBody.copyWith(color: c.muted)),
         ),
         Expanded(
@@ -388,7 +467,8 @@ class _PairingScannerState extends State<_PairingScanner> {
                   width: 240,
                   height: 240,
                   decoration: BoxDecoration(
-                    borderRadius: const BorderRadius.all(Radius.circular(ArcadeTokens.radiusLg)),
+                    borderRadius: const BorderRadius.all(
+                        Radius.circular(ArcadeTokens.radiusLg)),
                     border: Border.all(color: c.accent, width: 3),
                   ),
                 ),

@@ -4,9 +4,8 @@ import 'dart:io';
 import 'dart:isolate';
 import 'dart:typed_data';
 
-import 'package:shared_preferences/shared_preferences.dart';
-
 import '../models.dart';
+import 'app_settings.dart';
 import 'core_api.dart';
 import 'diagnostics.dart';
 
@@ -114,7 +113,7 @@ class LinkService {
   bool uses(String peer) => _enabled && !_disabledPeers.contains(peer);
 
   Future<void> load() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await AppSettings.instance();
     _enabled = prefs.getBool('link_enabled') ?? true;
     _disabledPeers = prefs.getStringList('link_disabled_peers') ?? const [];
   }
@@ -214,7 +213,7 @@ class LinkService {
   }
 
   Future<void> setEnabled(bool value, String shortcut) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await AppSettings.instance();
     await prefs.setBool('link_enabled', value);
     _enabled = value;
     onChanged?.call();
@@ -226,7 +225,7 @@ class LinkService {
       ..._disabledPeers.where((id) => id != peer),
       if (!value) peer
     ];
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await AppSettings.instance();
     await prefs.setStringList('link_disabled_peers', _disabledPeers);
     onChanged?.call();
     await configure(shortcut);

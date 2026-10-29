@@ -16,7 +16,10 @@ use serde::{Deserialize, Serialize};
 pub const ME: &str = arcade_link::ids::CLIPBOARD;
 pub const NAME: &str = "Arcade Clipboard";
 pub const CLI_NAME: &str = "arcade-clipboard";
-pub const DESKTOP_ID: &str = "dev.arcade.clipboard";
+/// The OS identifier (STANDARD §10): desktop file, icon and window class.
+pub const DESKTOP_ID: &str = "dev.arcade.Clipboard";
+/// The desktop file and icon name before 0.3.0.
+const OLD_DESKTOP_ID: &str = "dev.arcade.clipboard";
 pub const VERSION: &str = match option_env!("ARCADE_RELEASE_VERSION") {
     Some(version) if !version.is_empty() => version,
     _ => env!("CARGO_PKG_VERSION"),
@@ -30,7 +33,7 @@ pub fn app_info() -> AppInfo {
         desktop_id: DESKTOP_ID.into(),
         cli_name: CLI_NAME.into(),
         background_args: vec!["--background".into()],
-        legacy_desktop_ids: vec![DESKTOP_ID.into()],
+        legacy_desktop_ids: vec![OLD_DESKTOP_ID.into()],
         autostart_id: "arcade-clipboard".into(),
     }
 }
@@ -269,7 +272,7 @@ pub fn install_copy(
             environment.receipts().write(&receipt)?;
         }
     }
-    add_window_class(&receipt)?;
+    complete_desktop_entry(&receipt)?;
     Ok(receipt)
 }
 
@@ -283,7 +286,7 @@ pub fn repair(environment: &Environment, runtime: &Runtime) -> io::Result<Receip
         let moved = (detection.state != State::DevBuild && detection.is_app_image)
             .then_some(detection.running_from.as_path());
         let receipt = install::repair(environment, &app_info(), moved)?;
-        add_window_class(&receipt)?;
+        complete_desktop_entry(&receipt)?;
         Ok(receipt)
     }
 }
@@ -321,7 +324,7 @@ pub fn stop_running_copy(environment: &Environment) {
 pub fn uninstall(environment: &Environment, remove_data: bool) -> io::Result<bool> {
     quit_running_instance();
     // Device keys stay in the system keyring (see docs/user/faq.md).
-    let data_folders = [data_dir()];
+    let data_folders = data_folders();
     install::uninstall(
         environment,
         ME,
@@ -386,18 +389,31 @@ pub fn launch_args(args: &[String]) -> Vec<std::ffi::OsString> {
     result
 }
 
+/// Clipboard's data folder from Link's paths module (`ARCADE_DATA_DIR` in
+/// dev profiles and isolated tests).
 #[cfg(target_os = "linux")]
-/// Flutter's application support folder (`ARCADE_DATA_DIR` in dev profiles).
 pub fn data_dir() -> PathBuf {
     if let Some(dir) = std::env::var_os("ARCADE_DATA_DIR").filter(|d| !d.is_empty()) {
         return dir.into();
     }
-    std::env::var_os("XDG_DATA_HOME")
-        .map(PathBuf::from)
-        .filter(|p| p.is_absolute())
-        .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".local/share")))
-        .unwrap_or_default()
-        .join(DESKTOP_ID)
+    arcade_link::paths::app_dirs(ME).data
+}
+
+/// What "Also remove settings and data" removes: the data and config
+/// folders, and any older folder the app hasn't moved yet.
+#[cfg(target_os = "linux")]
+fn data_folders() -> Vec<PathBuf> {
+    if let Some(dir) = std::env::var_os("ARCADE_DATA_DIR").filter(|d| !d.is_empty()) {
+        return vec![dir.into()];
+    }
+    let dirs = arcade_link::paths::app_dirs(ME);
+    let mut folders = vec![dirs.data, dirs.config];
+    folders.extend(
+        arcade_link::paths::legacy_dirs(ME)
+            .into_iter()
+            .map(|legacy| legacy.path),
+    );
+    folders
 }
 
 /// The Flutter bundle's launcher beside this binary.
@@ -409,16 +425,56 @@ pub fn bundled_app() -> Option<PathBuf> {
     app.is_file().then_some(app)
 }
 
-fn add_window_class(receipt: &Receipt) -> io::Result<()> {
+/// The desktop entry lines STANDARD §10 adds to Link's: the tagline,
+/// keywords, a specific category and the window class that matches
+/// Clipboard's windows to the launcher.
+const ENTRY_LINES: [(&str, &str); 4] = [
+    (
+        "Comment",
+        "An encrypted copy history, synced across your own devices.",
+    ),
+    ("Keywords", "clipboard;copy;paste;history;sync;devices;"),
+    ("Categories", "Utility;TextTools;"),
+    ("StartupWMClass", DESKTOP_ID),
+];
+
+fn complete_desktop_entry(receipt: &Receipt) -> io::Result<()> {
     let Some(entry) = &receipt.integration.desktop_entry else {
         return Ok(());
     };
     let text = fs::read_to_string(entry)?;
-    if text.contains("\nStartupWMClass=") {
+    let completed = with_entry_lines(&text);
+    if completed == text {
         return Ok(());
     }
-    let text = text.replacen("\nTerminal=false\n", "\nTerminal=false\nStartupWMClass=dev.arcade.clipboard\nComment=Clipboard history for your devices\n", 1);
-    arcade_link::paths::write_atomic(entry, text.as_bytes(), false)
+    arcade_link::paths::write_atomic(entry, completed.as_bytes(), false)
+}
+
+/// `text` with [`ENTRY_LINES`] set in its `[Desktop Entry]` group, replacing
+/// any earlier values; the action groups stay as they are.
+fn with_entry_lines(text: &str) -> String {
+    let mut out = String::new();
+    let mut in_main = false;
+    for line in text.lines() {
+        if line.starts_with('[') {
+            in_main = line == "[Desktop Entry]";
+            out.push_str(line);
+            out.push('\n');
+            if in_main {
+                for (key, value) in ENTRY_LINES {
+                    out.push_str(&format!("{key}={value}\n"));
+                }
+            }
+            continue;
+        }
+        let key = line.split_once('=').map(|(key, _)| key);
+        if in_main && key.is_some_and(|key| ENTRY_LINES.iter().any(|(k, _)| *k == key)) {
+            continue;
+        }
+        out.push_str(line);
+        out.push('\n');
+    }
+    out
 }
 
 fn remove_file(path: &Path) -> io::Result<()> {
@@ -592,6 +648,19 @@ mod tests {
     }
 
     #[test]
+    fn entry_lines_replace_older_values_once() {
+        let text = "[Desktop Entry]\nType=Application\nName=Arcade Clipboard\nTerminal=false\nCategories=Utility;\nStartupWMClass=dev.arcade.clipboard\nComment=Clipboard history for your devices\n\n[Desktop Action Settings]\nName=Open Settings\n";
+        let once = with_entry_lines(text);
+        assert!(once.contains("\nStartupWMClass=dev.arcade.Clipboard\n"));
+        assert!(
+            !once.contains("dev.arcade.clipboard")
+                && !once.contains("Clipboard history for your devices")
+        );
+        assert!(once.contains("[Desktop Action Settings]\nName=Open Settings\n"));
+        assert_eq!(with_entry_lines(&once), once);
+    }
+
+    #[test]
     fn appimage_install_repair_and_uninstall_use_a_temp_environment() {
         let root = std::env::temp_dir().join(format!(
             "clipboard-install-{}",
@@ -610,7 +679,7 @@ mod tests {
             appdir: Some(appdir.clone()),
             dev_build: false,
         };
-        let icon = appdir.join("usr/share/icons/hicolor/scalable/apps/dev.arcade.clipboard.svg");
+        let icon = appdir.join("usr/share/icons/hicolor/scalable/apps/dev.arcade.Clipboard.svg");
         fs::create_dir_all(icon.parent().unwrap()).unwrap();
         fs::write(&icon, b"<svg xmlns='http://www.w3.org/2000/svg'/>").unwrap();
         let opts = Options {
@@ -625,7 +694,8 @@ mod tests {
         let desktop =
             fs::read_to_string(receipt.integration.desktop_entry.as_ref().unwrap()).unwrap();
         assert!(
-            desktop.contains("StartupWMClass=dev.arcade.clipboard")
+            desktop.contains("\nStartupWMClass=dev.arcade.Clipboard\n")
+                && desktop.contains("\nKeywords=clipboard;copy;paste;history;sync;devices;\n")
                 && desktop.contains("X-Arcade-Id=arcade.clipboard")
         );
         assert!(receipt.integration.autostart.as_ref().unwrap().is_file());

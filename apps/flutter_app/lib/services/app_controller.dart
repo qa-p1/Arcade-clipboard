@@ -5,11 +5,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models.dart';
 import '../platform/desktop_adapter.dart';
 import '../platform/mobile_share_bridge.dart';
+import 'app_settings.dart';
 import 'core_api.dart';
 import 'diagnostics.dart';
 import 'link_service.dart';
@@ -267,20 +267,33 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       } catch (exception) {
         Diagnostics.log('startup', 'version unavailable: $exception');
       }
-      final prefs = await SharedPreferences.getInstance();
       final runtimeDataDir = Platform.environment['ARCADE_DATA_DIR']?.trim();
       final buildDataDir =
           const String.fromEnvironment('ARCADE_DATA_DIR').trim();
       final configuredDataDir =
           runtimeDataDir?.isNotEmpty == true ? runtimeDataDir! : buildDataDir;
+      // Desktop: Link's arcade/clipboard folders, moving older ones first.
+      final folders = _dataDirectoryOverride != null
+          ? null
+          : await useArcadeFolders(() => _core.invoke('app_dirs'),
+              override: configuredDataDir);
+      final prefs = await AppSettings.instance();
       final support = _dataDirectoryOverride ??
+          folders?.data ??
           (configuredDataDir.isNotEmpty
               ? Directory(configuredDataDir)
               : await getApplicationSupportDirectory());
       await support.create(recursive: true);
       _supportDirectory = support;
       // Recent diagnostics lines for Tools' "Report a problem" (manifest `logs`).
-      unawaited(Diagnostics.configure(support).catchError((Object _) {}));
+      unawaited(Diagnostics.configure(support).then((_) {
+        for (final moved in folders?.moved ?? const <String>[]) {
+          Diagnostics.log('folders', 'moved $moved');
+        }
+        for (final kept in folders?.kept ?? const <String>[]) {
+          Diagnostics.log('folders', "couldn't move $kept");
+        }
+      }).catchError((Object _) {}));
       if (_disposed) return;
       // A profile from before 0.3.0 keeps the shortcut it had then, even if
       // it never saved one; new profiles get the shared default.
@@ -339,7 +352,9 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         });
         await _configureMobileDiscovery();
       }
-      if (desktopAvailable && Platform.isMacOS && await _offerMoveToApplications()) {
+      if (desktopAvailable &&
+          Platform.isMacOS &&
+          await _offerMoveToApplications()) {
         return;
       }
       if (desktopAvailable) {
@@ -711,7 +726,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         if (name.isEmpty) {
           throw const AppActionException('Add a name for this device.');
         }
-        final prefs = await SharedPreferences.getInstance();
+        final prefs = await AppSettings.instance();
         await prefs.setString('device_name', name);
         await _core.invoke('create_mesh', {'device_name': name});
         await refreshStatus();
@@ -743,7 +758,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         if (deviceName.trim().isEmpty) {
           throw const AppActionException('Add a name for this device.');
         }
-        final prefs = await SharedPreferences.getInstance();
+        final prefs = await AppSettings.instance();
         await prefs.setString('device_name', deviceName.trim());
         final joinData = await _core.invoke('join', {
           'invite': invite.trim(),
@@ -858,7 +873,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> setBackgroundEnabled(bool enabled) async => _perform(() async {
         await _desktop.setBackgroundEnabled(enabled);
-        final prefs = await SharedPreferences.getInstance();
+        final prefs = await AppSettings.instance();
         await prefs.setBool('background_enabled', enabled);
         _backgroundEnabled = enabled;
       });
@@ -972,7 +987,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> setThemeMode(ThemeMode mode) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await AppSettings.instance();
       await prefs.setString(
           'appearance_mode',
           switch (mode) {
@@ -1002,7 +1017,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         final effective = enabled && hasMesh && _status?.paused != true;
         await _desktop.setCaptureEnabled(effective);
         _desktopCaptureEnabled = effective;
-        final prefs = await SharedPreferences.getInstance();
+        final prefs = await AppSettings.instance();
         await prefs.setBool('automatic_desktop_capture', enabled);
         _automaticDesktopCapture = enabled;
         _notice = enabled
@@ -1023,7 +1038,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
           );
         }
         await _desktop.configureShortcut(cleaned);
-        final prefs = await SharedPreferences.getInstance();
+        final prefs = await AppSettings.instance();
         await prefs.setString('mesh_shortcut', cleaned);
         _shortcut = cleaned;
         unawaited(_link.configure(cleaned).catchError((Object _) {}));
@@ -1062,11 +1077,12 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       return {
         'applied': false,
         'via': 'manual',
-        'hint': 'Bind `arcade-clipboard --overlay` in your desktop\'s keyboard settings.',
+        'hint':
+            'Bind `arcade-clipboard --overlay` in your desktop\'s keyboard settings.',
       };
     }
     await _desktop.configureShortcut(accelerator);
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await AppSettings.instance();
     await prefs.setString('mesh_shortcut', accelerator);
     _shortcut = accelerator;
     await _link.configure(accelerator);
@@ -1089,7 +1105,11 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       );
     } catch (exception) {
       Diagnostics.log('about', 'details unavailable: $exception');
-      return AboutInfo(version: _appVersion ?? '', channel: 'stable', toolsInstalled: false, diagnosticsHeader: '');
+      return AboutInfo(
+          version: _appVersion ?? '',
+          channel: 'stable',
+          toolsInstalled: false,
+          diagnosticsHeader: '');
     }
   }
 
@@ -1103,16 +1123,21 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         : about.diagnosticsHeader);
     if (!lines.toString().endsWith('\n')) lines.writeln();
     lines
-      ..writeln('OS: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}')
-      ..writeln('Mesh: ${hasMesh ? 'set up' : 'not set up'}, ${_devices.length} other devices, '
+      ..writeln(
+          'OS: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}')
+      ..writeln(
+          'Mesh: ${hasMesh ? 'set up' : 'not set up'}, ${_devices.length} other devices, '
           '${_pairings.length} pairing requests')
-      ..writeln('Connection: ${status?.connection ?? 'unknown'}${status?.transport == null ? '' : ' (${status!.transport})'}')
+      ..writeln(
+          'Connection: ${status?.connection ?? 'unknown'}${status?.transport == null ? '' : ' (${status!.transport})'}')
       ..writeln('Relay: ${_relayUrl.isEmpty ? 'none' : 'configured'}')
       ..writeln('Private mode: ${status?.paused == true ? 'on' : 'off'}')
-      ..writeln('History: ${_items.length} clips loaded, keep $_retentionHours h, limit $_maxItems')
+      ..writeln(
+          'History: ${_items.length} clips loaded, keep $_retentionHours h, limit $_maxItems')
       ..writeln()
       ..writeln('Recent events:');
-    for (final entry in Diagnostics.entries.reversed.take(60).toList().reversed) {
+    for (final entry
+        in Diagnostics.entries.reversed.take(60).toList().reversed) {
       lines.writeln(entry);
     }
     return lines.toString();
@@ -1135,7 +1160,9 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   /// The logs folder (Diagnostics writes diagnostics.log there).
-  String? get logsFolder => _supportDirectory == null ? null : '${_supportDirectory!.path}${Platform.pathSeparator}logs';
+  String? get logsFolder => _supportDirectory == null
+      ? null
+      : '${_supportDirectory!.path}${Platform.pathSeparator}logs';
 
   Future<void> openLogsFolder() async {
     final folder = logsFolder;
@@ -1144,7 +1171,8 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     await _openExternally(folder);
   }
 
-  static const userGuideUrl = 'https://github.com/qa-p1/Arcade-clipboard/tree/main/docs/user';
+  static const userGuideUrl =
+      'https://github.com/qa-p1/Arcade-clipboard/tree/main/docs/user';
 
   Future<void> openUserGuide() => _openExternally(userGuideUrl);
 
@@ -1707,7 +1735,6 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         'android' => 'Android device',
         _ => 'device',
       };
-
 
   /// Orderly shutdown used by the tray Quit action and termination signals.
   Future<void> shutdown() async {
