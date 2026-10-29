@@ -325,7 +325,7 @@ class _OverlayClipRow extends StatelessWidget {
           if (item.pinned) ...[
             ArcadeIcon('pin',
                 size: ArcadeTokens.iconSize,
-                color: c.faint,
+                color: c.muted,
                 semanticLabel: 'Pinned'),
             const SizedBox(width: ArcadeTokens.space6),
           ],
@@ -334,7 +334,7 @@ class _OverlayClipRow extends StatelessWidget {
             child: Text('${item.sourceName} · ${_relativeTime(item.createdAt)}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: ArcadeTokens.textCaption.copyWith(color: c.faint)),
+                style: ArcadeTokens.textCaption.copyWith(color: c.muted)),
           ),
         ]),
         selected: selected,

@@ -162,7 +162,7 @@ class _AddClipDialogState extends State<AddClipDialog> {
             const SizedBox(width: ArcadeTokens.space10),
             Flexible(
                 child: Text('Up to 16 MB per clip.',
-                    style: ArcadeTokens.textSmall.copyWith(color: c.faint))),
+                    style: ArcadeTokens.textSmall.copyWith(color: c.muted))),
           ]),
           if (_error case final error?)
             Padding(

@@ -262,7 +262,7 @@ class _ClipboardPageState extends State<_ClipboardPage> {
             child: Row(children: [
               Text(
                   '${formatCount(items.length)} ${items.length == 1 ? 'clip' : 'clips'}',
-                  style: ArcadeTokens.textSmall.copyWith(color: c.faint)),
+                  style: ArcadeTokens.textSmall.copyWith(color: c.muted)),
               const Spacer(),
               if (controller.desktopCapabilities?.globalShortcut == true &&
                   MediaQuery.sizeOf(context).width >= 1000)
@@ -270,7 +270,7 @@ class _ClipboardPageState extends State<_ClipboardPage> {
                   onTap: controller.openOverlay,
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     Text('Quick picker',
-                        style: ArcadeTokens.textSmall.copyWith(color: c.faint)),
+                        style: ArcadeTokens.textSmall.copyWith(color: c.muted)),
                     const SizedBox(width: ArcadeTokens.space6),
                     ArcadeKeyCombo(_shortcutKeys(controller.shortcut)),
                   ]),
@@ -384,8 +384,8 @@ class _ClipboardRow extends StatelessWidget {
                     child: LinkActionLabel(action: action, item: item)),
               PopupMenuItem(
                   value: 'delete',
-                  child:
-                      Text('Delete clip', style: TextStyle(color: c.danger))),
+                  child: Text('Delete clip',
+                      style: TextStyle(color: c.dangerInk))),
             ],
           ),
         ]),

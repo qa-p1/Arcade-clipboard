@@ -1,9 +1,18 @@
 # Arcade Clipboard: status
 
+## 0.3.1 (2026-10-29)
+
+- Design kit Link `v0.4.4`: small text (metadata, hints, status badges) uses
+  the kit's readable inks, at least 4.5:1 in both themes.
+- 0.3.0 checked on the published release: the four installers match
+  `SHA256SUMS.txt` and `arcade-release.json`, `releases/latest` resolves, and
+  the released AppImage passes the isolated install, repair and uninstall
+  check (`scripts/verify-appimage.py`), which confirms the C4 correction.
+
 ## 0.3.0 overhaul (2026-10-29)
 
 - Every surface is on the Arcade design kit (Link `v0.4.3` Flutter
-  components): Template A window, Template B quick picker with paste as plain
+  components; `v0.4.4` since 0.3.1): Template A window, Template B quick picker with paste as plain
   text, kit dialogs, the standard Settings order, the Clipboard icon family on
   every platform and the monochrome tray glyph.
 - Standard identifiers and folders: `dev.arcade.Clipboard`, data in

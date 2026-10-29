@@ -78,7 +78,7 @@ abstract final class ArcadeTokens {
 /// Theme colours: shared neutrals and status, plus the app's accent.
 @immutable
 class ArcadeColors extends ThemeExtension<ArcadeColors> {
-  const ArcadeColors({required this.bg, required this.panel, required this.sunken, required this.hover, required this.line, required this.lineStrong, required this.text, required this.muted, required this.faint, required this.scrim, required this.knob, required this.onFill, required this.ok, required this.okSoft, required this.warn, required this.warnSoft, required this.danger, required this.dangerSoft, required this.accent, required this.accentText, required this.accentSoft});
+  const ArcadeColors({required this.bg, required this.panel, required this.sunken, required this.hover, required this.line, required this.lineStrong, required this.text, required this.muted, required this.faint, required this.scrim, required this.knob, required this.onFill, required this.ok, required this.okSoft, required this.warn, required this.warnSoft, required this.danger, required this.dangerSoft, required this.accent, required this.accentText, required this.accentSoft, Color? okInk, Color? warnInk, Color? dangerInk, Color? accentInk}) : okInk = okInk ?? ok, warnInk = warnInk ?? warn, dangerInk = dangerInk ?? danger, accentInk = accentInk ?? accent;
   final Color bg;
   final Color panel;
   final Color sunken;
@@ -100,50 +100,56 @@ class ArcadeColors extends ThemeExtension<ArcadeColors> {
   final Color accent;
   final Color accentText;
   final Color accentSoft;
+  final Color okInk;
+  final Color warnInk;
+  final Color dangerInk;
+  final Color accentInk;
 
   /// The light palette with [appId]'s accent.
   factory ArcadeColors.light(String appId) {
     final a = arcadeAccents[appId] ?? arcadeAccents['arcade.tools']!;
-    return ArcadeColors(bg: const Color(0xfff6f7f9), panel: const Color(0xffffffff), sunken: const Color(0xfff1f3f5), hover: const Color(0xffeceef1), line: const Color(0xffe3e6ea), lineStrong: const Color(0xffd3d7dd), text: const Color(0xff16191f), muted: const Color(0xff5f6672), faint: const Color(0xff8b929c), scrim: const Color(0x660a0d12), knob: const Color(0xffffffff), onFill: const Color(0xffffffff), ok: const Color(0xff168a4c), okSoft: const Color(0xffe5f4ec), warn: const Color(0xffa8700a), warnSoft: const Color(0xfffbf1dc), danger: const Color(0xffc43d3d), dangerSoft: const Color(0xfffbe9e9), accent: a.light, accentText: a.textLight, accentSoft: a.softLight);
+    return ArcadeColors(bg: const Color(0xfff6f7f9), panel: const Color(0xffffffff), sunken: const Color(0xfff1f3f5), hover: const Color(0xffeceef1), line: const Color(0xffe3e6ea), lineStrong: const Color(0xffd3d7dd), text: const Color(0xff16191f), muted: const Color(0xff5f6672), faint: const Color(0xff8b929c), scrim: const Color(0x660a0d12), knob: const Color(0xffffffff), onFill: const Color(0xffffffff), ok: const Color(0xff168a4c), okSoft: const Color(0xffe5f4ec), warn: const Color(0xffa8700a), warnSoft: const Color(0xfffbf1dc), danger: const Color(0xffc43d3d), dangerSoft: const Color(0xfffbe9e9), accent: a.light, accentText: a.textLight, accentSoft: a.softLight, okInk: const Color(0xff167c47), warnInk: const Color(0xff92630d), dangerInk: const Color(0xffc13c3c), accentInk: a.inkLight);
   }
   /// The dark palette with [appId]'s accent.
   factory ArcadeColors.dark(String appId) {
     final a = arcadeAccents[appId] ?? arcadeAccents['arcade.tools']!;
-    return ArcadeColors(bg: const Color(0xff111317), panel: const Color(0xff16181d), sunken: const Color(0xff1b1e24), hover: const Color(0xff22262d), line: const Color(0xff262a31), lineStrong: const Color(0xff323741), text: const Color(0xffe6e8ec), muted: const Color(0xff9097a2), faint: const Color(0xff656b76), scrim: const Color(0x990a0d12), knob: const Color(0xffffffff), onFill: const Color(0xff0b0d10), ok: const Color(0xff5fd08f), okSoft: const Color(0xff1b2d23), warn: const Color(0xffe8b04b), warnSoft: const Color(0xff2d2617), danger: const Color(0xfff07a7a), dangerSoft: const Color(0xff2f1c1e), accent: a.dark, accentText: a.textDark, accentSoft: a.softDark);
+    return ArcadeColors(bg: const Color(0xff111317), panel: const Color(0xff16181d), sunken: const Color(0xff1b1e24), hover: const Color(0xff22262d), line: const Color(0xff262a31), lineStrong: const Color(0xff323741), text: const Color(0xffe6e8ec), muted: const Color(0xff9097a2), faint: const Color(0xff656b76), scrim: const Color(0x990a0d12), knob: const Color(0xffffffff), onFill: const Color(0xff0b0d10), ok: const Color(0xff5fd08f), okSoft: const Color(0xff1b2d23), warn: const Color(0xffe8b04b), warnSoft: const Color(0xff2d2617), danger: const Color(0xfff07a7a), dangerSoft: const Color(0xff2f1c1e), accent: a.dark, accentText: a.textDark, accentSoft: a.softDark, okInk: const Color(0xff5fd08f), warnInk: const Color(0xffe8b04b), dangerInk: const Color(0xfff07a7a), accentInk: a.inkDark);
   }
 
   @override
-  ArcadeColors copyWith({Color? bg, Color? panel, Color? sunken, Color? hover, Color? line, Color? lineStrong, Color? text, Color? muted, Color? faint, Color? scrim, Color? knob, Color? onFill, Color? ok, Color? okSoft, Color? warn, Color? warnSoft, Color? danger, Color? dangerSoft, Color? accent, Color? accentText, Color? accentSoft}) =>
-      ArcadeColors(bg: bg ?? this.bg, panel: panel ?? this.panel, sunken: sunken ?? this.sunken, hover: hover ?? this.hover, line: line ?? this.line, lineStrong: lineStrong ?? this.lineStrong, text: text ?? this.text, muted: muted ?? this.muted, faint: faint ?? this.faint, scrim: scrim ?? this.scrim, knob: knob ?? this.knob, onFill: onFill ?? this.onFill, ok: ok ?? this.ok, okSoft: okSoft ?? this.okSoft, warn: warn ?? this.warn, warnSoft: warnSoft ?? this.warnSoft, danger: danger ?? this.danger, dangerSoft: dangerSoft ?? this.dangerSoft, accent: accent ?? this.accent, accentText: accentText ?? this.accentText, accentSoft: accentSoft ?? this.accentSoft);
+  ArcadeColors copyWith({Color? bg, Color? panel, Color? sunken, Color? hover, Color? line, Color? lineStrong, Color? text, Color? muted, Color? faint, Color? scrim, Color? knob, Color? onFill, Color? ok, Color? okSoft, Color? warn, Color? warnSoft, Color? danger, Color? dangerSoft, Color? accent, Color? accentText, Color? accentSoft, Color? okInk, Color? warnInk, Color? dangerInk, Color? accentInk}) =>
+      ArcadeColors(bg: bg ?? this.bg, panel: panel ?? this.panel, sunken: sunken ?? this.sunken, hover: hover ?? this.hover, line: line ?? this.line, lineStrong: lineStrong ?? this.lineStrong, text: text ?? this.text, muted: muted ?? this.muted, faint: faint ?? this.faint, scrim: scrim ?? this.scrim, knob: knob ?? this.knob, onFill: onFill ?? this.onFill, ok: ok ?? this.ok, okSoft: okSoft ?? this.okSoft, warn: warn ?? this.warn, warnSoft: warnSoft ?? this.warnSoft, danger: danger ?? this.danger, dangerSoft: dangerSoft ?? this.dangerSoft, accent: accent ?? this.accent, accentText: accentText ?? this.accentText, accentSoft: accentSoft ?? this.accentSoft, okInk: okInk ?? this.okInk, warnInk: warnInk ?? this.warnInk, dangerInk: dangerInk ?? this.dangerInk, accentInk: accentInk ?? this.accentInk);
 
   @override
   ArcadeColors lerp(ArcadeColors? other, double t) {
     if (other == null) return this;
-    return ArcadeColors(bg: Color.lerp(bg, other.bg, t)!, panel: Color.lerp(panel, other.panel, t)!, sunken: Color.lerp(sunken, other.sunken, t)!, hover: Color.lerp(hover, other.hover, t)!, line: Color.lerp(line, other.line, t)!, lineStrong: Color.lerp(lineStrong, other.lineStrong, t)!, text: Color.lerp(text, other.text, t)!, muted: Color.lerp(muted, other.muted, t)!, faint: Color.lerp(faint, other.faint, t)!, scrim: Color.lerp(scrim, other.scrim, t)!, knob: Color.lerp(knob, other.knob, t)!, onFill: Color.lerp(onFill, other.onFill, t)!, ok: Color.lerp(ok, other.ok, t)!, okSoft: Color.lerp(okSoft, other.okSoft, t)!, warn: Color.lerp(warn, other.warn, t)!, warnSoft: Color.lerp(warnSoft, other.warnSoft, t)!, danger: Color.lerp(danger, other.danger, t)!, dangerSoft: Color.lerp(dangerSoft, other.dangerSoft, t)!, accent: Color.lerp(accent, other.accent, t)!, accentText: Color.lerp(accentText, other.accentText, t)!, accentSoft: Color.lerp(accentSoft, other.accentSoft, t)!);
+    return ArcadeColors(bg: Color.lerp(bg, other.bg, t)!, panel: Color.lerp(panel, other.panel, t)!, sunken: Color.lerp(sunken, other.sunken, t)!, hover: Color.lerp(hover, other.hover, t)!, line: Color.lerp(line, other.line, t)!, lineStrong: Color.lerp(lineStrong, other.lineStrong, t)!, text: Color.lerp(text, other.text, t)!, muted: Color.lerp(muted, other.muted, t)!, faint: Color.lerp(faint, other.faint, t)!, scrim: Color.lerp(scrim, other.scrim, t)!, knob: Color.lerp(knob, other.knob, t)!, onFill: Color.lerp(onFill, other.onFill, t)!, ok: Color.lerp(ok, other.ok, t)!, okSoft: Color.lerp(okSoft, other.okSoft, t)!, warn: Color.lerp(warn, other.warn, t)!, warnSoft: Color.lerp(warnSoft, other.warnSoft, t)!, danger: Color.lerp(danger, other.danger, t)!, dangerSoft: Color.lerp(dangerSoft, other.dangerSoft, t)!, accent: Color.lerp(accent, other.accent, t)!, accentText: Color.lerp(accentText, other.accentText, t)!, accentSoft: Color.lerp(accentSoft, other.accentSoft, t)!, okInk: Color.lerp(okInk, other.okInk, t)!, warnInk: Color.lerp(warnInk, other.warnInk, t)!, dangerInk: Color.lerp(dangerInk, other.dangerInk, t)!, accentInk: Color.lerp(accentInk, other.accentInk, t)!);
   }
 }
 
 /// One app's accent pair (STANDARD.md §2).
 @immutable
 class ArcadeAccent {
-  const ArcadeAccent({required this.light, required this.dark, required this.textLight, required this.textDark, required this.softLight, required this.softDark});
+  const ArcadeAccent({required this.light, required this.dark, required this.textLight, required this.textDark, required this.softLight, required this.softDark, Color? inkLight, Color? inkDark}) : inkLight = inkLight ?? light, inkDark = inkDark ?? dark;
   final Color light;
   final Color dark;
   final Color textLight;
   final Color textDark;
   final Color softLight;
   final Color softDark;
+  final Color inkLight;
+  final Color inkDark;
 }
 
 const Map<String, ArcadeAccent> arcadeAccents = <String, ArcadeAccent>{
-  'arcade.tools': ArcadeAccent(light: Color(0xff16884b), dark: Color(0xff5fd08f), textLight: Color(0xffffffff), textDark: Color(0xff0b0d10), softLight: Color(0xffe3f1e9), softDark: Color(0xff1d312a)),
-  'arcade.box': ArcadeAccent(light: Color(0xff724fff), dark: Color(0xffa58fff), textLight: Color(0xffffffff), textDark: Color(0xff0b0d10), softLight: Color(0xffeeeaff), softDark: Color(0xff29273c)),
-  'arcade.lens': ArcadeAccent(light: Color(0xff1e7e72), dark: Color(0xff2bb3a3), textLight: Color(0xffffffff), textDark: Color(0xff0b0d10), softLight: Color(0xffe4f0ee), softDark: Color(0xff152d2d)),
-  'arcade.look': ArcadeAccent(light: Color(0xff1268f4), dark: Color(0xff69a0f8), textLight: Color(0xffffffff), textDark: Color(0xff0b0d10), softLight: Color(0xffe3edfe), softDark: Color(0xff1f2a3b)),
-  'arcade.wheel': ArcadeAccent(light: Color(0xff9e6506), dark: Color(0xfff59e0b), textLight: Color(0xffffffff), textDark: Color(0xff0b0d10), softLight: Color(0xfff3ede1), softDark: Color(0xff352915)),
-  'arcade.clipboard': ArcadeAccent(light: Color(0xffd91676), dark: Color(0xfff176b3), textLight: Color(0xffffffff), textDark: Color(0xff0b0d10), softLight: Color(0xfffae3ef), softDark: Color(0xff352330)),
-  'arcade.shelf': ArcadeAccent(light: Color(0xffbf13d8), dark: Color(0xffe273f3), textLight: Color(0xffffffff), textDark: Color(0xff0b0d10), softLight: Color(0xfff7e3fa), softDark: Color(0xff32223a)),
-  'arcade.find': ArcadeAccent(light: Color(0xff517e0e), dark: Color(0xff84cc16), textLight: Color(0xffffffff), textDark: Color(0xff0b0d10), softLight: Color(0xffeaf0e2), softDark: Color(0xff233117)),
+  'arcade.tools': ArcadeAccent(light: Color(0xff16884b), dark: Color(0xff5fd08f), textLight: Color(0xffffffff), textDark: Color(0xff0b0d10), softLight: Color(0xffe3f1e9), softDark: Color(0xff1d312a), inkLight: Color(0xff167b46), inkDark: Color(0xff5fd08f)),
+  'arcade.box': ArcadeAccent(light: Color(0xff724fff), dark: Color(0xffa58fff), textLight: Color(0xffffffff), textDark: Color(0xff0b0d10), softLight: Color(0xffeeeaff), softDark: Color(0xff29273c), inkLight: Color(0xff6c4cf2), inkDark: Color(0xffa58fff)),
+  'arcade.lens': ArcadeAccent(light: Color(0xff1e7e72), dark: Color(0xff2bb3a3), textLight: Color(0xffffffff), textDark: Color(0xff0b0d10), softLight: Color(0xffe4f0ee), softDark: Color(0xff152d2d), inkLight: Color(0xff1e786d), inkDark: Color(0xff2bb3a3)),
+  'arcade.look': ArcadeAccent(light: Color(0xff1268f4), dark: Color(0xff69a0f8), textLight: Color(0xffffffff), textDark: Color(0xff0b0d10), softLight: Color(0xffe3edfe), softDark: Color(0xff1f2a3b), inkLight: Color(0xff1262e5), inkDark: Color(0xff69a0f8)),
+  'arcade.wheel': ArcadeAccent(light: Color(0xff9e6506), dark: Color(0xfff59e0b), textLight: Color(0xffffffff), textDark: Color(0xff0b0d10), softLight: Color(0xfff3ede1), softDark: Color(0xff352915), inkLight: Color(0xff966008), inkDark: Color(0xfff59e0b)),
+  'arcade.clipboard': ArcadeAccent(light: Color(0xffd91676), dark: Color(0xfff176b3), textLight: Color(0xffffffff), textDark: Color(0xff0b0d10), softLight: Color(0xfffae3ef), softDark: Color(0xff352330), inkLight: Color(0xffc9166f), inkDark: Color(0xfff176b3)),
+  'arcade.shelf': ArcadeAccent(light: Color(0xffbf13d8), dark: Color(0xffe273f3), textLight: Color(0xffffffff), textDark: Color(0xff0b0d10), softLight: Color(0xfff7e3fa), softDark: Color(0xff32223a), inkLight: Color(0xffb113c9), inkDark: Color(0xffe273f3)),
+  'arcade.find': ArcadeAccent(light: Color(0xff517e0e), dark: Color(0xff84cc16), textLight: Color(0xffffffff), textDark: Color(0xff0b0d10), softLight: Color(0xffeaf0e2), softDark: Color(0xff233117), inkLight: Color(0xff4d780f), inkDark: Color(0xff84cc16)),
 };
 
 /// A Material 3 theme mapped onto the Arcade tokens for [appId] (e.g. 'arcade.clipboard').
@@ -161,7 +167,7 @@ ThemeData arcadeTheme(Brightness brightness, String appId) {
     error: c.danger,
     onError: c.onFill,
     errorContainer: c.dangerSoft,
-    onErrorContainer: c.danger,
+    onErrorContainer: c.dangerInk,
     surface: c.panel,
     onSurface: c.text,
     onSurfaceVariant: c.muted,
@@ -215,7 +221,7 @@ ThemeData arcadeTheme(Brightness brightness, String appId) {
       isDense: true,
       filled: true,
       fillColor: c.panel,
-      hintStyle: tone(ArcadeTokens.textControl, c.faint),
+      hintStyle: tone(ArcadeTokens.textControl, c.muted),
       contentPadding: const EdgeInsets.symmetric(horizontal: ArcadeTokens.space10, vertical: ArcadeTokens.space8),
       border: border,
       enabledBorder: border,

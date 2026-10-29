@@ -574,7 +574,7 @@ class _ShortcutRecorderState extends State<_ShortcutRecorder> {
                     child: _recording
                         ? Text('Press keys…',
                             style: ArcadeTokens.textControl
-                                .copyWith(color: c.accent))
+                                .copyWith(color: c.accentInk))
                         : ExcludeSemantics(
                             child: ArcadeKeyCombo(_shortcutKeys(current))),
                   ),

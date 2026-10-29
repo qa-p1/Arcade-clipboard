@@ -372,7 +372,7 @@ class _JoinVerificationCard extends StatelessWidget {
               padding: const EdgeInsets.only(top: ArcadeTokens.space6),
               child: Text('Expires ${_relativeExpiry(expiresAt)}',
                   style: ArcadeTokens.textSmall
-                      .copyWith(color: arcadeColors(context).faint)),
+                      .copyWith(color: arcadeColors(context).muted)),
             ),
           if (awaitingConfirmation) ...[
             const SizedBox(height: ArcadeTokens.space10),

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.1 — 2026-10-29
+
+- **Readable small text.** Status badges, timestamps, hints and the picker's
+  key bar now reach 4.5:1 contrast in both themes (Arcade Link design kit
+  `v0.4.4`). Colours of fills, icons and the pink accent are unchanged.
+
 ## 0.3.0 — 2026-10-29
 
 The Arcade overhaul: Clipboard on the shared design kit and project standard.
