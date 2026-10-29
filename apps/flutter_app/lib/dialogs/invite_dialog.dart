@@ -91,7 +91,7 @@ class _InviteDialogState extends State<_InviteDialog> {
                         : 'Expires ${_relativeExpiry(invite.expiresAt!)}',
                 textAlign: TextAlign.center,
                 style: ArcadeTokens.textSmall
-                    .copyWith(color: expired ? c.warn : c.faint),
+                    .copyWith(color: expired ? c.warnInk : c.muted),
               ),
               for (final pairing in controller.pairings
                   .where((value) => value.direction == 'inbound'))

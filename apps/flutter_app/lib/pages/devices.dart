@@ -149,7 +149,7 @@ class _PairingRequestTile extends StatelessWidget {
               builder: (context, _) => Text(
                   'Expires ${_relativeExpiry(expiresAt)}',
                   style: ArcadeTokens.textSmall
-                      .copyWith(color: arcadeColors(context).faint)),
+                      .copyWith(color: arcadeColors(context).muted)),
             ),
           ),
         if (inbound && awaitingConfirmation) ...[

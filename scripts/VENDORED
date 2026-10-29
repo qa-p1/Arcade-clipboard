@@ -13,13 +13,13 @@ Arcade Link shared installer and shortcut assets are copied from commit
   spec/vectors/shortcuts.json SHA-256 2691d5b60314b7060bac5c219ada25edbfdc30829ea8a22d7496714afe2d4cc5
   assets/strings/install.json SHA-256 0c829174d2dd5e15930cd2c4c5cb791ab6f744a3dab13ed557161aabcacf5fce
 
-Arcade design kit files are copied unchanged from Arcade Link tag v0.4.3 (commit
-7d314b779941dbe3031adc7e60310fce7807a279) by scripts/sync-design.py; never edit them here.
+Arcade design kit files are copied unchanged from Arcade Link tag v0.4.4 (commit
+1d150983114b36c6adb2dc80f8889cec43079bf8) by scripts/sync-design.py; never edit them here.
 License: MIT OR Apache-2.0; Inter is under the SIL Open Font License 1.1.
   apps/flutter_app/lib/design/arcade_format.dart SHA-256 7ffd1b47823a51e50eee82099eca6a7989e36a5e7a2f8cd930226b7e60ff845e
   apps/flutter_app/lib/design/arcade_icons.dart SHA-256 47153ff522ed1aa3ee2e7d2597618902c61e38014e4d93feb421bdf71330f6be
-  apps/flutter_app/lib/design/arcade_theme.dart SHA-256 de6bfe6d185eb4638d22f1d8d5cabade35c3694beef25db4fb38c4560293b5be
-  apps/flutter_app/lib/design/arcade_widgets.dart SHA-256 b81cba67eec6096f24358ed2670a830d30563fcc63eed3c764b41b2de7e038af
+  apps/flutter_app/lib/design/arcade_theme.dart SHA-256 2bddfafe838bc81f7f3b10c060394797566807314c4860b8496c7bdfefc743fc
+  apps/flutter_app/lib/design/arcade_widgets.dart SHA-256 796001ff67dc3cd82e8976bc2e0f74ddbe90cdd6d5091e74d50de97c960f66f7
   apps/flutter_app/assets/fonts/InterVariable.ttf SHA-256 4989b125924991b90d05b2d16e0e388c48f7d5bb8b30539bbf9c755278d0ccaf
   apps/flutter_app/assets/fonts/OFL.txt SHA-256 262481e844521b326f5ecd053e59b98c8b2da78c8ee1bdbb6e8174305e54935a
   apps/flutter_app/assets/arcade/arcade.box.svg SHA-256 11405845a97dcec4150fb3943d03dbd11eeb086ded31a5cab27aa92b620838c1

@@ -17,10 +17,10 @@ enum ArcadeTone { neutral, ok, warn, danger, accent }
 
 ({Color fg, Color bg}) _toneColours(ArcadeColors c, ArcadeTone tone) => switch (tone) {
       ArcadeTone.neutral => (fg: c.muted, bg: c.sunken),
-      ArcadeTone.ok => (fg: c.ok, bg: c.okSoft),
-      ArcadeTone.warn => (fg: c.warn, bg: c.warnSoft),
-      ArcadeTone.danger => (fg: c.danger, bg: c.dangerSoft),
-      ArcadeTone.accent => (fg: c.accent, bg: c.accentSoft),
+      ArcadeTone.ok => (fg: c.okInk, bg: c.okSoft),
+      ArcadeTone.warn => (fg: c.warnInk, bg: c.warnSoft),
+      ArcadeTone.danger => (fg: c.dangerInk, bg: c.dangerSoft),
+      ArcadeTone.accent => (fg: c.accentInk, bg: c.accentSoft),
     };
 
 const BorderRadius _radiusSm = BorderRadius.all(Radius.circular(ArcadeTokens.radiusSm));
@@ -61,7 +61,7 @@ class ArcadeButton extends StatelessWidget {
     final (Color fg, Color bg, Color? border) = switch (variant) {
       ArcadeButtonVariant.primary => (c.accentText, c.accent, null),
       ArcadeButtonVariant.destructive => (c.onFill, c.danger, null),
-      ArcadeButtonVariant.danger => (c.danger, c.panel, c.lineStrong),
+      ArcadeButtonVariant.danger => (c.dangerInk, c.panel, c.lineStrong),
       ArcadeButtonVariant.ghost => (c.muted, Colors.transparent, null),
       ArcadeButtonVariant.standard => (c.text, c.panel, c.lineStrong),
     };
@@ -218,7 +218,7 @@ class ArcadeKeyCombo extends StatelessWidget {
     final groups = <List<String>>[keys, ...alternatives];
     return Wrap(spacing: ArcadeTokens.space4, runSpacing: ArcadeTokens.space4, crossAxisAlignment: WrapCrossAlignment.center, children: <Widget>[
       for (var g = 0; g < groups.length; g++) ...<Widget>[
-        if (g > 0) Text('or', style: ArcadeTokens.textCaption.copyWith(color: c.faint)),
+        if (g > 0) Text('or', style: ArcadeTokens.textCaption.copyWith(color: c.muted)),
         for (final key in groups[g]) ArcadeKeyChip(key),
       ],
     ]);
@@ -342,7 +342,7 @@ ScaffoldFeatureController<SnackBar, SnackBarClosedReason> showArcadeToast(
     duration: error ? const Duration(days: 1) : ArcadeTokens.toast,
     showCloseIcon: error,
     closeIconColor: c.muted,
-    action: actionLabel == null ? null : SnackBarAction(label: actionLabel, onPressed: onAction ?? () {}, textColor: c.accent),
+    action: actionLabel == null ? null : SnackBarAction(label: actionLabel, onPressed: onAction ?? () {}, textColor: c.accentInk),
   ));
 }
 
@@ -363,7 +363,7 @@ class ArcadeListSection extends StatelessWidget {
           padding: const EdgeInsets.only(bottom: ArcadeTokens.space10),
           child: Row(children: <Widget>[
             Expanded(child: Text(title!, style: ArcadeTokens.textHeading.copyWith(color: c.text))),
-            if (meta != null) Text(meta!, style: ArcadeTokens.textSmall.copyWith(color: c.faint)),
+            if (meta != null) Text(meta!, style: ArcadeTokens.textSmall.copyWith(color: c.muted)),
             if (trailing != null) trailing!,
           ]),
         ),
@@ -605,7 +605,7 @@ class ArcadeSegmented<T> extends StatelessWidget {
                   Text(label, style: ArcadeTokens.textControl.copyWith(color: option == value ? c.text : c.muted)),
                   if (counts[option] != null) ...<Widget>[
                     const SizedBox(width: ArcadeTokens.space6),
-                    Text('${counts[option]}', style: ArcadeTokens.textCaption.copyWith(color: c.faint)),
+                    Text('${counts[option]}', style: ArcadeTokens.textCaption.copyWith(color: c.muted)),
                   ],
                 ]),
               ),
@@ -701,7 +701,7 @@ class _ArcadeSearchFieldState extends State<ArcadeSearchField> {
           decoration: InputDecoration(
             hintText: widget.hint,
             contentPadding: EdgeInsets.zero,
-            prefixIcon: widget.leading ?? Padding(padding: const EdgeInsets.all(ArcadeTokens.space10), child: ArcadeIcon('search', color: c.faint)),
+            prefixIcon: widget.leading ?? Padding(padding: const EdgeInsets.all(ArcadeTokens.space10), child: ArcadeIcon('search', color: c.muted)),
             prefixIconConstraints: BoxConstraints.tight(Size.square(widget.height)),
             suffixIcon: widget.controller.text.isEmpty
                 ? null
@@ -779,16 +779,16 @@ class ArcadeNavItem extends StatelessWidget {
             border: selected ? Border.all(color: c.line) : null,
           ),
           child: collapsed
-              ? ArcadeIcon(icon, color: selected ? c.accent : c.muted)
+              ? ArcadeIcon(icon, color: selected ? c.accentInk : c.muted)
               : Row(children: <Widget>[
-                  ArcadeIcon(icon, color: selected ? c.accent : c.muted),
+                  ArcadeIcon(icon, color: selected ? c.accentInk : c.muted),
                   const SizedBox(width: ArcadeTokens.space10),
                   Expanded(
                     child: Text(label,
                         overflow: TextOverflow.ellipsis,
                         style: ArcadeTokens.textControl.copyWith(color: selected ? c.text : c.muted, fontWeight: selected ? FontWeight.w600 : FontWeight.w500)),
                   ),
-                  if (count != null) Text('$count', style: ArcadeTokens.textCaption.copyWith(color: c.faint)),
+                  if (count != null) Text('$count', style: ArcadeTokens.textCaption.copyWith(color: c.muted)),
                 ]),
         ),
       ),
@@ -849,7 +849,7 @@ class ArcadeSidebar extends StatelessWidget {
         if (footer != null) ...<Widget>[Divider(color: c.line), const SizedBox(height: ArcadeTokens.space8), footer!],
         if (version != null && !collapsed) ...<Widget>[
           const SizedBox(height: ArcadeTokens.space8),
-          Text('Version $version', style: ArcadeTokens.textCaption.copyWith(color: c.faint)),
+          Text('Version $version', style: ArcadeTokens.textCaption.copyWith(color: c.muted)),
         ],
       ]),
     );
@@ -924,7 +924,7 @@ class ArcadeHintBar extends StatelessWidget {
           // ones leave space unused.
           Flexible(
             flex: hints[i].$2.length.clamp(1, 1000).toInt(),
-            child: Text(hints[i].$2, overflow: TextOverflow.ellipsis, style: ArcadeTokens.textCaption.copyWith(color: c.faint)),
+            child: Text(hints[i].$2, overflow: TextOverflow.ellipsis, style: ArcadeTokens.textCaption.copyWith(color: c.muted)),
           ),
         ],
       ]),
