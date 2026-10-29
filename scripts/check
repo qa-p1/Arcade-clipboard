@@ -18,6 +18,9 @@ rust() {
 flutter_checks() {
   (
     cd apps/flutter_app
+    # The formatter reads its settings through analysis_options.yaml, whose
+    # include only resolves once the packages are fetched.
+    flutter pub get
     # The vendored design kit and the generated bridge keep their own format.
     mapfile -t files < <(git ls-files --cached --others --exclude-standard lib test | grep '\.dart$' | grep -v '^lib/design/\|^lib/src/rust/')
     dart format --output=none --set-exit-if-changed "${files[@]}"

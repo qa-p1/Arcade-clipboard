@@ -7,3 +7,10 @@ spec/shortcuts.schema.json -text
 spec/vectors/shortcuts.json -text
 assets/strings/install.json -text
 scripts/arcade-release.py -text
+# The design kit (scripts/sync-design.py), byte for byte on every OS.
+apps/flutter_app/lib/design/** -text
+apps/flutter_app/assets/arcade/** -text
+apps/flutter_app/assets/fonts/** -text
+apps/flutter_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/** -text
+apps/flutter_app/macos/Runner/Assets.xcassets/AppIcon.appiconset/** -text
+packaging/linux/*.svg -text
