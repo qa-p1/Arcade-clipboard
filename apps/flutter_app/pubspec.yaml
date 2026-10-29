@@ -36,6 +36,7 @@ flutter:
   assets:
     - assets/fonts/OFL.txt
     - assets/arcade/
+    - assets/arcade/tray/
   fonts:
     - family: Inter
       fonts:

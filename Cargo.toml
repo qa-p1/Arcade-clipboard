@@ -10,7 +10,7 @@ rust-version = "1.88"
 
 [workspace.dependencies]
 # Arcade Link shared protocol, installer and tray-host runtime.
-arcade-link = { git = "https://github.com/qa-p1/Arcade-Link", rev = "4c75f3a7c806ae78f96127c556708e65eaeeb476", features = ["watch", "install", "trayhost"] }
+arcade-link = { git = "https://github.com/qa-p1/Arcade-Link", tag = "v0.4.1", features = ["watch", "install", "trayhost"] }
 fs2 = "0.4.3"
 
 [profile.release]

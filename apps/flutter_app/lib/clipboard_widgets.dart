@@ -3,15 +3,21 @@ import 'dart:typed_data';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
+import 'design/arcade_format.dart';
+import 'design/arcade_icons.dart';
+import 'design/arcade_theme.dart';
+import 'design/arcade_widgets.dart';
 import 'models.dart';
 import 'services/app_controller.dart';
 
-IconData clipIcon(String kind) => switch (kind) {
-      'url' => Icons.link_rounded,
-      'image' => Icons.image_outlined,
-      'file' || 'files' => Icons.insert_drive_file_outlined,
-      'rich_text' || 'html' => Icons.article_outlined,
-      _ => Icons.notes_rounded,
+/// The kit glyph for a clip kind.
+String clipGlyph(String kind) => switch (kind) {
+      'url' => 'link',
+      'image' => 'image',
+      'file' => 'file',
+      'files' => 'folder',
+      'rich_text' || 'html' => 'document',
+      _ => 'type',
     };
 
 String clipKindLabel(String kind) => switch (kind) {
@@ -22,14 +28,6 @@ String clipKindLabel(String kind) => switch (kind) {
       'rich_text' || 'html' => 'Rich text',
       _ => 'Text',
     };
-
-String formatBytes(int size) {
-  if (size < 1024) return '$size B';
-  if (size < 1024 * 1024) {
-    return '${(size / 1024).toStringAsFixed(size < 10240 ? 1 : 0)} KB';
-  }
-  return '${(size / (1024 * 1024)).toStringAsFixed(1)} MB';
-}
 
 Future<void> showAddClip(BuildContext context, AppController controller) =>
     showDialog<void>(
@@ -135,57 +133,51 @@ class _AddClipDialogState extends State<AddClipDialog> {
   }
 
   @override
-  Widget build(BuildContext context) => AlertDialog(
-        scrollable: true,
-        title: const Text('Add a clip'),
-        content: SizedBox(
-          width: 480,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextField(
-                controller: _text,
-                autofocus: true,
-                minLines: 5,
-                maxLines: 10,
-                decoration:
-                    const InputDecoration(hintText: 'Text or a link to share'),
-                enabled: !_busy,
-              ),
-              const SizedBox(height: 12),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  onPressed: _busy ? null : _pickFiles,
-                  icon: const Icon(Icons.attach_file_rounded, size: 18),
-                  label: const Text('Choose image or files'),
-                ),
-              ),
-              Text('Up to 16 MB per clip.',
-                  style: Theme.of(context).textTheme.bodySmall),
-              if (_error != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 12),
-                  child: Text(_error!,
-                      style: TextStyle(
-                          color: Theme.of(context).colorScheme.error)),
-                ),
-              if (_busy)
-                const Padding(
-                    padding: EdgeInsets.only(top: 12),
-                    child: LinearProgressIndicator(minHeight: 2)),
-            ],
+  Widget build(BuildContext context) {
+    final c = arcadeColors(context);
+    return AlertDialog(
+      scrollable: true,
+      title: const Text('Add a clip'),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          TextField(
+            controller: _text,
+            autofocus: true,
+            minLines: 5,
+            maxLines: 10,
+            style: ArcadeTokens.textBody.copyWith(color: c.text),
+            decoration: const InputDecoration(hintText: 'Text or a link to share'),
+            enabled: !_busy,
           ),
-        ),
-        actions: [
-          TextButton(
-              onPressed: _busy ? null : () => Navigator.of(context).pop(),
-              child: const Text('Cancel')),
-          FilledButton(
-              onPressed: _busy ? null : _submit, child: const Text('Add clip')),
-        ],
-      );
+          const SizedBox(height: ArcadeTokens.space12),
+          Row(children: [
+            ArcadeButton(label: 'Choose image or files…', icon: 'file', small: true, onPressed: _busy ? null : _pickFiles),
+            const SizedBox(width: ArcadeTokens.space10),
+            Flexible(child: Text('Up to 16 MB per clip.', style: ArcadeTokens.textSmall.copyWith(color: c.faint))),
+          ]),
+          if (_error case final error?)
+            Padding(padding: const EdgeInsets.only(top: ArcadeTokens.space12), child: ArcadeNotice(error, tone: ArcadeTone.danger)),
+          if (_busy)
+            const Padding(
+              padding: EdgeInsets.only(top: ArcadeTokens.space12),
+              child: LinearProgressIndicator(minHeight: ArcadeTokens.space2),
+            ),
+        ]),
+      ),
+      actionsAlignment: MainAxisAlignment.end,
+      actionsPadding: _dialogActionsPadding,
+      actions: [
+        Wrap(spacing: ArcadeTokens.space8, alignment: WrapAlignment.end, children: [
+          ArcadeButton(label: 'Cancel', onPressed: _busy ? null : () => Navigator.of(context).pop()),
+          ArcadeButton(label: 'Add clip', variant: ArcadeButtonVariant.primary, busy: _busy, onPressed: _busy ? null : _submit),
+        ]),
+      ],
+    );
+  }
 }
+
+const _dialogActionsPadding = EdgeInsets.fromLTRB(ArcadeTokens.space20, 0, ArcadeTokens.space20, ArcadeTokens.space20);
 
 class ClipDetailDialog extends StatefulWidget {
   const ClipDetailDialog(
@@ -233,112 +225,104 @@ class _ClipDetailDialogState extends State<ClipDetailDialog> {
   @override
   Widget build(BuildContext context) {
     final item = widget.item;
-    final theme = Theme.of(context);
+    final c = arcadeColors(context);
+    final canCopy = !(item.kind == 'file' || item.kind == 'files') || widget.controller.desktopAvailable;
     return AlertDialog(
       scrollable: true,
       title: Row(children: [
-        Icon(clipIcon(item.kind), size: 22),
-        const SizedBox(width: 10),
-        Text(clipKindLabel(item.kind))
+        ArcadeGlyphTile(child: ArcadeIcon(clipGlyph(item.kind))),
+        const SizedBox(width: ArcadeTokens.space10),
+        Flexible(child: Text(clipKindLabel(item.kind))),
       ]),
-      content: SizedBox(
-        width: 560,
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 560),
         child: FutureBuilder<ClipboardPayload>(
           future: _payload,
           builder: (context, snapshot) {
             if (snapshot.hasError) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('This clip could not be loaded.'),
-                  TextButton(
-                      onPressed: () => setState(
-                          () => _payload = widget.controller.loadPayload(item)),
-                      child: const Text('Retry')),
-                ],
+              return ArcadeNotice(
+                'This clip could not be loaded.',
+                tone: ArcadeTone.danger,
+                action: ArcadeButton(
+                  label: 'Retry',
+                  small: true,
+                  onPressed: () => setState(() => _payload = widget.controller.loadPayload(item)),
+                ),
               );
             }
             if (!snapshot.hasData) {
-              return const Padding(
-                  padding: EdgeInsets.all(32),
-                  child:
-                      Center(child: CircularProgressIndicator(strokeWidth: 2)));
+              return const Column(mainAxisSize: MainAxisSize.min, children: [ArcadeSkeletonRow(), ArcadeSkeletonRow()]);
             }
             final payload = snapshot.data!;
-            final images = payload.representations.where((value) =>
-                value.mimeType.startsWith('image/') && value.bytes != null);
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                    '${item.sourceName} · ${item.createdAt.toLocal().toString().substring(0, 16)}${item.size > 0 ? ' · ${formatBytes(item.size)}' : ''}',
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-                const SizedBox(height: 18),
-                if (payload.kind == 'image')
-                  for (final image in images)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: Image.memory(image.bytes!,
-                          height: 280,
-                          fit: BoxFit.contain,
-                          errorBuilder: (context, error, stack) => const Text(
-                              'Image preview is unavailable. You can still save the file.')),
+            final images = payload.representations.where((value) => value.mimeType.startsWith('image/') && value.bytes != null);
+            return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Text(
+                [
+                  item.sourceName,
+                  formatRelative(item.createdAt.millisecondsSinceEpoch),
+                  if (item.size > 0) formatSize(item.size),
+                ].join(' · '),
+                style: ArcadeTokens.textSmall.copyWith(color: c.muted),
+              ),
+              const SizedBox(height: ArcadeTokens.space16),
+              if (payload.kind == 'image')
+                for (final image in images)
+                  ClipRRect(
+                    borderRadius: const BorderRadius.all(Radius.circular(ArcadeTokens.radiusMd)),
+                    child: Image.memory(image.bytes!,
+                        height: 280,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stack) =>
+                            const ArcadeNotice('Image preview is unavailable. You can still save the file.')),
+                  ),
+              if (payload.text.isNotEmpty)
+                Container(
+                  constraints: const BoxConstraints(maxHeight: 350),
+                  padding: const EdgeInsets.all(ArcadeTokens.space12),
+                  decoration: BoxDecoration(
+                    color: c.sunken,
+                    borderRadius: const BorderRadius.all(Radius.circular(ArcadeTokens.radiusMd)),
+                    border: Border.all(color: c.line),
+                  ),
+                  child: SingleChildScrollView(
+                    child: SelectableText(payload.text, style: ArcadeTokens.textBody.copyWith(color: c.text)),
+                  ),
+                ),
+              if (item.hasBinaryContent)
+                for (final representation in payload.representations)
+                  ArcadeRow(
+                    title: representation.name ?? clipKindLabel(payload.kind),
+                    subtitle: formatSize(representation.bytes?.length ?? representation.size),
+                    leading: ArcadeIcon(representation.mimeType.startsWith('image/') ? 'image' : 'file', color: c.muted),
+                    trailing: ArcadeButton(
+                      label: widget.controller.desktopAvailable ? 'Save…' : 'Share…',
+                      icon: widget.controller.desktopAvailable ? 'download' : 'external',
+                      small: true,
+                      onPressed: () => _save(representation),
                     ),
-                if (payload.text.isNotEmpty)
-                  ConstrainedBox(
-                      constraints: const BoxConstraints(maxHeight: 350),
-                      child: SingleChildScrollView(
-                          child: SelectableText(payload.text,
-                              style: theme.textTheme.bodyMedium
-                                  ?.copyWith(height: 1.55)))),
-                if (item.hasBinaryContent)
-                  for (final representation in payload.representations)
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                          representation.name ?? clipKindLabel(payload.kind),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis),
-                      subtitle: Text(formatBytes(
-                          representation.bytes?.length ?? representation.size)),
-                      trailing: TextButton.icon(
-                        onPressed: () => _save(representation),
-                        icon: Icon(
-                            widget.controller.desktopAvailable
-                                ? Icons.download_rounded
-                                : Icons.ios_share_rounded,
-                            size: 17),
-                        label: Text(widget.controller.desktopAvailable
-                            ? 'Save'
-                            : 'Share'),
-                      ),
-                    ),
-                if (_notice != null)
-                  Padding(
-                      padding: const EdgeInsets.only(top: 12),
-                      child: Text(_notice!, style: theme.textTheme.bodySmall)),
-              ],
-            );
+                  ),
+              if (_notice case final notice?)
+                Padding(padding: const EdgeInsets.only(top: ArcadeTokens.space12), child: ArcadeNotice(notice)),
+            ]);
           },
         ),
       ),
+      actionsAlignment: MainAxisAlignment.end,
+      actionsPadding: _dialogActionsPadding,
       actions: [
-        TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close')),
-        if (!(item.kind == 'file' || item.kind == 'files') ||
-            widget.controller.desktopAvailable)
-          FilledButton.tonalIcon(
+        Wrap(spacing: ArcadeTokens.space8, alignment: WrapAlignment.end, children: [
+          ArcadeButton(label: 'Close', onPressed: () => Navigator.of(context).pop()),
+          if (canCopy)
+            ArcadeButton(
+              label: 'Copy to this device',
+              icon: 'copy',
+              variant: ArcadeButtonVariant.primary,
               onPressed: () async {
                 await widget.controller.copyLocally(item);
-                if (mounted) {
-                  setState(() => _notice =
-                      widget.controller.error ?? 'Copied to this device.');
-                }
+                if (mounted) setState(() => _notice = widget.controller.error ?? 'Copied to this device.');
               },
-              icon: const Icon(Icons.copy_rounded, size: 18),
-              label: const Text('Copy')),
+            ),
+        ]),
       ],
     );
   }
@@ -371,7 +355,7 @@ class _ClipThumbnailState extends State<ClipThumbnail> {
   Widget build(BuildContext context) => SizedBox.square(
         dimension: widget.size,
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: const BorderRadius.all(Radius.circular(ArcadeTokens.radiusTile)),
           child: FutureBuilder<Uint8List?>(
               future: _image,
               builder: (_, snapshot) => snapshot.data != null
@@ -381,10 +365,9 @@ class _ClipThumbnailState extends State<ClipThumbnail> {
                       frameBuilder: (context, child, frame, synchronous) =>
                           frame != null
                               ? child
-                              : const Icon(Icons.image_outlined, size: 18),
-                      errorBuilder: (context, error, stack) =>
-                          const Icon(Icons.image_outlined, size: 18))
-                  : const Icon(Icons.image_outlined, size: 18)),
+                              : const ArcadeGlyphTile(child: ArcadeIcon('image')),
+                      errorBuilder: (context, error, stack) => const ArcadeGlyphTile(child: ArcadeIcon('image')))
+                  : const ArcadeGlyphTile(child: ArcadeIcon('image'))),
         ),
       );
 }

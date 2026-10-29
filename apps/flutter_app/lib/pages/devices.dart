@@ -7,81 +7,62 @@ class _DevicesPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return ListView(
-      padding: EdgeInsets.zero,
-      children: [
-        _PageTitle(
-          eyebrow: '',
-          title: 'Devices',
-          trailing: controller.canManageDevices || controller.devicesLoading
-              ? FilledButton.tonalIcon(
-                  onPressed: controller.working || !controller.canManageDevices
-                      ? null
-                      : () => _addDevice(context),
-                  icon:
-                      controller.devicesLoading && !controller.canManageDevices
-                          ? const SizedBox.square(
-                              dimension: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.add_rounded, size: 18),
-                  label: const Text('Add device'),
-                )
-              : null,
-        ),
-        const SizedBox(height: 24),
-        Text('THIS DEVICE', style: _eyebrowStyle(context)),
-        const SizedBox(height: 9),
-        _DeviceRow(
-          name: controller.status?.deviceName ?? 'This device',
-          platform: _platformLabel(),
-          state: controller.status?.connection ?? 'offline',
-          current: true,
-        ),
-        const SizedBox(height: 28),
-        Row(
-          children: [
-            Text('PAIRED DEVICES', style: _eyebrowStyle(context)),
-            const SizedBox(width: 8),
-            Text('${controller.devices.length}',
-                style: theme.textTheme.labelSmall
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-          ],
-        ),
-        const SizedBox(height: 9),
-        if (controller.pairings.isNotEmpty) ...[
-          for (final pairing in controller.pairings) ...[
-            _PairingRequestTile(controller: controller, pairing: pairing),
-            const SizedBox(height: 8),
-          ],
+    final (syncLabel, syncTone) = _syncState(controller);
+    final canInvite = controller.canManageDevices && !controller.working;
+    return _PageFrame(children: [
+      ArcadePageHead(
+        title: 'Devices',
+        subtitle: 'Devices in your mesh share clips with each other, end-to-end encrypted.',
+        actions: [
+          if (controller.canManageDevices || controller.devicesLoading)
+            ArcadeButton(
+              label: 'Invite a device',
+              icon: 'plus',
+              variant: ArcadeButtonVariant.primary,
+              busy: controller.devicesLoading && !controller.canManageDevices,
+              onPressed: canInvite ? () => _addDevice(context) : null,
+            ),
         ],
-        if (controller.devicesLoading && controller.devices.isEmpty)
-          const Padding(
-              padding: EdgeInsets.all(48),
-              child: Center(child: CircularProgressIndicator(strokeWidth: 2)))
-        else if (controller.devices.isEmpty)
-          Padding(
-              padding: const EdgeInsets.symmetric(vertical: 64),
-              child: _DevicesEmptyState(
-                  onAdd: controller.canManageDevices
-                      ? () => _addDevice(context)
-                      : null))
-        else
-          for (final device in controller.devices) ...[
-            _TrustedDeviceRow(
-                device: device,
-                onRemove: controller.canManageDevices && !device.isOwner
-                    ? () => _confirmRemove(context, device)
-                    : null),
-            Divider(height: 1, color: theme.dividerColor),
-          ],
-        if (controller.error != null) ...[
-          const SizedBox(height: 10),
-          _InlineMessage(text: controller.error!, error: true),
-        ],
+      ),
+      _Messages(controller: controller),
+      ArcadeListSection(title: 'This device', children: [
+        ArcadeRow(
+          title: controller.status?.deviceName ?? 'This device',
+          subtitle: _platformLabel(),
+          leading: _PlatformGlyph(platform: _platformLabel()),
+          trailing: ArcadeBadge(syncLabel, tone: syncTone, dot: true),
+        ),
+      ]),
+      if (controller.pairings.isNotEmpty) ...[
+        _sectionGap,
+        ArcadeListSection(title: 'Pairing requests', meta: formatCount(controller.pairings.length), children: [
+          for (final pairing in controller.pairings) _PairingRequestTile(controller: controller, pairing: pairing),
+        ]),
       ],
-    );
+      _sectionGap,
+      if (controller.devicesLoading && controller.devices.isEmpty)
+        const ArcadeListSection(title: 'Trusted devices', children: [ArcadeSkeletonRow(), ArcadeSkeletonRow()])
+      else if (controller.devices.isEmpty)
+        ArcadeEmptyState(
+          icon: 'monitor',
+          title: 'No other devices yet',
+          message: controller.canManageDevices
+              ? 'Invite your phone or another computer to share clips between them.'
+              : 'Devices the mesh owner adds show up here.',
+          actions: [
+            if (controller.canManageDevices)
+              ArcadeButton(label: 'Invite a device', icon: 'plus', onPressed: canInvite ? () => _addDevice(context) : null),
+          ],
+        )
+      else
+        ArcadeListSection(title: 'Trusted devices', meta: formatCount(controller.devices.length), children: [
+          for (final device in controller.devices)
+            _TrustedDeviceRow(
+              device: device,
+              onRemove: controller.canManageDevices && !device.isOwner ? () => _confirmRemove(context, device) : null,
+            ),
+        ]),
+    ]);
   }
 
   Future<void> _addDevice(BuildContext context) async {
@@ -91,58 +72,19 @@ class _DevicesPage extends StatelessWidget {
     if (invite == null) return;
     await showDialog<void>(
       context: context,
-      builder: (context) =>
-          _InviteDialog(invite: invite, controller: controller),
+      builder: (context) => _InviteDialog(invite: invite, controller: controller),
     );
   }
 
   Future<void> _confirmRemove(BuildContext context, MeshDevice device) async {
-    final remove = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Remove ${device.name}?'),
-        content: const Text(
-            'This device will lose access to future clips from your mesh.'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
-          FilledButton.tonal(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Remove device')),
-        ],
-      ),
+    final remove = await confirmArcadeDestroy(
+      context,
+      title: 'Remove “${device.name}”?',
+      message: 'It stops receiving clips from your mesh. Clips it already has stay on it.',
+      confirmLabel: 'Remove device',
     );
-    if (remove == true) await controller.revokeDevice(device);
+    if (remove) await controller.revokeDevice(device);
   }
-}
-
-class _DevicesEmptyState extends StatelessWidget {
-  const _DevicesEmptyState({required this.onAdd});
-
-  final VoidCallback? onAdd;
-
-  @override
-  Widget build(BuildContext context) => Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              onAdd == null
-                  ? 'No other devices are listed yet.'
-                  : 'No paired devices yet.',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            if (onAdd != null) ...[
-              const SizedBox(height: 11),
-              TextButton.icon(
-                  onPressed: onAdd,
-                  icon: const Icon(Icons.add_rounded),
-                  label: const Text('Add a device')),
-            ],
-          ],
-        ),
-      );
 }
 
 class _PairingRequestTile extends StatelessWidget {
@@ -156,124 +98,92 @@ class _PairingRequestTile extends StatelessWidget {
     final inbound = pairing.direction == 'inbound';
     final awaitingConfirmation = pairing.state == 'awaiting_confirmation';
     final approved = pairing.state == 'approval_sent';
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.fromLTRB(15, 13, 13, 13),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: theme.dividerColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            awaitingConfirmation
-                ? inbound
-                    ? 'Confirm this device'
-                    : 'Waiting for approval'
-                : approved
-                    ? 'Waiting for the other device'
-                    : 'Pairing request ended',
-            style: theme.textTheme.titleSmall
-                ?.copyWith(fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 3),
-          Text(
-            awaitingConfirmation
-                ? inbound
-                    ? '${pairing.peerName} wants to join your mesh. Compare the code on both screens.'
-                    : '${pairing.peerName} must approve the same code before pairing is complete.'
-                : approved
-                    ? 'You approved this device. Pairing completes after the other device approves too.'
-                    : 'Ask the mesh owner for a new invite to try again.',
-            style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant, height: 1.35),
-          ),
-          if (pairing.verificationCode.isNotEmpty) ...[
-            const SizedBox(height: 11),
-            Text(
-              pairing.verificationCode,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-                letterSpacing: 1.4,
-                fontFeatures: const [FontFeature.tabularFigures()],
-              ),
-            ),
-          ],
-          if (pairing.expiresAt case final expiresAt?) ...[
-            const SizedBox(height: 5),
-            Text(
-              'Expires ${_relativeExpiry(expiresAt)}',
-              style: theme.textTheme.labelSmall
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            ),
-          ],
-          if (inbound && awaitingConfirmation) ...[
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                FilledButton.tonal(
-                  onPressed: controller.working
-                      ? null
-                      : () => controller.confirmPairing(pairing.sessionId,
-                          accept: true),
-                  child: const Text('Approve'),
-                ),
-                const SizedBox(width: 7),
-                TextButton(
-                  onPressed: controller.working
-                      ? null
-                      : () => controller.confirmPairing(pairing.sessionId,
-                          accept: false),
-                  child: const Text('Decline'),
-                ),
-              ],
-            ),
-          ],
+    final title = awaitingConfirmation
+        ? inbound
+            ? 'Allow ${pairing.peerName}?'
+            : 'Waiting for approval'
+        : approved
+            ? 'Waiting for the other device'
+            : 'Pairing request ended';
+    final message = awaitingConfirmation
+        ? inbound
+            ? '${pairing.peerName} wants to join your mesh. Check that both screens show the same code.'
+            : '${pairing.peerName} must approve the same code before pairing is complete.'
+        : approved
+            ? 'You approved this device. Pairing completes after the other device approves too.'
+            : 'Ask the mesh owner for a new invite to try again.';
+    return Padding(
+      padding: const EdgeInsets.all(ArcadeTokens.space12),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        ArcadeNotice(message, title: title, tone: awaitingConfirmation && inbound ? ArcadeTone.warn : ArcadeTone.neutral),
+        if (pairing.verificationCode.isNotEmpty) ...[
+          const SizedBox(height: ArcadeTokens.space10),
+          _VerificationCode(code: pairing.verificationCode),
         ],
-      ),
+        if (pairing.expiresAt case final expiresAt?)
+          Padding(
+            padding: const EdgeInsets.only(top: ArcadeTokens.space6),
+            child: ListenableBuilder(
+              listenable: _RelativeClock.instance,
+              builder: (context, _) => Text('Expires ${_relativeExpiry(expiresAt)}',
+                  style: ArcadeTokens.textSmall.copyWith(color: arcadeColors(context).faint)),
+            ),
+          ),
+        if (inbound && awaitingConfirmation) ...[
+          const SizedBox(height: ArcadeTokens.space10),
+          Wrap(spacing: ArcadeTokens.space8, alignment: WrapAlignment.end, children: [
+            ArcadeButton(
+              label: 'Decline',
+              onPressed: controller.working ? null : () => controller.confirmPairing(pairing.sessionId, accept: false),
+            ),
+            ArcadeButton(
+              label: 'Allow',
+              variant: ArcadeButtonVariant.primary,
+              onPressed: controller.working ? null : () => controller.confirmPairing(pairing.sessionId, accept: true),
+            ),
+          ]),
+        ],
+      ]),
     );
   }
 }
 
-class _DeviceRow extends StatelessWidget {
-  const _DeviceRow(
-      {required this.name,
-      required this.platform,
-      required this.state,
-      this.current = false});
+/// A verification code as key-chip style mono groups ("628 140").
+class _VerificationCode extends StatelessWidget {
+  const _VerificationCode({required this.code});
 
-  final String name;
-  final String platform;
-  final String state;
-  final bool current;
+  final String code;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-      child: Row(
-        children: [
-          _PlatformGlyph(platform: platform),
-          const SizedBox(width: 13),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name,
-                    style: theme.textTheme.bodyMedium
-                        ?.copyWith(fontWeight: FontWeight.w600)),
-                const SizedBox(height: 3),
-                Text(platform,
-                    style: theme.textTheme.labelSmall
-                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-              ],
+    final c = arcadeColors(context);
+    final groups = code.split(' ').where((group) => group.isNotEmpty).toList();
+    return Semantics(
+      label: 'Verification code $code',
+      child: ExcludeSemantics(
+        child: Wrap(spacing: ArcadeTokens.space8, children: [
+          for (final group in groups)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: ArcadeTokens.space12, vertical: ArcadeTokens.space6),
+              decoration: BoxDecoration(
+                color: c.panel,
+                borderRadius: const BorderRadius.all(Radius.circular(ArcadeTokens.radiusSm)),
+                border: Border(
+                  top: BorderSide(color: c.lineStrong),
+                  left: BorderSide(color: c.lineStrong),
+                  right: BorderSide(color: c.lineStrong),
+                  bottom: BorderSide(color: c.lineStrong, width: 2),
+                ),
+              ),
+              child: Text(group,
+                  style: ArcadeTokens.textTitle.copyWith(
+                    color: c.text,
+                    fontFamilyFallback: ArcadeTokens.monoFallback,
+                    letterSpacing: 2,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  )),
             ),
-          ),
-          _PresenceLabel(state: state, current: current),
-        ],
+        ]),
       ),
     );
   }
@@ -287,41 +197,25 @@ class _TrustedDeviceRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 4),
-      child: Row(
-        children: [
-          _PlatformGlyph(platform: device.platform),
-          const SizedBox(width: 13),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(device.name,
-                    style: theme.textTheme.bodyMedium
-                        ?.copyWith(fontWeight: FontWeight.w600)),
-                const SizedBox(height: 3),
-                ListenableBuilder(
-                    listenable: _RelativeClock.instance,
-                    builder: (context, _) => Text(
-                          '${device.platform}${device.lastSeen == null ? '' : ' · seen ${_relativeTime(device.lastSeen!)}'}',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant),
-                        )),
-              ],
-            ),
-          ),
-          _PresenceLabel(state: device.state),
+    final online = device.state.toLowerCase() == 'online' || device.state.toLowerCase() == 'connected';
+    return ListenableBuilder(
+      listenable: _RelativeClock.instance,
+      builder: (context, _) => ArcadeRow(
+        title: device.name,
+        subtitle: '${device.platform}${device.lastSeen == null ? '' : ' · seen ${_relativeTime(device.lastSeen!).toLowerCase()}'}',
+        leading: _PlatformGlyph(platform: device.platform),
+        trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+          ArcadeBadge(online ? 'Online' : 'Offline', tone: online ? ArcadeTone.ok : ArcadeTone.neutral, dot: online),
           if (onRemove != null)
             PopupMenuButton<String>(
               tooltip: 'Device actions',
+              icon: ArcadeIcon('more', color: arcadeColors(context).muted),
               onSelected: (_) => onRemove!(),
-              itemBuilder: (_) => const [
-                PopupMenuItem(value: 'remove', child: Text('Remove device'))
+              itemBuilder: (_) => [
+                PopupMenuItem(value: 'remove', child: Text('Remove device', style: TextStyle(color: arcadeColors(context).danger))),
               ],
             ),
-        ],
+        ]),
       ),
     );
   }
@@ -335,64 +229,9 @@ class _PlatformGlyph extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = platform.toLowerCase();
-    final icon =
-        name.contains('ios') || name.contains('iphone') || name.contains('ipad')
-            ? Icons.phone_iphone_rounded
-            : name.contains('android')
-                ? Icons.phone_android_rounded
-                : name.contains('mac')
-                    ? Icons.laptop_mac_rounded
-                    : name.contains('linux')
-                        ? Icons.computer_rounded
-                        : name.contains('windows') || name.contains('pc')
-                            ? Icons.desktop_windows_rounded
-                            : Icons.devices_rounded;
-    return Container(
-      width: 38,
-      height: 38,
-      decoration: BoxDecoration(
-        color: Theme.of(context)
-            .colorScheme
-            .surfaceContainerHighest
-            .withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(11),
-      ),
-      child: Icon(icon,
-          size: 18, color: Theme.of(context).colorScheme.onSurfaceVariant),
-    );
-  }
-}
-
-class _PresenceLabel extends StatelessWidget {
-  const _PresenceLabel({required this.state, this.current = false});
-
-  final String state;
-  final bool current;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final online = current ||
-        state.toLowerCase() == 'online' ||
-        state.toLowerCase() == 'connected';
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(Icons.circle,
-            size: 7, color: online ? colors.primary : colors.outline),
-        const SizedBox(width: 6),
-        Text(
-          current
-              ? 'This device'
-              : online
-                  ? 'Online'
-                  : 'Offline',
-          style: Theme.of(context)
-              .textTheme
-              .labelSmall
-              ?.copyWith(color: colors.onSurfaceVariant),
-        ),
-      ],
+    final phone = name.contains('ios') || name.contains('iphone') || name.contains('ipad') || name.contains('android');
+    return ArcadeGlyphTile(
+      child: phone ? Icon(Icons.smartphone_outlined, size: ArcadeTokens.iconSize, color: arcadeColors(context).muted) : const ArcadeIcon('monitor'),
     );
   }
 }

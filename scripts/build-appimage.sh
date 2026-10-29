@@ -58,7 +58,7 @@ install -m 755 "$arcade_root/target/release/arcade-clipboard-launcher" "$appdir/
 install -m 644 packaging/linux/dev.arcade.clipboard.desktop "$appdir/dev.arcade.clipboard.desktop"
 install -m 644 packaging/linux/dev.arcade.clipboard.desktop "$appdir/usr/share/applications/dev.arcade.clipboard.desktop"
 
-icon="$arcade_root/apps/flutter_app/assets/arcade/arcade.clipboard.svg"
+icon="$arcade_root/packaging/linux/dev.arcade.Clipboard.svg"
 install -m 644 "$icon" "$appdir/usr/share/icons/hicolor/scalable/apps/dev.arcade.clipboard.svg"
 for size in 16 24 32 48 64 128 256 512; do
   icon_dir="$appdir/usr/share/icons/hicolor/${size}x${size}/apps"

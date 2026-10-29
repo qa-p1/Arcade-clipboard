@@ -63,6 +63,10 @@ class FakeCoreApi implements CoreApi {
         if (_linkEvents.isNotEmpty) return _linkEvents.removeAt(0);
         _linkWait = Completer<Map<String, dynamic>>();
         return _linkWait!.future;
+      case 'version':
+        return {'version': '0.3.0'};
+      case 'about':
+        return {'version': '0.3.0', 'channel': 'stable', 'toolsInstalled': true, 'diagnostics': 'Arcade Clipboard 0.3.0\nChannel: stable\n'};
       case 'initialize':
         return Map<String, dynamic>.of(_status);
       case 'status':

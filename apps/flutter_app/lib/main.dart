@@ -78,7 +78,7 @@ Future<int> _command(List<String> arguments) async {
         'link': {
           'enabled': prefs.getBool('link_enabled') ?? true,
           'disabled_peers': prefs.getStringList('link_disabled_peers') ?? [],
-          'shortcut': prefs.getString('mesh_shortcut') ?? _defaultShortcut(),
+          'shortcut': prefs.getString('mesh_shortcut') ?? DesktopAdapter.defaultShortcut,
         },
       });
       out.writeln(const JsonEncoder.withIndent('  ').convert(manifest));
@@ -113,8 +113,4 @@ Future<int> _command(List<String> arguments) async {
   }
 }
 
-String _defaultShortcut() => switch (Platform.operatingSystem) {
-      'macos' => 'CMD+SHIFT+V',
-      'windows' => 'CTRL+ALT+V',
-      _ => 'CTRL+SHIFT+SPACE',
-    };
+

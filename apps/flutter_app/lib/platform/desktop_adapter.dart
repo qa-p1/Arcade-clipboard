@@ -249,7 +249,11 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
         detail: 'Desktop integration has not been initialized.',
       );
 
-  static String get defaultShortcut => switch (Platform.operatingSystem) {
+  /// The default on every desktop (STANDARD §10): Ctrl+Alt+V, ⌃⌥V on macOS.
+  static const String defaultShortcut = 'CTRL+ALT+V';
+
+  /// The default before 0.3.0, which profiles from then keep.
+  static String get previousDefaultShortcut => switch (Platform.operatingSystem) {
         'macos' => 'CMD+SHIFT+V',
         'windows' => 'CTRL+ALT+V',
         _ => 'CTRL+SHIFT+SPACE',

@@ -1,5 +1,7 @@
 part of '../app.dart';
 
+/// Settings in the standard order (STANDARD §6): General, Shortcuts, then
+/// Clipboard's own Privacy and Sync, Connected apps and About.
 class _SettingsPage extends StatefulWidget {
   const _SettingsPage({required this.controller});
 
@@ -10,421 +12,408 @@ class _SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<_SettingsPage> {
-  bool _recording = false;
-  String? _shortcutDraft;
-  String? _shortcutWarning;
-  final FocusNode _shortcutFocus = FocusNode();
+  late final TextEditingController _relay = TextEditingController(text: widget.controller.relayUrl);
+  final FocusNode _relayFocus = FocusNode();
+  String? _relayError;
+  Future<AboutInfo>? _about;
+
+  @override
+  void initState() {
+    super.initState();
+    _relayFocus.addListener(() {
+      if (!_relayFocus.hasFocus) _applyRelay();
+    });
+    _about = widget.controller.loadAbout();
+  }
 
   @override
   void dispose() {
-    _shortcutFocus.dispose();
+    _relay.dispose();
+    _relayFocus.dispose();
     super.dispose();
+  }
+
+  /// Applies the relay address on Enter or when the field loses focus, with
+  /// inline validation instead of a Save button.
+  Future<void> _applyRelay() async {
+    final value = _relay.text.trim();
+    if (value == widget.controller.relayUrl) {
+      setState(() => _relayError = null);
+      return;
+    }
+    final uri = Uri.tryParse(value);
+    if (value.isNotEmpty && (uri == null || !(uri.scheme == 'wss' || uri.scheme == 'ws') || uri.host.isEmpty)) {
+      setState(() => _relayError = 'Enter a relay address such as wss://relay.example.com, or leave it empty.');
+      return;
+    }
+    setState(() => _relayError = null);
+    await widget.controller.setRelayUrl(value);
+  }
+
+  Future<void> _clearHistory() async {
+    final confirmed = await confirmArcadeDestroy(
+      context,
+      title: 'Clear unpinned history?',
+      message: 'Unpinned clips are deleted here and on your paired devices when they reconnect. Pinned clips stay.',
+      confirmLabel: 'Clear history',
+    );
+    if (confirmed) await widget.controller.clearHistory();
   }
 
   @override
   Widget build(BuildContext context) {
     final controller = widget.controller;
-    final theme = Theme.of(context);
-    return ListView(
-      padding: EdgeInsets.zero,
-      children: [
-        const _PageTitle(eyebrow: '', title: 'Settings'),
-        const SizedBox(height: 28),
-        if (controller.desktopAvailable) ...[
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.apps_rounded),
-            title: const Text('Connected apps'),
-            subtitle:
-                const Text('Work with other Arcade apps on this desktop.'),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                builder: (_) => ConnectedAppsPage(controller: controller))),
+    final c = arcadeColors(context);
+    final desktop = controller.desktopAvailable;
+    final working = controller.working;
+    return _PageFrame(children: [
+      const ArcadePageHead(title: 'Settings'),
+      _Messages(controller: controller),
+
+      // 1. General
+      ArcadeListSection(title: 'General', children: [
+        ArcadeRow(
+          title: 'Appearance',
+          trailing: ArcadeSegmented<ThemeMode>(
+            options: const [(ThemeMode.system, 'System'), (ThemeMode.light, 'Light'), (ThemeMode.dark, 'Dark')],
+            value: controller.themeMode,
+            onChanged: controller.setThemeMode,
           ),
-          const SizedBox(height: 20),
+        ),
+        if (desktop) ...[
+          ArcadeSwitchRow(
+            title: 'Start at login',
+            subtitle: 'Starts in the background when you sign in.',
+            value: controller.launchAtLogin,
+            onChanged: working ? null : controller.setLaunchAtLogin,
+          ),
+          ArcadeSwitchRow(
+            title: 'Keep running when the window is closed',
+            subtitle: 'Your devices stay in sync. Open Arcade Clipboard again from the tray.',
+            value: controller.backgroundEnabled,
+            onChanged: working ? null : controller.setBackgroundEnabled,
+          ),
+          if (Platform.isMacOS && controller.desktopCapabilities?.paste == false)
+            ArcadeRow(
+              title: 'Paste into other apps',
+              subtitle: 'macOS needs Accessibility access to paste into the app you were using.',
+              trailing: ArcadeButton(label: 'Allow access', small: true, onPressed: controller.requestPasteAccess),
+            ),
         ],
-        Text('PRIVACY', style: _eyebrowStyle(context)),
-        const SizedBox(height: 8),
-        _SettingLine(
-          icon: Icons.pause_circle_outline_rounded,
+      ]),
+      _sectionGap,
+
+      // 2. Shortcuts
+      ArcadeListSection(title: 'Shortcuts', children: [
+        if (desktop && controller.desktopCapabilities?.globalShortcut == true)
+          ArcadeRow(
+            title: 'Open the quick picker',
+            subtitle: 'Shows your clips over the app you are using.',
+            extra: _ShortcutRecorder(controller: controller),
+          )
+        else if (desktop)
+          const ArcadeRow(
+            title: 'Open the quick picker',
+            subtitle: 'This desktop doesn’t let apps register a global shortcut. Bind `arcade-clipboard --overlay` in your desktop’s keyboard settings.',
+          )
+        else
+          ArcadeRow(
+            title: 'Clipboard keyboard',
+            subtitle: Platform.isIOS
+                ? 'Turn on Arcade Clipboard in Settings › General › Keyboard › Keyboards, then switch to it with the globe key to insert shared text.'
+                : 'Turn on Arcade Clipboard in your keyboard settings, then switch to it to insert shared text.',
+            trailing: ArcadeButton(label: 'Keyboard settings', small: true, onPressed: controller.openKeyboardSettings),
+          ),
+        if (desktop)
+          ArcadeRow(
+            title: 'In the quick picker',
+            extra: Wrap(spacing: ArcadeTokens.space16, runSpacing: ArcadeTokens.space8, children: [
+              for (final (keys, label) in <(List<String>, String)>[
+                (['↑', '↓'], 'Move'),
+                (['↵'], 'Paste'),
+                ([Platform.isMacOS ? '⌘' : 'Ctrl', '↵'], 'Paste as plain text'),
+                (['Esc'], 'Close'),
+              ])
+                Row(mainAxisSize: MainAxisSize.min, children: [
+                  ArcadeKeyCombo(keys),
+                  const SizedBox(width: ArcadeTokens.space6),
+                  Flexible(child: Text(label, style: ArcadeTokens.textSmall.copyWith(color: c.muted))),
+                ]),
+            ]),
+          ),
+      ]),
+      _sectionGap,
+
+      // 3. Privacy
+      ArcadeListSection(title: 'Privacy', children: [
+        ArcadeSwitchRow(
           title: 'Private mode',
-          description: 'Temporarily stop new clips from entering your mesh.',
-          trailing: Switch.adaptive(
-            value: controller.status?.paused ?? false,
-            onChanged: controller.working ? null : controller.setPrivatePause,
-          ),
+          subtitle: 'Stops new clips from entering your mesh until you turn it off.',
+          value: controller.status?.paused ?? false,
+          onChanged: working ? null : controller.setPrivatePause,
         ),
-        const Divider(height: 1),
-        _SettingLine(
-          icon: Icons.schedule_rounded,
+        if (desktop)
+          ArcadeSwitchRow(
+            title: 'Add what you copy on this computer',
+            subtitle: 'Text, images and files you copy are added and synced. Use Private mode for anything you don’t want shared.',
+            value: controller.automaticDesktopCapture,
+            onChanged: working ? null : controller.setAutomaticDesktopCapture,
+          )
+        else
+          const ArcadeRow(
+            title: 'Share to your devices',
+            subtitle: 'In another app, open Share and choose Arcade Clipboard. Open Arcade Clipboard to sync items waiting in your inbox.',
+          ),
+        ArcadeRow(
           title: 'Keep history',
-          description:
-              'Unpinned clips expire after this time. Pinned clips stay until you unpin or delete them.',
-          trailing: DropdownButtonHideUnderline(
-            child: DropdownButton<int>(
-              value: controller.retentionHours > 0
-                  ? controller.retentionHours
-                  : 24,
-              items: [
-                for (final hours in _withCurrent(
-                    const [1, 24, 168, 720], controller.retentionHours))
-                  DropdownMenuItem(
-                      value: hours, child: Text(_retentionLabel(hours))),
-              ],
-              onChanged: controller.working
-                  ? null
-                  : (value) {
-                      if (value != null) controller.setRetentionHours(value);
-                    },
-            ),
+          subtitle: 'Unpinned clips are deleted after this time. Pinned clips stay until you unpin or delete them.',
+          trailing: _Choice<int>(
+            value: controller.retentionHours > 0 ? controller.retentionHours : 24,
+            options: [for (final hours in _withCurrent(const [1, 24, 168, 720], controller.retentionHours)) (hours, _retentionLabel(hours))],
+            onChanged: working ? null : controller.setRetentionHours,
           ),
         ),
-        const Divider(height: 1),
-        _SettingLine(
-          icon: Icons.inventory_2_outlined,
+        ArcadeRow(
           title: 'History limit',
-          description:
-              'Older clips are removed when the limit is reached. Pinned clips are kept first.',
-          trailing: DropdownButtonHideUnderline(
-              child: DropdownButton<int>(
+          subtitle: 'The oldest clips are deleted when the limit is reached. Pinned clips are kept first.',
+          trailing: _Choice<int>(
             value: controller.maxItems > 0 ? controller.maxItems : 500,
-            items: [
-              for (final count
-                  in _withCurrent(const [500, 1000, 5000], controller.maxItems))
-                DropdownMenuItem(
-                    value: count, child: Text('${_grouped(count)} clips')),
-            ],
-            onChanged: controller.working
-                ? null
-                : (value) {
-                    if (value != null) controller.setMaxItems(value);
-                  },
-          )),
-        ),
-        if (controller.desktopAvailable) ...[
-          const SizedBox(height: 26),
-          Text('DESKTOP', style: _eyebrowStyle(context)),
-          const SizedBox(height: 8),
-          if (controller.desktopAvailable)
-            _SettingLine(
-              icon: Icons.content_paste_search_rounded,
-              title: 'Automatically add desktop copies',
-              description:
-                  'Adds copied text, images, and files. Use Private mode for anything you do not want shared.',
-              trailing: Switch.adaptive(
-                value: controller.automaticDesktopCapture,
-                onChanged: controller.working
-                    ? null
-                    : controller.setAutomaticDesktopCapture,
-              ),
-            ),
-          if (controller.desktopCapabilities?.globalShortcut == true)
-            _SettingLine(
-              icon: Icons.keyboard_command_key_rounded,
-              title: 'Picker shortcut',
-              description: 'Open the clip picker over your current app.',
-              trailing: TextButton(
-                onPressed: controller.working ? null : _beginShortcutCapture,
-                child: Text(_recording
-                    ? 'Listening…'
-                    : (_shortcutDraft ?? controller.shortcut)),
-              ),
-            )
-          else
-            _SettingLine(
-              icon: Icons.keyboard_command_key_rounded,
-              title: 'Picker shortcut',
-              description: controller.desktopAvailable
-                  ? 'A global shortcut is not available on this desktop.'
-                  : 'Available on desktop versions of Arcade Clipboard.',
-              trailing: const Icon(Icons.info_outline_rounded, size: 20),
-            ),
-          if (_recording)
-            Focus(
-              focusNode: _shortcutFocus,
-              onKeyEvent: _captureShortcut,
-              child: Padding(
-                padding: const EdgeInsets.only(left: 49, bottom: 10),
-                child: Text(
-                  'Press your preferred key combination. Esc cancels.',
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                ),
-              ),
-            ),
-          if (_shortcutWarning != null)
-            Padding(
-              padding: const EdgeInsets.only(left: 49, bottom: 10),
-              child: Wrap(
-                  spacing: 8,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    Text(_shortcutWarning!),
-                    TextButton(
-                        onPressed: () => _saveShortcut(_shortcutDraft!),
-                        child: const Text('Use anyway')),
-                    TextButton(
-                        onPressed: () => setState(() {
-                              _shortcutWarning = null;
-                              _shortcutDraft = null;
-                            }),
-                        child: const Text('Cancel')),
-                  ]),
-            ),
-          const Divider(height: 1),
-        ],
-        if (controller.desktopAvailable) ...[
-          _SettingLine(
-            icon: Icons.layers_outlined,
-            title: 'Keep running in the background',
-            description:
-                'Closing the window keeps your mesh connected. Reopen Arcade from the tray.',
-            trailing: Switch.adaptive(
-                value: controller.backgroundEnabled,
-                onChanged: controller.working
-                    ? null
-                    : controller.setBackgroundEnabled),
-          ),
-          _SettingLine(
-            icon: Icons.power_settings_new_rounded,
-            title: 'Launch at login',
-            description: 'Start Arcade when you sign in to this device.',
-            trailing: Switch.adaptive(
-                value: controller.launchAtLogin,
-                onChanged:
-                    controller.working ? null : controller.setLaunchAtLogin),
-          ),
-          if (Platform.isMacOS &&
-              controller.desktopCapabilities?.paste == false)
-            _SettingLine(
-                icon: Icons.accessibility_new_rounded,
-                title: 'Allow automatic paste',
-                description:
-                    'macOS needs Accessibility access to paste into the app you were using.',
-                trailing: TextButton(
-                    onPressed: controller.requestPasteAccess,
-                    child: const Text('Allow access'))),
-        ],
-        if (!controller.desktopAvailable) ...[
-          const SizedBox(height: 26),
-          Text('KEYBOARD & SHARING', style: _eyebrowStyle(context)),
-          _SettingLine(
-              icon: Icons.keyboard_outlined,
-              title: 'Clipboard keyboard',
-              description: Platform.isIOS
-                  ? 'Enable Arcade Clipboard in Settings → General → Keyboard → Keyboards. Switch to it with the globe key to insert shared text.'
-                  : 'Enable Arcade Clipboard in your system keyboard settings. Switch to it when you want to insert shared text.',
-              trailing: TextButton(
-                  onPressed: controller.openKeyboardSettings,
-                  child: const Text('Keyboard settings'))),
-          const _SettingLine(
-              icon: Icons.ios_share_outlined,
-              title: 'Share to your mesh',
-              description:
-                  'Select text, a link, or an image in another app. Open Share and choose Arcade Clipboard. Open Arcade to sync items waiting in your inbox.',
-              trailing: SizedBox.shrink()),
-        ],
-        const SizedBox(height: 26),
-        Text('APPEARANCE', style: _eyebrowStyle(context)),
-        const SizedBox(height: 8),
-        _SettingLine(
-          icon: Icons.palette_outlined,
-          title: 'Theme',
-          description: 'Match your system or choose a fixed appearance.',
-          trailing: SegmentedButton<ThemeMode>(
-            showSelectedIcon: false,
-            segments: const [
-              ButtonSegment(value: ThemeMode.system, label: Text('System')),
-              ButtonSegment(value: ThemeMode.light, label: Text('Light')),
-              ButtonSegment(value: ThemeMode.dark, label: Text('Dark')),
-            ],
-            selected: {controller.themeMode},
-            onSelectionChanged: (value) => controller.setThemeMode(value.first),
+            options: [for (final count in _withCurrent(const [500, 1000, 5000], controller.maxItems)) (count, '${formatCount(count)} clips')],
+            onChanged: working ? null : controller.setMaxItems,
           ),
         ),
-        const SizedBox(height: 26),
-        Text('STATUS', style: _eyebrowStyle(context)),
-        const SizedBox(height: 8),
-        _SettingLine(
-          icon: _meshConnectionIcon(controller),
-          title: _meshConnectionLabel(controller),
-          description: controller.status?.diagnostic.isNotEmpty == true
-              ? controller.status!.diagnostic
-              : 'Your clips are encrypted on this device before synchronization.',
-          trailing: IconButton(
-            tooltip: 'Refresh status',
-            onPressed: controller.refreshAll,
-            icon: const Icon(Icons.refresh_rounded),
+        ArcadeRow(
+          title: 'Clear unpinned history',
+          subtitle: 'Deletes unpinned clips here and on your paired devices.',
+          trailing: ArcadeButton(
+              label: 'Clear unpinned history…', small: true, variant: ArcadeButtonVariant.danger, onPressed: working ? null : _clearHistory),
+        ),
+      ]),
+      _sectionGap,
+
+      // 4. Sync
+      Builder(builder: (context) {
+        final (label, tone) = _syncState(controller);
+        return ArcadeListSection(title: 'Sync', children: [
+          ArcadeRow(
+            title: 'Status',
+            subtitle: controller.status?.diagnostic.isNotEmpty == true
+                ? controller.status!.diagnostic
+                : 'Clips are encrypted on this device before they sync.',
+            trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+              ArcadeBadge(label, tone: tone, dot: tone == ArcadeTone.ok),
+              const SizedBox(width: ArcadeTokens.space4),
+              ArcadeButton(label: 'Check again', icon: 'refresh', iconOnly: true, small: true, variant: ArcadeButtonVariant.ghost, onPressed: controller.refreshAll),
+            ]),
           ),
-        ),
-        const SizedBox(height: 18),
-        ExpansionTile(
-          tilePadding: EdgeInsets.zero,
-          childrenPadding: const EdgeInsets.only(bottom: 16),
-          title: Text('Remote relay',
-              style: theme.textTheme.bodyMedium
-                  ?.copyWith(fontWeight: FontWeight.w600)),
-          subtitle: Text(
-              controller.relayUrl.isEmpty
-                  ? 'Local network only'
-                  : 'Relay configured',
-              style: theme.textTheme.bodySmall),
-          children: [
-            const Text(
-                'A relay connects devices on different networks. Clipboard content stays encrypted. Use the address supplied with your deployment.'),
-            const SizedBox(height: 12),
-            Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                    onPressed: () => _editRelay(context),
-                    icon: const Icon(Icons.edit_outlined, size: 17),
-                    label: Text(controller.relayUrl.isEmpty
-                        ? 'Configure relay'
-                        : 'Edit relay'))),
-          ],
-        ),
-        const SizedBox(height: 18),
-        _SettingLine(
-            icon: Icons.delete_outline_rounded,
-            title: 'Clear history',
-            description:
-                'Remove unpinned clips from this device and your mesh.',
-            trailing: TextButton(
-                onPressed:
-                    controller.working ? null : () => _clearHistory(context),
-                child: Text('Clear',
-                    style: TextStyle(color: theme.colorScheme.error)))),
-        if (controller.error != null) ...[
-          const SizedBox(height: 12),
-          _InlineMessage(text: controller.error!, error: true),
-        ],
-        if (controller.notice != null) ...[
-          const SizedBox(height: 8),
-          _InlineMessage(text: controller.notice!),
-        ],
+          ArcadeRow(
+            title: 'Remote relay',
+            subtitle: 'Connects devices on different networks. Clips stay end-to-end encrypted. Leave it empty to sync on your local network only.',
+            extra: TextField(
+              controller: _relay,
+              focusNode: _relayFocus,
+              keyboardType: TextInputType.url,
+              autocorrect: false,
+              onSubmitted: (_) => _applyRelay(),
+              style: ArcadeTokens.textBody.copyWith(color: c.text),
+              decoration: InputDecoration(hintText: 'wss://relay.example.com', errorText: _relayError, errorMaxLines: 2),
+            ),
+          ),
+        ]);
+      }),
+      if (desktop) ...[
+        _sectionGap,
+        // 5. Connected apps
+        ConnectedAppsSection(controller: controller),
       ],
-    );
-  }
+      _sectionGap,
 
-  Future<void> _editRelay(BuildContext context) async {
-    final field = TextEditingController(text: widget.controller.relayUrl);
-    final value = await showDialog<String>(
-        context: context,
-        builder: (context) => AlertDialog(
-              title: const Text('Remote relay'),
-              content: SizedBox(
-                  width: 420,
-                  child: TextField(
-                      controller: field,
-                      autofocus: true,
-                      keyboardType: TextInputType.url,
-                      decoration: const InputDecoration(
-                          labelText: 'Relay address',
-                          hintText: 'wss://relay.example.com',
-                          helperText:
-                              'Leave empty to use only your local network.'))),
-              actions: [
-                TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancel')),
-                FilledButton(
-                    onPressed: () => Navigator.pop(context, field.text),
-                    child: const Text('Save'))
-              ],
-            ));
-    // Let the dialog finish disposing its TextField before its controller.
-    await Future<void>.delayed(const Duration(milliseconds: 250));
-    field.dispose();
-    if (value != null) await widget.controller.setRelayUrl(value);
-  }
-
-  Future<void> _clearHistory(BuildContext context) async {
-    final confirm = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-              title: const Text('Clear unpinned history?'),
-              content: const Text(
-                  'Pinned clips stay. Deleted clips are removed from your paired devices when they reconnect.'),
-              actions: [
-                TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: const Text('Cancel')),
-                FilledButton.tonal(
-                    onPressed: () => Navigator.pop(context, true),
-                    child: const Text('Clear history'))
-              ],
-            ));
-    if (confirm == true) await widget.controller.clearHistory();
+      // 6. About
+      FutureBuilder<AboutInfo>(
+        future: _about,
+        builder: (context, snapshot) {
+          final about = snapshot.data;
+          final version = about?.version.isNotEmpty == true ? about!.version : controller.appVersion ?? '';
+          return ArcadeListSection(title: 'About', children: [
+            ArcadeRow(
+              title: 'Arcade Clipboard',
+              subtitle: version.isEmpty ? null : 'Version $version · ${about?.channel ?? 'stable'}',
+              leading: ArcadeGlyphTile(color: c.accent, child: ArcadeIcon('clipboard', color: c.accentText)),
+            ),
+            if (desktop)
+              ArcadeRow(
+                title: about?.toolsInstalled == true ? 'Updates are managed by Arcade Tools' : 'Updates',
+                subtitle: about?.toolsInstalled == true
+                    ? 'Arcade Tools installs new versions of Arcade Clipboard.'
+                    : 'Install Arcade Tools to keep Arcade Clipboard up to date, or download new versions from the releases page.',
+                trailing: about?.toolsInstalled == true
+                    ? null
+                    : ArcadeButton(
+                        label: 'Releases',
+                        icon: 'external',
+                        small: true,
+                        onPressed: () => controller.openUrl('https://github.com/qa-p1/Arcade-clipboard/releases')),
+              ),
+            ArcadeRow(
+              title: 'User guide',
+              trailing: ArcadeButton(label: 'Open user guide', icon: 'book', small: true, onPressed: controller.openUserGuide),
+            ),
+            if (desktop)
+              ArcadeRow(
+                title: 'Logs',
+                subtitle: controller.logsFolder,
+                trailing: ArcadeButton(label: 'Open logs folder', icon: 'folder', small: true, onPressed: controller.openLogsFolder),
+              ),
+            ArcadeRow(
+              title: 'Diagnostics',
+              subtitle: 'Version, platform and connection details for a bug report. Never your clips or keys.',
+              trailing: ArcadeButton(label: 'Copy diagnostics', icon: 'copy', small: true, onPressed: controller.copyDiagnostics),
+            ),
+            ArcadeRow(
+              title: 'Licences',
+              trailing: ArcadeButton(
+                label: 'View licences',
+                small: true,
+                onPressed: () => showLicensePage(context: context, applicationName: 'Arcade Clipboard', applicationVersion: version),
+              ),
+            ),
+          ]);
+        },
+      ),
+    ]);
   }
 
   /// The presets, plus the current value when it came from elsewhere (an
   /// imported settings file, Arcade Tools) so Settings shows what applies.
   static List<int> _withCurrent(List<int> presets, int current) =>
-      presets.contains(current) || current <= 0
-          ? presets
-          : ([...presets, current]..sort());
+      presets.contains(current) || current <= 0 ? presets : ([...presets, current]..sort());
 
-  static String _retentionLabel(int hours) {
-    if (hours % 24 == 0 && hours >= 48) return '${hours ~/ 24} days';
-    return hours == 1 ? '1 hour' : '$hours hours';
+  static String _retentionLabel(int hours) => switch (hours) {
+        1 => '1 hour',
+        24 => '1 day',
+        168 => '7 days',
+        720 => '30 days',
+        _ => formatDuration(hours * 3600.0, DurationStyle.job),
+      };
+}
+
+/// A compact select for a settings row (more than four options).
+class _Choice<T> extends StatelessWidget {
+  const _Choice({required this.value, required this.options, required this.onChanged});
+
+  final T value;
+  final List<(T, String)> options;
+  final ValueChanged<T>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = arcadeColors(context);
+    return Container(
+      height: ArcadeTokens.controlSm,
+      padding: const EdgeInsets.only(left: ArcadeTokens.space10, right: ArcadeTokens.space4),
+      decoration: BoxDecoration(
+        color: c.panel,
+        borderRadius: const BorderRadius.all(Radius.circular(ArcadeTokens.radiusSm)),
+        border: Border.all(color: c.lineStrong),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<T>(
+          value: value,
+          isDense: true,
+          style: ArcadeTokens.textControl.copyWith(color: c.text),
+          icon: ArcadeIcon('chevronDown', color: c.muted),
+          borderRadius: const BorderRadius.all(Radius.circular(ArcadeTokens.radiusMd)),
+          dropdownColor: c.panel,
+          items: [for (final (option, label) in options) DropdownMenuItem(value: option, child: Text(label))],
+          onChanged: onChanged == null
+              ? null
+              : (selected) {
+                  if (selected != null) onChanged!(selected);
+                },
+        ),
+      ),
+    );
+  }
+}
+
+/// The shortcut recorder (STANDARD §5.1): the combo as key chips; click or
+/// Enter records ("Press keys…"), Esc cancels; a modifier is required except
+/// for F1–F24; a conflict shows "Used by …" with "Use anyway" / "Choose
+/// another"; a valid combo applies at once; "Reset to default" beside it.
+class _ShortcutRecorder extends StatefulWidget {
+  const _ShortcutRecorder({required this.controller});
+
+  final AppController controller;
+
+  @override
+  State<_ShortcutRecorder> createState() => _ShortcutRecorderState();
+}
+
+class _ShortcutRecorderState extends State<_ShortcutRecorder> {
+  final FocusNode _focus = FocusNode();
+  bool _recording = false;
+  String? _draft;
+  String? _conflict;
+
+  @override
+  void dispose() {
+    _focus.dispose();
+    super.dispose();
   }
 
-  static String _grouped(int value) => value.toString().replaceAllMapped(
-      RegExp(r'(\d)(?=(\d{3})+$)'), (match) => '${match[1]},');
-
-  void _beginShortcutCapture() {
+  void _start() {
     setState(() {
       _recording = true;
-      _shortcutDraft = null;
-      _shortcutWarning = null;
+      _draft = null;
+      _conflict = null;
     });
-    WidgetsBinding.instance
-        .addPostFrameCallback((_) => _shortcutFocus.requestFocus());
+    _focus.requestFocus();
   }
 
-  KeyEventResult _captureShortcut(FocusNode node, KeyEvent event) {
-    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+  KeyEventResult _onKey(FocusNode node, KeyEvent event) {
+    if (!_recording) {
+      if (event is KeyDownEvent && (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.space)) {
+        _start();
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    }
+    if (event is! KeyDownEvent) return KeyEventResult.handled;
     if (event.logicalKey == LogicalKeyboardKey.escape) {
       setState(() => _recording = false);
       return KeyEventResult.handled;
     }
     if (_isModifier(event.logicalKey)) return KeyEventResult.handled;
-    final parts = <String>[];
+    final key = _keyName(event.logicalKey);
+    if (key.isEmpty) return KeyEventResult.handled;
     final keyboard = HardwareKeyboard.instance;
-    if (Platform.isMacOS && keyboard.isMetaPressed) {
-      parts.add('CMD');
-    } else if (keyboard.isControlPressed) {
-      parts.add('CTRL');
-    }
-    if (keyboard.isAltPressed) parts.add('ALT');
-    if (keyboard.isShiftPressed) parts.add('SHIFT');
-    final key = _shortcutKeyName(event.logicalKey);
-    if (parts.isEmpty || key.isEmpty || _isModifier(event.logicalKey)) {
-      return KeyEventResult.handled;
-    }
-    parts.add(key);
-    final shortcut = parts.join('+');
+    final parts = <String>[
+      if (Platform.isMacOS && keyboard.isMetaPressed) 'CMD',
+      if (keyboard.isControlPressed) 'CTRL',
+      if (keyboard.isAltPressed) 'ALT',
+      if (keyboard.isShiftPressed) 'SHIFT',
+    ];
+    final function = RegExp(r'^F\d{1,2}$').hasMatch(key);
+    if (parts.isEmpty && !function) return KeyEventResult.handled;
+    final shortcut = [...parts, key].join('+');
+    final owner = widget.controller.link.shortcutOwner(shortcut);
     setState(() {
       _recording = false;
-      _shortcutDraft = shortcut;
+      _draft = shortcut;
+      _conflict = owner == null ? null : 'Used by $owner';
     });
-    final owner = widget.controller.link.shortcutOwner(shortcut);
-    if (owner != null) {
-      setState(() => _shortcutWarning = 'Used by $owner');
-    } else {
-      _saveShortcut(shortcut);
-    }
+    if (owner == null) _save(shortcut);
     return KeyEventResult.handled;
   }
 
-  void _saveShortcut(String shortcut) {
-    setState(() => _shortcutWarning = null);
+  void _save(String shortcut) {
+    setState(() => _conflict = null);
     widget.controller.configureShortcut(shortcut).then((_) {
-      if (mounted) setState(() => _shortcutDraft = null);
+      if (mounted) setState(() => _draft = null);
     });
   }
 
-  bool _isModifier(LogicalKeyboardKey key) => {
+  static final _modifiers = <LogicalKeyboardKey>{
         LogicalKeyboardKey.controlLeft,
         LogicalKeyboardKey.controlRight,
         LogicalKeyboardKey.shiftLeft,
@@ -433,65 +422,74 @@ class _SettingsPageState extends State<_SettingsPage> {
         LogicalKeyboardKey.altRight,
         LogicalKeyboardKey.metaLeft,
         LogicalKeyboardKey.metaRight,
-      }.contains(key);
+      };
 
-  String _shortcutKeyName(LogicalKeyboardKey key) {
+  static bool _isModifier(LogicalKeyboardKey key) => _modifiers.contains(key);
+
+  static String _keyName(LogicalKeyboardKey key) {
     if (key == LogicalKeyboardKey.space) return 'SPACE';
     if (key == LogicalKeyboardKey.enter) return 'ENTER';
     if (key == LogicalKeyboardKey.tab) return 'TAB';
     if (key == LogicalKeyboardKey.backspace) return 'BACKSPACE';
     final label = key.keyLabel.toUpperCase();
-    if (label.length == 1 || RegExp(r'^F\d{1,2}$').hasMatch(label)) {
-      return label;
-    }
+    if (label.length == 1 || RegExp(r'^F\d{1,2}$').hasMatch(label)) return label;
     return '';
   }
-}
-
-class _SettingLine extends StatelessWidget {
-  const _SettingLine({
-    required this.icon,
-    required this.title,
-    required this.description,
-    required this.trailing,
-  });
-
-  final IconData icon;
-  final String title;
-  final String description;
-  final Widget trailing;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return LayoutBuilder(builder: (context, constraints) {
-      final narrow = constraints.maxWidth < 600;
-      final content =
-          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        SizedBox(
-            width: 28,
-            child: Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Icon(icon,
-                    size: 19, color: theme.colorScheme.onSurfaceVariant))),
-        const SizedBox(width: 13),
-        Expanded(
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title,
-              style: theme.textTheme.bodyMedium
-                  ?.copyWith(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 4),
-          Text(description,
-              style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant, height: 1.5)),
-          if (narrow)
-            Padding(padding: const EdgeInsets.only(top: 9), child: trailing),
-        ])),
-        if (!narrow) ...[const SizedBox(width: 24), trailing],
-      ]);
-      return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 17), child: content);
-    });
+    final controller = widget.controller;
+    final c = arcadeColors(context);
+    final current = _draft ?? controller.shortcut;
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Wrap(spacing: ArcadeTokens.space8, runSpacing: ArcadeTokens.space8, crossAxisAlignment: WrapCrossAlignment.center, children: [
+        Focus(
+          focusNode: _focus,
+          onKeyEvent: _onKey,
+          onFocusChange: (focused) {
+            if (!focused && _recording) setState(() => _recording = false);
+          },
+          child: Semantics(
+            button: true,
+            label: _recording ? 'Recording a shortcut. Press keys, or Esc to cancel.' : 'Shortcut ${_shortcutKeys(current).join(' ')}. Press Enter to change it.',
+            child: InkWell(
+              onTap: controller.working ? null : _start,
+              borderRadius: const BorderRadius.all(Radius.circular(ArcadeTokens.radiusSm)),
+              child: AnimatedContainer(
+                duration: ArcadeTokens.fast,
+                constraints: const BoxConstraints(minHeight: ArcadeTokens.control, minWidth: 140),
+                padding: const EdgeInsets.symmetric(horizontal: ArcadeTokens.space8, vertical: ArcadeTokens.space4),
+                decoration: BoxDecoration(
+                  color: c.panel,
+                  borderRadius: const BorderRadius.all(Radius.circular(ArcadeTokens.radiusSm)),
+                  border: Border.all(color: _recording ? c.accent : c.lineStrong, width: _recording ? 2 : 1),
+                ),
+                child: _recording
+                    ? Text('Press keys…', style: ArcadeTokens.textControl.copyWith(color: c.accent))
+                    : ExcludeSemantics(child: ArcadeKeyCombo(_shortcutKeys(current))),
+              ),
+            ),
+          ),
+        ),
+        if (controller.shortcut != DesktopAdapter.defaultShortcut)
+          ArcadeButton(
+            label: 'Reset to default',
+            small: true,
+            variant: ArcadeButtonVariant.ghost,
+            onPressed: controller.working ? null : () => _save(DesktopAdapter.defaultShortcut),
+          ),
+      ]),
+      if (_conflict != null) ...[
+        const SizedBox(height: ArcadeTokens.space8),
+        ArcadeNotice(
+          _conflict!,
+          tone: ArcadeTone.warn,
+          action: Wrap(spacing: ArcadeTokens.space8, children: [
+            ArcadeButton(label: 'Choose another', small: true, onPressed: _start),
+            ArcadeButton(label: 'Use anyway', small: true, onPressed: () => _save(_draft!)),
+          ]),
+        ),
+      ],
+    ]);
   }
 }

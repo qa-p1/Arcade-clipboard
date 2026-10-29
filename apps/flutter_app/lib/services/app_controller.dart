@@ -136,6 +136,10 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
 
   String? get notice => _notice;
   String get shortcut => _shortcut;
+
+  /// "0.3.0", from the Rust core; null until it answers.
+  String? get appVersion => _appVersion;
+  String? _appVersion;
   String get relayUrl => _relayUrl;
   bool get backgroundEnabled => _backgroundEnabled;
   bool get launchAtLogin => _launchAtLogin;
@@ -258,6 +262,11 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     _notifyListeners();
     try {
       await _core.initializeBridge();
+      try {
+        _appVersion = (await _core.invoke('version'))['version'] as String?;
+      } catch (exception) {
+        Diagnostics.log('startup', 'version unavailable: $exception');
+      }
       final prefs = await SharedPreferences.getInstance();
       final runtimeDataDir = Platform.environment['ARCADE_DATA_DIR']?.trim();
       final buildDataDir =
@@ -273,9 +282,17 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       // Recent diagnostics lines for Tools' "Report a problem" (manifest `logs`).
       unawaited(Diagnostics.configure(support).catchError((Object _) {}));
       if (_disposed) return;
+      // A profile from before 0.3.0 keeps the shortcut it had then, even if
+      // it never saved one; new profiles get the shared default.
+      final existingProfile = prefs.containsKey('device_name');
       final deviceName = prefs.getString('device_name') ?? _defaultDeviceName();
       await prefs.setString('device_name', deviceName);
-      _shortcut = prefs.getString('mesh_shortcut') ?? _defaultShortcut();
+      var savedShortcut = prefs.getString('mesh_shortcut');
+      if (savedShortcut == null && existingProfile) {
+        savedShortcut = DesktopAdapter.previousDefaultShortcut;
+        await prefs.setString('mesh_shortcut', savedShortcut);
+      }
+      _shortcut = savedShortcut ?? DesktopAdapter.defaultShortcut;
       _themeMode = switch (prefs.getString('appearance_mode')) {
         'light' => ThemeMode.light,
         'dark' => ThemeMode.dark,
@@ -1060,6 +1077,93 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     };
   }
 
+  /// Settings › About: {version, channel, toolsInstalled, diagnostics}.
+  Future<AboutInfo> loadAbout() async {
+    try {
+      final about = await _core.invoke('about');
+      return AboutInfo(
+        version: about['version'] as String? ?? _appVersion ?? '',
+        channel: about['channel'] as String? ?? 'stable',
+        toolsInstalled: about['toolsInstalled'] == true,
+        diagnosticsHeader: about['diagnostics'] as String? ?? '',
+      );
+    } catch (exception) {
+      Diagnostics.log('about', 'details unavailable: $exception');
+      return AboutInfo(version: _appVersion ?? '', channel: 'stable', toolsInstalled: false, diagnosticsHeader: '');
+    }
+  }
+
+  /// The diagnostics header, then Clipboard's own lines: mesh state and the
+  /// recent lifecycle log. Never clip content, device keys or the relay token.
+  Future<String> diagnosticsText() async {
+    final about = await loadAbout();
+    final status = _status;
+    final lines = StringBuffer(about.diagnosticsHeader.isEmpty
+        ? 'Arcade Clipboard ${about.version}\nChannel: ${about.channel}\n'
+        : about.diagnosticsHeader);
+    if (!lines.toString().endsWith('\n')) lines.writeln();
+    lines
+      ..writeln('OS: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}')
+      ..writeln('Mesh: ${hasMesh ? 'set up' : 'not set up'}, ${_devices.length} other devices, '
+          '${_pairings.length} pairing requests')
+      ..writeln('Connection: ${status?.connection ?? 'unknown'}${status?.transport == null ? '' : ' (${status!.transport})'}')
+      ..writeln('Relay: ${_relayUrl.isEmpty ? 'none' : 'configured'}')
+      ..writeln('Private mode: ${status?.paused == true ? 'on' : 'off'}')
+      ..writeln('History: ${_items.length} clips loaded, keep $_retentionHours h, limit $_maxItems')
+      ..writeln()
+      ..writeln('Recent events:');
+    for (final entry in Diagnostics.entries.reversed.take(60).toList().reversed) {
+      lines.writeln(entry);
+    }
+    return lines.toString();
+  }
+
+  Future<void> copyDiagnostics() async {
+    try {
+      final text = await diagnosticsText();
+      if (desktopAvailable) {
+        await _desktop.copyText(text);
+      } else {
+        await Clipboard.setData(ClipboardData(text: text));
+      }
+      _clearError('action');
+      _notice = 'Diagnostics copied.';
+    } catch (exception) {
+      _setError(exception, source: 'action');
+    }
+    _notifyListeners();
+  }
+
+  /// The logs folder (Diagnostics writes diagnostics.log there).
+  String? get logsFolder => _supportDirectory == null ? null : '${_supportDirectory!.path}${Platform.pathSeparator}logs';
+
+  Future<void> openLogsFolder() async {
+    final folder = logsFolder;
+    if (folder == null) return;
+    await Directory(folder).create(recursive: true);
+    await _openExternally(folder);
+  }
+
+  static const userGuideUrl = 'https://github.com/qa-p1/Arcade-clipboard/tree/main/docs/user';
+
+  Future<void> openUserGuide() => _openExternally(userGuideUrl);
+
+  Future<void> openUrl(String url) => _openExternally(url);
+
+  Future<void> _openExternally(String target) async {
+    try {
+      final (command, arguments) = Platform.isWindows
+          ? ('explorer', <String>[target])
+          : Platform.isMacOS
+              ? ('open', <String>[target])
+              : ('xdg-open', <String>[target]);
+      await Process.start(command, arguments, mode: ProcessStartMode.detached);
+    } catch (exception) {
+      _setError("Couldn't open $target. $exception", source: 'action');
+      _notifyListeners();
+    }
+  }
+
   Future<void> copyLocally(ClipboardItem item) async {
     try {
       await _copyOrPaste(item, paste: false);
@@ -1151,7 +1255,10 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
-  Future<void> selectOverlayItem(ClipboardItem item) async {
+  /// Pastes [item] into the app that had focus. [plainText] pastes only its
+  /// text, dropping HTML and other formats.
+  Future<void> selectOverlayItem(ClipboardItem item,
+      {bool plainText = false}) async {
     _overlayHistoryGeneration++;
     _overlaySearchLoading = false;
     _overlayOpen = false;
@@ -1169,17 +1276,17 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     try {
       await _desktop.hideOverlay();
       if (_desktopCapabilities?.paste != false) {
-        await _copyOrPaste(item, paste: true);
+        await _copyOrPaste(item, paste: true, plainText: plainText);
         _notice = null;
       } else {
-        await _copyOrPaste(item, paste: false);
+        await _copyOrPaste(item, paste: false, plainText: plainText);
         _notice =
             'This desktop cannot paste into other apps here. The clip is ready; press Ctrl+V to paste.';
       }
       _clearError('overlay');
     } catch (exception) {
       try {
-        await _copyOrPaste(item, paste: false);
+        await _copyOrPaste(item, paste: false, plainText: plainText);
         _notice =
             'Automatic paste was unavailable. The clip is on your clipboard; press Ctrl+V to paste.';
       } catch (_) {
@@ -1189,9 +1296,11 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     _notifyListeners();
   }
 
-  Future<void> _copyOrPaste(ClipboardItem item, {required bool paste}) async {
+  Future<void> _copyOrPaste(ClipboardItem item,
+      {required bool paste, bool plainText = false}) async {
     final payload = await loadPayload(item);
-    if (payload.representations.isEmpty) {
+    if (payload.representations.isEmpty ||
+        (plainText && payload.text.isNotEmpty)) {
       if (_desktopReady) {
         if (paste) {
           await _desktop.pasteText(payload.text);
@@ -1599,11 +1708,6 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         _ => 'device',
       };
 
-  String _defaultShortcut() => switch (Platform.operatingSystem) {
-        'macos' => 'CMD+SHIFT+V',
-        'windows' => 'CTRL+ALT+V',
-        _ => 'CTRL+SHIFT+SPACE',
-      };
 
   /// Orderly shutdown used by the tray Quit action and termination signals.
   Future<void> shutdown() async {

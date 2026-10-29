@@ -1,5 +1,17 @@
 part of '../app.dart';
 
+/// History filters: the segmented control's options (STANDARD §5.1).
+enum _ClipFilter { all, text, images, links, files, pinned }
+
+bool _matches(_ClipFilter filter, ClipboardItem item) => switch (filter) {
+      _ClipFilter.all => true,
+      _ClipFilter.text => item.kind == 'text' || item.kind == 'rich_text' || item.kind == 'html',
+      _ClipFilter.images => item.kind == 'image',
+      _ClipFilter.links => item.kind == 'url',
+      _ClipFilter.files => item.kind == 'file' || item.kind == 'files',
+      _ClipFilter.pinned => item.pinned,
+    };
+
 class _ClipboardPage extends StatefulWidget {
   const _ClipboardPage({required this.controller, required this.onGoToDevices});
 
@@ -12,10 +24,10 @@ class _ClipboardPage extends StatefulWidget {
 
 class _ClipboardPageState extends State<_ClipboardPage> {
   final _search = TextEditingController();
+  final _searchFocus = FocusNode();
   Timer? _searchTimer;
-  String _kind = '';
+  _ClipFilter _filter = _ClipFilter.all;
   String _source = '';
-  bool _pinnedOnly = false;
 
   @override
   void initState() {
@@ -27,249 +39,218 @@ class _ClipboardPageState extends State<_ClipboardPage> {
   void dispose() {
     _searchTimer?.cancel();
     _search.dispose();
+    _searchFocus.dispose();
     super.dispose();
+  }
+
+  void _clearFilters() {
+    _search.clear();
+    _onSearch('');
+    setState(() {
+      _filter = _ClipFilter.all;
+      _source = '';
+    });
+  }
+
+  Future<void> _clearHistory() async {
+    final confirmed = await confirmArcadeDestroy(
+      context,
+      title: 'Clear history?',
+      message: 'Unpinned clips are deleted here and on your paired devices when they reconnect. Pinned clips stay.',
+      confirmLabel: 'Clear history',
+    );
+    if (confirmed) await widget.controller.clearHistory();
   }
 
   @override
   Widget build(BuildContext context) {
     final controller = widget.controller;
-    final theme = Theme.of(context);
+    final c = arcadeColors(context);
     final allItems = controller.items;
-    final items = allItems
-        .where((item) =>
-            (_kind.isEmpty || item.kind == _kind) &&
-            (_source.isEmpty || item.originDevice == _source) &&
-            (!_pinnedOnly || item.pinned))
-        .toList();
-    final filtered = _search.text.trim().isNotEmpty ||
-        _kind.isNotEmpty ||
-        _source.isNotEmpty ||
-        _pinnedOnly;
+    final items = allItems.where((item) => _matches(_filter, item) && (_source.isEmpty || item.originDevice == _source)).toList();
+    final filtered = _search.text.trim().isNotEmpty || _filter != _ClipFilter.all || _source.isNotEmpty;
     final sources = <String, String>{
-      if (controller.status?.deviceId != null)
-        controller.status!.deviceId!: 'This device',
+      if (controller.status?.deviceId != null) controller.status!.deviceId!: 'This device',
       for (final device in controller.devices) device.id: device.name,
-      for (final item in allItems) item.originDevice: item.sourceName
+      for (final item in allItems) item.originDevice: item.sourceName,
     };
-    return CustomScrollView(
-      slivers: [
-        SliverToBoxAdapter(
-            child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-              _PageTitle(
-                eyebrow: '',
-                title: 'Clipboard',
-                trailing: FilledButton.icon(
-                  onPressed:
-                      controller.working || controller.status?.paused == true
-                          ? null
-                          : () => showAddClip(context, controller),
-                  icon: const Icon(Icons.add_rounded, size: 18),
-                  label: const Text('Add clip'),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text('Clips shared between your devices.',
-                  style: theme.textTheme.bodyMedium
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-              const SizedBox(height: 22),
-              TextField(
-                controller: _search,
-                onChanged: _onSearch,
-                decoration: InputDecoration(
-                  hintText: 'Search clips',
-                  prefixIcon: const Icon(Icons.search_rounded, size: 20),
-                  suffixIcon: _search.text.isNotEmpty
-                      ? IconButton(
-                          tooltip: 'Clear search',
-                          onPressed: () {
-                            _search.clear();
-                            _onSearch('');
-                          },
-                          icon: const Icon(Icons.close_rounded, size: 19))
-                      : null,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  FilterChip(
-                      label: const Text('Pinned'),
-                      selected: _pinnedOnly,
-                      onSelected: (value) =>
-                          setState(() => _pinnedOnly = value),
-                      avatar: const Icon(Icons.push_pin_outlined, size: 15)),
-                  PopupMenuButton<String>(
-                    tooltip: 'Filter by content type',
-                    onSelected: (value) => setState(() => _kind = value),
-                    itemBuilder: (_) => [
-                      for (final kind in const [
-                        '',
-                        'text',
-                        'url',
-                        'rich_text',
-                        'image',
-                        'file',
-                        'files'
-                      ])
-                        PopupMenuItem(
-                            value: kind,
-                            child: Text(kind.isEmpty
-                                ? 'All types'
-                                : clipKindLabel(kind)))
-                    ],
-                    child: _FilterControl(
-                        label:
-                            _kind.isEmpty ? 'All types' : clipKindLabel(_kind)),
-                  ),
-                  PopupMenuButton<String>(
-                    tooltip: 'Filter by source device',
-                    onSelected: (value) => setState(() => _source = value),
-                    itemBuilder: (_) => [
-                      const PopupMenuItem(
-                          value: '', child: Text('All devices')),
-                      for (final source in sources.entries)
-                        PopupMenuItem(
-                            value: source.key, child: Text(source.value))
-                    ],
-                    child: _FilterControl(
-                        label: _source.isEmpty
-                            ? 'All devices'
-                            : sources[_source] ?? 'Device'),
-                  ),
-                ],
-              ),
-              if (controller.error != null)
-                Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child:
-                        _InlineMessage(text: controller.error!, error: true)),
-              if (controller.notice != null)
-                Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: _InlineMessage(
-                        text: controller.notice!,
-                        onDismiss: controller.dismissNotice)),
-              WaitingPhoto(controller: controller),
-              LinkWorkStatus(controller: controller),
-              if (controller.status?.paused == true)
-                Padding(
-                  padding: const EdgeInsets.only(top: 12),
-                  child: _NoticeStrip(
-                      icon: Icons.pause_circle_outline_rounded,
-                      text:
-                          'Sharing is paused. Existing clips are still available.',
-                      actionLabel: 'Resume',
-                      onAction: () => controller.setPrivatePause(false)),
-                ),
-              if (controller.status?.connection == 'offline' &&
-                  controller.devices.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 12),
-                  child: _NoticeStrip(
-                      icon: Icons.cloud_off_rounded,
-                      text:
-                          'Offline. Clips will sync when your devices reconnect.',
-                      actionLabel: 'Devices',
-                      onAction: widget.onGoToDevices),
-                ),
-              const SizedBox(height: 16),
-              if (controller.historyLoading)
-                const LinearProgressIndicator(minHeight: 2),
-            ])),
-        if (items.isEmpty)
-          SliverFillRemaining(
-            hasScrollBody: false,
-            child: _ClipboardEmptyState(
-              hasQuery: filtered,
-              controller: controller,
-              onAdd: () => showAddClip(context, controller),
-              onClear: () {
-                _search.clear();
-                _onSearch('');
-                setState(() {
-                  _kind = '';
-                  _source = '';
-                  _pinnedOnly = false;
-                });
-              },
-            ),
-          )
-        else
-          SliverList(
-              delegate: SliverChildBuilderDelegate((context, position) {
-            if (position.isOdd) {
-              return Divider(height: 1, color: theme.dividerColor);
-            }
-            final item = items[position ~/ 2];
-            return _ClipboardRow(
-              controller: controller,
-              item: item,
-              onTap: () => showClipDetail(context, controller, item),
-              onCopy: () => controller.copyLocally(item),
-              onPin: () => controller.setPinned(item, !item.pinned),
-              onDelete: () => controller.deleteItem(item),
-              onResend: () => controller.resendItem(item),
+    final paused = controller.status?.paused == true;
+    final deviceCount = controller.devices.length;
+    final subtitle = '${formatCount(allItems.length)} ${allItems.length == 1 ? 'clip' : 'clips'} · '
+        '${deviceCount == 0 ? 'not synced with other devices yet' : 'synced with $deviceCount ${deviceCount == 1 ? 'device' : 'devices'}'}';
+
+    final Widget list;
+    if (items.isEmpty && controller.historyLoading) {
+      list = ArcadeListSection(children: [for (var i = 0; i < 4; i++) const ArcadeSkeletonRow()]);
+    } else if (items.isEmpty && controller.error != null && allItems.isEmpty) {
+      list = ArcadeNotice("Couldn't load your clips. ${controller.error}",
+          tone: ArcadeTone.danger,
+          action: ArcadeButton(label: 'Retry', small: true, onPressed: () => controller.refreshHistory(query: _search.text)));
+    } else if (items.isEmpty) {
+      list = filtered
+          ? ArcadeEmptyState(
+              icon: 'search',
+              title: _search.text.trim().isEmpty ? 'No matching clips' : 'No clips match “${_search.text.trim()}”',
+              message: 'Try another search or clear the filters.',
+              actions: [ArcadeButton(label: 'Clear filters', onPressed: _clearFilters)],
+            )
+          : ArcadeEmptyState(
+              icon: 'clipboard',
+              title: 'Copy something and it shows up here',
+              message: controller.automaticDesktopCapture
+                  ? 'Text, images, links and files you copy are kept and synced to your devices.'
+                  : 'Add a clip here, or share one to Arcade Clipboard from your phone.',
+              actions: [
+                ArcadeButton(label: 'Add clip', icon: 'plus', onPressed: paused ? null : () => showAddClip(context, controller)),
+              ],
             );
-          }, childCount: items.length * 2 - 1)),
+    } else {
+      list = ArcadeListSection(children: [
+        for (final item in items)
+          _ClipboardRow(
+            controller: controller,
+            item: item,
+            onTap: () => showClipDetail(context, controller, item),
+            onCopy: () => controller.copyLocally(item),
+            onPin: () => controller.setPinned(item, !item.pinned),
+            onDelete: () => controller.deleteItem(item),
+            onResend: () => controller.resendItem(item),
+          ),
+      ]);
+    }
+
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyK, control: true): _searchFocus.requestFocus,
+        const SingleActivator(LogicalKeyboardKey.keyK, meta: true): _searchFocus.requestFocus,
+      },
+      child: _PageFrame(children: [
+        ArcadePageHead(title: 'History', subtitle: subtitle, actions: [
+          ArcadeButton(
+            label: 'Add clip',
+            icon: 'plus',
+            onPressed: controller.working || paused ? null : () => showAddClip(context, controller),
+          ),
+          ArcadeButton(
+            label: 'Clear history…',
+            variant: ArcadeButtonVariant.danger,
+            onPressed: controller.working || allItems.isEmpty ? null : _clearHistory,
+          ),
+        ]),
+        _Messages(controller: controller),
+        WaitingPhoto(controller: controller),
+        LinkWorkStatus(controller: controller),
+        if (paused)
+          Padding(
+            padding: const EdgeInsets.only(bottom: ArcadeTokens.space12),
+            child: ArcadeNotice('Sharing is paused. Existing clips are still available.',
+                tone: ArcadeTone.warn,
+                title: 'Private mode',
+                action: ArcadeButton(label: 'Resume', small: true, onPressed: () => controller.setPrivatePause(false))),
+          ),
+        if (controller.status?.connection == 'offline' && controller.devices.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: ArcadeTokens.space12),
+            child: ArcadeNotice('Offline. Clips sync when your devices reconnect.',
+                action: ArcadeButton(label: 'Devices', small: true, onPressed: widget.onGoToDevices)),
+          ),
+        ArcadeSearchField(
+          controller: _search,
+          focusNode: _searchFocus,
+          hint: 'Search clips',
+          onChanged: _onSearch,
+        ),
+        const SizedBox(height: ArcadeTokens.space12),
+        Wrap(spacing: ArcadeTokens.space8, runSpacing: ArcadeTokens.space8, crossAxisAlignment: WrapCrossAlignment.center, children: [
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: ArcadeSegmented<_ClipFilter>(
+              options: const [
+                (_ClipFilter.all, 'All'),
+                (_ClipFilter.text, 'Text'),
+                (_ClipFilter.images, 'Images'),
+                (_ClipFilter.links, 'Links'),
+                (_ClipFilter.files, 'Files'),
+                (_ClipFilter.pinned, 'Pinned'),
+              ],
+              value: _filter,
+              onChanged: (value) => setState(() => _filter = value),
+            ),
+          ),
+          PopupMenuButton<String>(
+            tooltip: 'Filter by source device',
+            onSelected: (value) => setState(() => _source = value),
+            itemBuilder: (_) => [
+              const PopupMenuItem(value: '', child: Text('All devices')),
+              for (final source in sources.entries) PopupMenuItem(value: source.key, child: Text(source.value)),
+            ],
+            child: IgnorePointer(
+              child: ArcadeButton(
+                label: _source.isEmpty ? 'All devices' : sources[_source] ?? 'Device',
+                icon: 'monitor',
+                small: true,
+                onPressed: () {},
+              ),
+            ),
+          ),
+        ]),
+        const SizedBox(height: ArcadeTokens.space16),
+        if (controller.historyLoading && items.isNotEmpty)
+          const Padding(padding: EdgeInsets.only(bottom: ArcadeTokens.space8), child: LinearProgressIndicator(minHeight: 2)),
+        list,
         if (controller.hasMoreHistory)
-          SliverToBoxAdapter(
-              child: Center(
-                  child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: TextButton(
-                onPressed: controller.historyLoading
-                    ? null
-                    : controller.loadMoreHistory,
-                child: const Text('Load more clips')),
-          ))),
-        SliverToBoxAdapter(
-            child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: Row(children: [
-            Text('${items.length} ${items.length == 1 ? 'clip' : 'clips'}',
-                style: theme.textTheme.labelSmall
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-            const Spacer(),
-            if (controller.desktopCapabilities?.globalShortcut == true &&
-                MediaQuery.sizeOf(context).width >= 1000)
-              InkWell(
+          Padding(
+            padding: const EdgeInsets.only(top: ArcadeTokens.space12),
+            child: Center(
+              child: ArcadeButton(
+                label: 'Load more clips',
+                variant: ArcadeButtonVariant.ghost,
+                onPressed: controller.historyLoading ? null : controller.loadMoreHistory,
+              ),
+            ),
+          ),
+        if (items.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: ArcadeTokens.space12),
+            child: Row(children: [
+              Text('${formatCount(items.length)} ${items.length == 1 ? 'clip' : 'clips'}',
+                  style: ArcadeTokens.textSmall.copyWith(color: c.faint)),
+              const Spacer(),
+              if (controller.desktopCapabilities?.globalShortcut == true && MediaQuery.sizeOf(context).width >= 1000)
+                InkWell(
                   onTap: controller.openOverlay,
-                  child: _KeyboardHint(shortcut: controller.shortcut)),
-          ]),
-        )),
-      ],
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Text('Quick picker', style: ArcadeTokens.textSmall.copyWith(color: c.faint)),
+                    const SizedBox(width: ArcadeTokens.space6),
+                    ArcadeKeyCombo(_shortcutKeys(controller.shortcut)),
+                  ]),
+                ),
+            ]),
+          ),
+      ]),
     );
   }
 
   void _onSearch(String value) {
     setState(() {});
     _searchTimer?.cancel();
-    _searchTimer = Timer(const Duration(milliseconds: 160),
-        () => widget.controller.refreshHistory(query: value));
+    _searchTimer = Timer(const Duration(milliseconds: 160), () => widget.controller.refreshHistory(query: value));
   }
 }
 
-class _FilterControl extends StatelessWidget {
-  const _FilterControl({required this.label});
-  final String label;
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-            border: Border.all(color: Theme.of(context).dividerColor),
-            borderRadius: BorderRadius.circular(8)),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Text(label, style: Theme.of(context).textTheme.labelMedium),
-          const SizedBox(width: 8),
-          const Icon(Icons.keyboard_arrow_down_rounded, size: 16)
-        ]),
-      );
-}
+/// A stored shortcut ("CTRL+ALT+V") as key chip labels.
+List<String> _shortcutKeys(String shortcut) => shortcut
+    .split('+')
+    .where((part) => part.trim().isNotEmpty)
+    .map((part) => switch (part.trim().toUpperCase()) {
+          'CTRL' || 'CONTROL' => Platform.isMacOS ? '⌃' : 'Ctrl',
+          'ALT' || 'OPTION' => Platform.isMacOS ? '⌥' : 'Alt',
+          'SHIFT' => Platform.isMacOS ? '⇧' : 'Shift',
+          'META' || 'SUPER' || 'CMD' || 'COMMAND' => Platform.isMacOS ? '⌘' : 'Super',
+          'SPACE' => 'Space',
+          final key => key.length == 1 ? key : key[0] + key.substring(1).toLowerCase(),
+        })
+    .toList();
 
 class _ClipboardRow extends StatelessWidget {
   const _ClipboardRow(
@@ -286,143 +267,57 @@ class _ClipboardRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 17),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest
-                      .withValues(alpha: .65),
-                  borderRadius: BorderRadius.circular(9)),
-              child: item.kind == 'image'
-                  ? ClipThumbnail(controller: controller, item: item)
-                  : Icon(clipIcon(item.kind),
-                      size: 19, color: theme.colorScheme.onSurfaceVariant)),
-          const SizedBox(width: 14),
-          Expanded(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                Text(item.preview.isEmpty ? 'Empty clip' : item.preview,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium?.copyWith(height: 1.45)),
-                const SizedBox(height: 7),
-                ListenableBuilder(
-                    listenable: _RelativeClock.instance,
-                    builder: (context, _) => Text(
-                        '${item.sourceName} · ${_relativeTime(item.createdAt)}${item.size > 0 && item.hasBinaryContent ? ' · ${formatBytes(item.size)}' : ''}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant))),
-              ])),
+    final c = arcadeColors(context);
+    return ListenableBuilder(
+      listenable: _RelativeClock.instance,
+      builder: (context, _) => ArcadeRow(
+        title: item.preview.isEmpty ? 'Empty clip' : item.preview.split('\n').first,
+        subtitle: '${item.sourceName} · ${_relativeTime(item.createdAt)}'
+            '${item.size > 0 && item.hasBinaryContent ? ' · ${formatSize(item.size)}' : ''}',
+        onTap: onTap,
+        leading: ArcadeGlyphTile(
+          child: item.kind == 'image'
+              ? ClipRRect(
+                  borderRadius: const BorderRadius.all(Radius.circular(ArcadeTokens.radiusTile)),
+                  child: ClipThumbnail(controller: controller, item: item))
+              : ArcadeIcon(clipGlyph(item.kind)),
+        ),
+        trailing: Row(mainAxisSize: MainAxisSize.min, children: [
           if (item.pinned)
             Padding(
-                padding: const EdgeInsets.fromLTRB(8, 6, 0, 0),
-                child: Icon(Icons.push_pin_rounded,
-                    size: 15, color: theme.colorScheme.primary)),
-          IconButton(
-              tooltip: 'Copy to this device',
-              onPressed: onCopy,
-              icon: const Icon(Icons.copy_rounded, size: 17),
-              visualDensity: VisualDensity.compact),
+              padding: const EdgeInsets.only(right: ArcadeTokens.space4),
+              child: ArcadeIcon('pin', color: c.accent, semanticLabel: 'Pinned'),
+            ),
+          ArcadeButton(label: 'Copy to this device', icon: 'copy', iconOnly: true, small: true, variant: ArcadeButtonVariant.ghost, onPressed: onCopy),
           PopupMenuButton<String>(
-              tooltip: 'Clip actions',
-              icon: const Icon(Icons.more_horiz_rounded, size: 19),
-              onSelected: (action) {
-                if (action == 'inspect') onTap();
-                if (action == 'pin') onPin();
-                if (action == 'delete') onDelete();
-                if (action == 'resend') onResend();
-                for (final offer in controller.linkActions(item)) {
-                  if (action == 'link:${offer.peer}/${offer.action}') {
-                    controller.invokeItemAction(item, offer);
-                  }
+            tooltip: 'Clip actions',
+            icon: ArcadeIcon('more', color: c.muted),
+            onSelected: (action) {
+              if (action == 'inspect') onTap();
+              if (action == 'pin') onPin();
+              if (action == 'delete') onDelete();
+              if (action == 'resend') onResend();
+              for (final offer in controller.linkActions(item)) {
+                if (action == 'link:${offer.peer}/${offer.action}') {
+                  controller.invokeItemAction(item, offer);
                 }
-              },
-              constraints: const BoxConstraints(minWidth: 240, maxWidth: 390),
-              itemBuilder: (_) => [
-                    const PopupMenuItem(
-                        value: 'inspect', child: Text('Inspect clip')),
-                    PopupMenuItem(
-                        value: 'pin',
-                        child: Text(item.pinned ? 'Unpin clip' : 'Pin clip')),
-                    const PopupMenuItem(
-                        value: 'resend', child: Text('Share again')),
-                    const PopupMenuItem(
-                        value: 'delete', child: Text('Delete clip')),
-                    for (final action in controller.linkActions(item))
-                      PopupMenuItem(
-                          value: 'link:${action.peer}/${action.action}',
-                          enabled: action.enabled,
-                          child: LinkActionLabel(action: action, item: item)),
-                  ]),
+              }
+            },
+            constraints: const BoxConstraints(minWidth: 240, maxWidth: 390),
+            itemBuilder: (_) => [
+              const PopupMenuItem(value: 'inspect', child: Text('Inspect clip')),
+              PopupMenuItem(value: 'pin', child: Text(item.pinned ? 'Unpin clip' : 'Pin clip')),
+              const PopupMenuItem(value: 'resend', child: Text('Share again')),
+              for (final action in controller.linkActions(item))
+                PopupMenuItem(
+                    value: 'link:${action.peer}/${action.action}',
+                    enabled: action.enabled,
+                    child: LinkActionLabel(action: action, item: item)),
+              PopupMenuItem(value: 'delete', child: Text('Delete clip', style: TextStyle(color: c.danger))),
+            ],
+          ),
         ]),
       ),
     );
-  }
-}
-
-class _ClipboardEmptyState extends StatelessWidget {
-  const _ClipboardEmptyState(
-      {required this.hasQuery,
-      required this.controller,
-      required this.onAdd,
-      required this.onClear});
-  final bool hasQuery;
-  final AppController controller;
-  final VoidCallback onAdd, onClear;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-        child: SingleChildScrollView(
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-      Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest
-                  .withValues(alpha: .45),
-              borderRadius: BorderRadius.circular(16)),
-          child: Icon(
-              hasQuery ? Icons.search_off_rounded : Icons.content_paste_rounded,
-              size: 24,
-              color: theme.colorScheme.onSurfaceVariant)),
-      const SizedBox(height: 18),
-      Text(hasQuery ? 'No matching clips' : 'Your clipboard is empty',
-          style: theme.textTheme.titleMedium
-              ?.copyWith(fontWeight: FontWeight.w600)),
-      const SizedBox(height: 8),
-      ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 340),
-          child: Text(
-              hasQuery
-                  ? 'Try another search or clear the filters.'
-                  : controller.automaticDesktopCapture
-                      ? 'Copy text, an image, or a file to add it here.'
-                      : 'Add a clip here, or share one to Arcade Clipboard from your phone.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant, height: 1.5))),
-      const SizedBox(height: 17),
-      TextButton.icon(
-          onPressed: hasQuery
-              ? onClear
-              : controller.status?.paused == true
-                  ? null
-                  : onAdd,
-          icon: Icon(
-              hasQuery ? Icons.filter_alt_off_outlined : Icons.add_rounded,
-              size: 18),
-          label: Text(hasQuery ? 'Clear filters' : 'Add your first clip')),
-    ])));
   }
 }

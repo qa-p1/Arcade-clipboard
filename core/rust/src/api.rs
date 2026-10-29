@@ -13,6 +13,36 @@ static LIFECYCLE: OnceLock<RwLock<()>> = OnceLock::new();
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 static LINK_STARTUP: OnceLock<Mutex<Option<tokio::task::JoinHandle<()>>>> = OnceLock::new();
 
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+fn about() -> Value {
+    let environment = arcade_link::install::Environment::discover().ok();
+    let channel = environment
+        .as_ref()
+        .and_then(|e| e.receipts().read(arcade_link::ids::CLIPBOARD).ok().flatten())
+        .map_or_else(|| "stable".to_string(), |receipt| receipt.channel);
+    let tools_installed = environment.as_ref().is_some_and(|e| {
+        arcade_link::Registry::load(&e.locations)
+            .get(arcade_link::ids::TOOLS)
+            .is_some_and(|m| m.executable_exists() && m.settings.link_enabled)
+    });
+    let mut header =
+        arcade_link::diagnostics::Header::new(arcade_link::ids::CLIPBOARD, crate::VERSION, &channel);
+    header.peers_from(&arcade_link::Locations::discover());
+    serde_json::json!({
+        "version": crate::VERSION,
+        "channel": channel,
+        "toolsInstalled": tools_installed,
+        "diagnostics": header.render(),
+    })
+}
+
+/// Phones have no Link install receipts or peers.
+#[cfg(any(target_os = "android", target_os = "ios"))]
+fn about() -> Value {
+    serde_json::json!({"version": crate::VERSION, "channel": "stable", "toolsInstalled": false,
+        "diagnostics": format!("Arcade Clipboard {}\nChannel: stable\n", crate::VERSION)})
+}
+
 fn core_slot() -> &'static Mutex<Option<Arc<Core>>> {
     CORE.get_or_init(|| Mutex::new(None))
 }
@@ -243,6 +273,11 @@ pub async fn call(request: String) -> Result<String, String> {
             core.request(value).await?
         }
         "version" => serde_json::json!({"version": crate::VERSION}),
+        // Settings › About: version, channel, who updates Clipboard and the
+        // shared diagnostics header (STANDARD §10). No clip content or keys.
+        "about" => tokio::task::spawn_blocking(about)
+            .await
+            .map_err(|_| "Could not read the app details".to_string())?,
         "shutdown" => {
             // Before the lifecycle lock, which waits for pending long-polls:
             // the endpoint must disappear promptly on quit.
