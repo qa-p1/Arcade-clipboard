@@ -17,7 +17,7 @@ String clipGlyph(String kind) => switch (kind) {
       'file' => 'file',
       'files' => 'folder',
       'rich_text' || 'html' => 'document',
-      _ => 'type',
+      _ => 'font',
     };
 
 String clipKindLabel(String kind) => switch (kind) {

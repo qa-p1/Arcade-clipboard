@@ -97,7 +97,7 @@ checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
 
 [[package]]
 name = "arcade-clipboard-launcher"
-version = "0.2.5"
+version = "0.3.0"
 dependencies = [
  "arcade-link",
  "gtk",
@@ -122,7 +122,7 @@ dependencies = [
 
 [[package]]
 name = "arcade_core"
-version = "0.2.5"
+version = "0.3.0"
 dependencies = [
  "arcade-link",
  "arcade_relay",
@@ -167,7 +167,7 @@ dependencies = [
 
 [[package]]
 name = "arcade_test_driver"
-version = "0.2.5"
+version = "0.3.0"
 dependencies = [
  "arcade_core",
  "serde_json",

@@ -920,7 +920,12 @@ class ArcadeHintBar extends StatelessWidget {
           if (i > 0) const SizedBox(width: ArcadeTokens.space14),
           ArcadeKeyCombo(hints[i].$1),
           const SizedBox(width: ArcadeTokens.space6),
-          Flexible(child: Text(hints[i].$2, overflow: TextOverflow.ellipsis, style: ArcadeTokens.textCaption.copyWith(color: c.faint))),
+          // Weighted by length: equal shares cut a long label while short
+          // ones leave space unused.
+          Flexible(
+            flex: hints[i].$2.length.clamp(1, 1000).toInt(),
+            child: Text(hints[i].$2, overflow: TextOverflow.ellipsis, style: ArcadeTokens.textCaption.copyWith(color: c.faint)),
+          ),
         ],
       ]),
     );

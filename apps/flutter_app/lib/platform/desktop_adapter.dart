@@ -74,7 +74,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
   DesktopAdapter({ArcadeDesktopBridge? bridge})
       : _bridge = bridge ?? ArcadeDesktopBridge();
 
-  static const Size _overlaySize = Size(430, 510);
+  static const Size _overlaySize = Size(480, 520);
   static const Duration _pasteSuppressionLifetime = Duration(seconds: 3);
   static const Duration _commandTimeout = Duration(seconds: 3);
   static const Duration _captureWatcherStartupGrace =

@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.3.0 — 2026-10-29
+
+The Arcade overhaul: Clipboard on the shared design kit and project standard.
+
+- **New look.** The window, the quick picker, dialogs, welcome and pairing use
+  the Arcade design kit, in light, dark and system themes. Settings follow the
+  standard order: General, Shortcuts, Privacy, Sync, Connected apps, About.
+  The remote relay applies on Enter or when you leave the field.
+- **Quick picker.** Ctrl+Enter (⌘↩) pastes as plain text. Clicking elsewhere
+  closes the picker. New default shortcut **Ctrl+Alt+V** (⌃⌥V on macOS);
+  if you used Clipboard before, you keep your shortcut.
+- **About.** Version, channel, who updates Clipboard, the user guide, the logs
+  folder, Copy diagnostics and licences.
+- **Icons and tray.** The Clipboard icon on every platform (the macOS icon was
+  Flutter's logo). The tray shows the monochrome glyph, opens the window on a
+  click and reads Open Arcade Clipboard, Settings, Private mode, Restart and
+  Quit.
+- **Folders.** Data moves to `~/.local/share/arcade/clipboard` (Windows
+  `%APPDATA%\Arcade\Clipboard`, macOS `~/Library/Application Support/Arcade/Clipboard`)
+  and settings to `settings.json`, on first start, copied and verified before
+  the old folder goes. The app id is `dev.arcade.Clipboard`; on macOS, allow
+  paste access again after updating.
+- **Command line.** `--status`, `--show`, `--hide`, `--toggle` and `--restart`;
+  launching Clipboard again shows the running copy on Windows and macOS too.
+- **Android.** Release builds are signed with the release key, never the debug
+  key; `jni_flutter` 1.0.4 (retracted) is now 1.0.4+1.
+- **Relay.** Logs work (`RUST_LOG`, default info).
+- Errors read "Couldn't …"; developer docs moved to `docs/dev/`.
+
 ## 0.2.5 — 2026-10-19
 
 - `--arcade-manifest` now says how Clipboard is installed, as the other Arcade

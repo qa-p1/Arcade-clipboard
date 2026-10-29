@@ -242,7 +242,6 @@ class _MeshOverlayState extends State<MeshOverlay> {
                           ]),
                     ),
                   ArcadeHintBar([
-                    (const ['↑', '↓'], 'Select'),
                     (const ['↵'], enterLabel),
                     if (!_picking) ([mod, '↵'], 'Paste as plain text'),
                     (const ['Esc'], 'Close'),
@@ -321,7 +320,7 @@ class _OverlayClipRow extends StatelessWidget {
       builder: (context, _) => ArcadeOverlayRow(
         title: item.preview.replaceAll(RegExp(r'\s+'), ' ').trim(),
         leading: ArcadeIcon(clipGlyph(item.kind),
-            color: selected ? c.accentText : c.muted),
+            color: selected ? c.accent : c.muted),
         trailing: Row(mainAxisSize: MainAxisSize.min, children: [
           if (item.pinned) ...[
             ArcadeIcon('pin',

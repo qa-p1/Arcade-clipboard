@@ -49,7 +49,7 @@ The Windows plugin uses the native clipboard listener for capture and supports t
 
 ## macOS
 
-The macOS plugin watches the pasteboard for changes while capture is on. The shortcut defaults to **Cmd+Shift+V**. Pasting into another app requires Accessibility permission, which **Settings → Allow automatic paste** requests; without it, the chosen clip is copied and you press Cmd+V. The app lives in the menu bar and uses `SMAppService` for launch at login. Build with `bash scripts/dev build-macos`; it builds the Flutter app, bundles the Rust library and applies an ad-hoc signature. The `macos-latest` CI job builds it and runs the Rust core tests.
+The macOS plugin watches the pasteboard for changes while capture is on. The shortcut defaults to **⌃⌥V** (**⇧⌘V** before 0.3.0; profiles from then keep it). Pasting into another app requires Accessibility permission, which **Settings → Allow automatic paste** requests; without it, the chosen clip is copied and you press Cmd+V. The app lives in the menu bar and uses `SMAppService` for launch at login. Build with `bash scripts/dev build-macos`; it builds the Flutter app, bundles the Rust library and applies an ad-hoc signature. The `macos-latest` CI job builds it and runs the Rust core tests.
 
 ## Limits on every platform
 

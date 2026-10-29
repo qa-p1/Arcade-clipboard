@@ -42,7 +42,7 @@ The device that created the mesh approves new devices and can remove them. Devic
 
 ## Open the picker
 
-The default shortcut is **Ctrl+Shift+Space** on Linux, **Ctrl+Alt+V** on Windows, and **Cmd+Shift+V** on macOS. Change it in Settings if another app already uses it. Select a clip with the arrow keys, type to search, then press **Enter** to paste it into the app you were using.
+The default shortcut is **Ctrl+Alt+V** (**⌃⌥V** on macOS). If you used Clipboard before 0.3.0, it keeps the shortcut you had. Change it in **Settings → Shortcuts** if another app already uses it. Select a clip with the arrow keys, type to search, then press **Enter** to paste it into the app you were using, or **Ctrl+Enter** (**⌘↩**) to paste it as plain text. Clicking elsewhere or **Esc** closes the picker.
 
 On Linux Hyprland and X11, Clipboard restores the previous app and pastes for you. On Wayland compositors without support for background input, choosing a clip copies it; paste it yourself with **Ctrl+V**.
 

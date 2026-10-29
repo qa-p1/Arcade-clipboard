@@ -77,7 +77,7 @@ See [how Clipboard works with other Arcade apps](docs/user/with-other-apps.md) a
 2. On the second device choose **Join an existing mesh** and scan the code or type it.
 3. Compare the six-digit verification number on both devices and approve on each.
 
-Open the picker with **Ctrl+Shift+Space** on Linux, **Ctrl+Alt+V** on Windows, **Cmd+Shift+V** on macOS. Type to search, move with the arrow keys and press **Enter** to paste. On Wayland compositors without in-app shortcut support, bind `arcade-clipboard --overlay` yourself. See the [shortcut reference](docs/user/shortcuts.md).
+Open the picker with **Ctrl+Alt+V** (**⌃⌥V** on macOS). Type to search, move with the arrow keys and press **Enter** to paste, or **Ctrl+Enter** (**⌘↩**) to paste as plain text. If you used Clipboard before 0.3.0, it keeps the shortcut you had. On Wayland compositors without in-app shortcut support, bind `arcade-clipboard --overlay` yourself. See the [shortcut reference](docs/user/shortcuts.md).
 
 Clipboard stays in the background so it can capture copies and receive clips. Its tray icon opens Settings; choose **Quit Arcade Clipboard** from the tray menu to stop it.
 

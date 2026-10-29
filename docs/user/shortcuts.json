@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "app": "arcade.clipboard",
-  "version": "0.2.5",
+  "version": "0.3.0",
   "groups": [
     {
       "title": "Global",
@@ -10,11 +10,7 @@
         {
           "id": "picker",
           "title": "Open the clipboard picker",
-          "keys": {
-            "default": "Ctrl+Shift+Space",
-            "windows": "Ctrl+Alt+V",
-            "macos": "Shift+Super+V"
-          },
+          "keys": { "default": "Ctrl+Alt+V" },
           "rebindable": true
         }
       ]
@@ -28,6 +24,7 @@
         { "id": "first-clip", "title": "Select the first clip", "keys": { "default": "Home" } },
         { "id": "last-clip", "title": "Select the last clip", "keys": { "default": "End" } },
         { "id": "choose-clip", "title": "Paste or choose the selected clip", "keys": { "default": "Enter" } },
+        { "id": "paste-plain", "title": "Paste the selected clip as plain text", "keys": { "default": "Ctrl+Enter", "macos": "Super+Enter" } },
         { "id": "close-picker", "title": "Close the picker", "keys": { "default": "Escape" } },
         { "id": "quick-look", "title": "Open the selected item in Arcade Look", "keys": { "default": "Ctrl+Alt+Q" } },
         { "id": "analyze-with-lens", "title": "Analyze the selected image with Lens", "keys": { "default": "Ctrl+Alt+A" } },

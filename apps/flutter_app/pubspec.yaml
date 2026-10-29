@@ -1,7 +1,7 @@
 name: arcade_clipboard
 description: A calm, private clipboard mesh for your devices.
 publish_to: none
-version: 0.2.5+2
+version: 0.3.0+3
 
 environment:
   sdk: '>=3.4.0 <4.0.0'

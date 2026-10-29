@@ -2,7 +2,7 @@
 
 | Action | Linux | Windows | macOS |
 | --- | --- | --- | --- |
-| Open the clipboard picker | Ctrl+Shift+Space | Ctrl+Alt+V | ⇧⌘V |
+| Open the clipboard picker | Ctrl+Alt+V | Ctrl+Alt+V | ⌃⌥V |
 
 ## Clip picker
 
@@ -13,6 +13,7 @@
 | Select the first clip | Home | Home | Home |
 | Select the last clip | End | End | End |
 | Paste or choose the selected clip | Enter | Enter | ↩ |
+| Paste the selected clip as plain text | Ctrl+Enter | Ctrl+Enter | ⌘↩ |
 | Close the picker | Escape | Escape | ⎋ |
 | Open the selected item in Arcade Look | Ctrl+Alt+Q | Ctrl+Alt+Q | ⌃⌥Q |
 | Analyze the selected image with Lens | Ctrl+Alt+A | Ctrl+Alt+A | ⌃⌥A |

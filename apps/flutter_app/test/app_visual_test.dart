@@ -41,13 +41,23 @@ void main() {
     expect(tester.takeException(), isNull);
     await _capture(tester, boundary, 'desktop-clipboard-light.png');
 
+    await tester.tap(find.text('Devices').first);
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    await _capture(tester, boundary, 'desktop-devices-light.png');
     await fixture.controller.setThemeMode(ThemeMode.dark);
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    await _capture(tester, boundary, 'desktop-devices-dark.png');
+
+    await tester.tap(find.text('History').first);
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     await _capture(tester, boundary, 'desktop-clipboard-dark.png');
 
     await fixture.controller.openOverlay();
-    await tester.binding.setSurfaceSize(const Size(430, 510));
+    // The picker window's size (DesktopAdapter._overlaySize).
+    await tester.binding.setSurfaceSize(const Size(480, 520));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     await _capture(tester, boundary, 'desktop-overlay-dark.png');
@@ -244,6 +254,8 @@ class _Desktop extends DesktopAdapter {
           detail: '');
   @override
   Future<void> configureShortcut(String shortcut) async {}
+  @override
+  Future<void> setCaptureEnabled(bool enabled) async {}
   @override
   Future<void> setBackgroundEnabled(bool enabled) async {}
   @override
