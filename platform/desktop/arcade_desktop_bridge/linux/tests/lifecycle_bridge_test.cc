@@ -216,8 +216,22 @@ int main() {
   GVariant* layout = g_variant_ref_sink(MenuLayout(&lifecycle, 0));
   assert(g_variant_is_of_type(layout, G_VARIANT_TYPE("(ia{sv}av)")));
   GVariant* children = g_variant_get_child_value(layout, 2);
-  assert(g_variant_n_children(children) == 7);
+  assert(g_variant_n_children(children) == 6);
   g_variant_unref(children);
+  // The standard tray order and wording (STANDARD §8).
+  const char* expected[] = {"Open Arcade Clipboard", "Settings", nullptr, "Private mode", "Restart Arcade Clipboard",
+                            "Quit Arcade Clipboard"};
+  for (gint id = 1; id <= 6; ++id) {
+    GVariant* properties = g_variant_ref_sink(MenuProperties(&lifecycle, id));
+    const gchar* label = nullptr;
+    const gchar* type = nullptr;
+    if (expected[id - 1] == nullptr) {
+      assert(g_variant_lookup(properties, "type", "&s", &type) && g_strcmp0(type, "separator") == 0);
+    } else {
+      assert(g_variant_lookup(properties, "label", "&s", &label) && g_strcmp0(label, expected[id - 1]) == 0);
+    }
+    g_variant_unref(properties);
+  }
   g_variant_unref(layout);
 
   // The Private mode item is a checkmark that follows the core's state.

@@ -232,7 +232,9 @@ def main():
         exported = dbus.Interface(watcher.bus.get_object(name, str(properties.Get(ITEM, "Menu"))), MENU)
         _, layout = exported.GetLayout(dbus.Int32(0), dbus.Int32(-1), dbus.Array([], signature="s"))
         labels = {str(node[1]["label"]): int(node[0]) for node in layout[2] if "label" in node[1]}
-        assert {"Open Settings", "Restart Arcade " + app.title(), "Quit Arcade " + app.title()} <= labels.keys()
+        # "Settings" from the 0.4 overhaul (STANDARD §8); older apps say "Open Settings".
+        assert {"Restart Arcade " + app.title(), "Quit Arcade " + app.title()} <= labels.keys()
+        assert labels.keys() & {"Settings", "Open Settings"}
         return exported, labels
 
     def click(label):
@@ -310,7 +312,7 @@ def main():
         assert watcher.registrations == registered_before, "icon flashed during Tools restart grace"
         recovery(tools)
 
-        click("Open Settings")
+        click("Settings" if "Settings" in menu()[1] else "Open Settings")
         def settings_visible():
             result = subprocess.run(["xdotool", "search", "--onlyvisible", "--name", "Arcade " + app.title()],
                                     env=env, capture_output=True, timeout=3)

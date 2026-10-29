@@ -97,7 +97,7 @@ Future<int> _command(List<String> arguments) async {
             await Process.run('/usr/bin/open', [installed['launch'] as String]);
         if (result.exitCode != 0) {
           throw StateError(
-              'Could not open the installed app: ${result.stderr}');
+              "Couldn't open the installed app: ${result.stderr}");
         }
       }
     } else {

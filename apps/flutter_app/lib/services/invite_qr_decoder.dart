@@ -28,7 +28,7 @@ class InviteQrDecoder {
 
     final decoded = img.decodeImage(bytes);
     if (decoded == null || decoded.width != width || decoded.height != height) {
-      throw const FormatException('The image could not be decoded.');
+      throw const FormatException("Couldn't read that image.");
     }
     // RGBLuminanceSource reads each 32-bit pixel as ARGB. BGRA byte order
     // produces that value when read through Dart's little-endian Int32List.

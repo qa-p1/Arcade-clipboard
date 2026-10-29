@@ -1685,7 +1685,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     }
     if (Platform.isIOS &&
         normalized.contains('could not reach the mesh owner')) {
-      return 'Could not reach your other device. Make sure both are on the same Wi-Fi, '
+      return "Couldn't reach your other device. Make sure both are on the same Wi-Fi, "
           'and that Local Network access is on for Arcade Clipboard in Settings › Privacy & Security › Local Network. Then try again.';
     }
     if (normalized.contains('shortcut') && normalized.contains('conflict')) {

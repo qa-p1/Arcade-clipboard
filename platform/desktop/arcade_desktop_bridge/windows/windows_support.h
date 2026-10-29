@@ -27,6 +27,7 @@ class WindowsSupport {
   std::optional<LRESULT> WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam);
   bool SetBackground(bool enabled);
   bool SetTrayHosted(bool hosted);
+  void UpdateTrayIcon();
   flutter::PluginRegistrarWindows* registrar_;
   flutter::MethodChannel<flutter::EncodableValue>* channel_;
   int delegate_id_ = -1;
@@ -36,6 +37,7 @@ class WindowsSupport {
   bool private_mode_ = false;  // The tray menu's Private mode checkmark.
   bool capture_enabled_ = false;
   NOTIFYICONDATAW tray_ = {};
+  HICON tray_icon_ = nullptr;  // The glyph for the taskbar's theme, owned here.
   ULONG_PTR graphics_token_ = 0;
 };
 

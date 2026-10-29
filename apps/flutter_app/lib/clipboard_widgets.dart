@@ -125,7 +125,7 @@ class _AddClipDialogState extends State<AddClipDialog> {
       if (mounted) {
         setState(() => _error = error is FormatException
             ? error.message
-            : 'Could not open those files. Try again.');
+            : "Couldn't open those files. Try again.");
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -217,7 +217,7 @@ class _ClipDetailDialogState extends State<ClipDetailDialog> {
     } catch (_) {
       if (mounted) {
         setState(() =>
-            _notice = 'Could not save this file. Choose another location.');
+            _notice = "Couldn't save this file. Choose another location.");
       }
     }
   }
@@ -241,7 +241,7 @@ class _ClipDetailDialogState extends State<ClipDetailDialog> {
           builder: (context, snapshot) {
             if (snapshot.hasError) {
               return ArcadeNotice(
-                'This clip could not be loaded.',
+                "Couldn't load this clip.",
                 tone: ArcadeTone.danger,
                 action: ArcadeButton(
                   label: 'Retry',
