@@ -369,6 +369,9 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
           _desktop.onOpenSettings = () => settingsRequests.value++;
           _link.onQuit = _desktop.quit;
           _link.onShow = _desktop.showMainWindow;
+          _link.onOverlay = openOverlay;
+          _link.onHide = _desktop.hideMainWindow;
+          _link.onToggle = _desktop.toggleMainWindow;
           _link.onPick = _openLinkPick;
           _link.onPickCancelled = _cancelLinkPick;
           _link.onTrayHost = _desktop.setTrayHosted;

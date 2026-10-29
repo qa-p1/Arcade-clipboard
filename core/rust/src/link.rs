@@ -721,6 +721,12 @@ impl Handler for ClipboardHandler {
         let paused = settings["paused"].as_bool().unwrap_or(false);
         let next = match id {
             "private-mode" => !paused,
+            // Not in the menu: what `--overlay`, `--hide` and `--toggle`
+            // send to the running instance (STANDARD §10).
+            "cli.overlay" | "cli.hide" | "cli.toggle" => {
+                push_event(json!({"kind": &id["cli.".len()..]}));
+                return Ok(());
+            }
             other => return Err(LinkError::denied(&format!("unknown menu item {other}"))),
         };
         self.set_paused(next)
@@ -1061,13 +1067,49 @@ pub(crate) fn diagnostics() -> Value {
 /// `--quit` without a desktop single-instance channel: ask the running
 /// instance over the Link. Returns whether one answered.
 pub(crate) fn quit_running() -> bool {
+    call_running("app.quit", json!({ "force": true }))
+}
+
+/// A second launch on Windows and macOS (and `--restart`, `--hide`, …):
+/// sends `method` to the running instance. Returns whether one answered.
+pub(crate) fn call_running(method: &str, params: Value) -> bool {
     let me = arcade_link::PeerInfo {
         id: format!("{}-cli", ids::CLIPBOARD),
         version: env!("CARGO_PKG_VERSION").into(),
     };
     arcade_link::Client::connect(&Locations::discover(), ids::CLIPBOARD, &me)
-        .and_then(|mut c| c.call("app.quit", json!({ "force": true })))
+        .and_then(|mut c| c.call(method, params))
         .is_ok()
+}
+
+/// `--status`: one line of JSON (STANDARD §10), as every Arcade app prints it.
+pub(crate) fn status_line() -> Value {
+    let locations = Locations::discover();
+    let registry = arcade_link::Registry::load(&locations);
+    let me = arcade_link::PeerInfo {
+        id: format!("{}.status", ids::CLIPBOARD),
+        version: env!("CARGO_PKG_VERSION").into(),
+    };
+    let running = match arcade_link::client::app_state(&locations, &registry, ids::CLIPBOARD, &me) {
+        arcade_link::AppState::Running { version } => Some(version),
+        _ => None,
+    };
+    let link = registry
+        .get(ids::CLIPBOARD)
+        .map_or("unregistered", |manifest| {
+            if manifest.settings.link_enabled {
+                "on"
+            } else {
+                "off"
+            }
+        });
+    json!({
+        "app": ids::CLIPBOARD,
+        "version": crate::VERSION,
+        "running": running.is_some(),
+        "runningVersion": running,
+        "link": link,
+    })
 }
 
 #[cfg(test)]

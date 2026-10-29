@@ -165,6 +165,15 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
     await windowManager.focus();
   }
 
+  /// `--toggle`: hides a visible window, shows a hidden one.
+  Future<void> toggleMainWindow() async {
+    if (await windowManager.isVisible()) {
+      await hideMainWindow();
+    } else {
+      await showMainWindow();
+    }
+  }
+
   Future<void> Function()? _onOverlayRequested;
 
   /// Runs application shutdown (core and desktop cleanup) before exit.
@@ -350,6 +359,10 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
           await _requestOverlay();
         } else if (call.method == 'show') {
           await showMainWindow();
+        } else if (call.method == 'hide') {
+          await hideMainWindow();
+        } else if (call.method == 'toggle') {
+          await toggleMainWindow();
         } else if (call.method == 'settings') {
           await showMainWindow();
           onOpenSettings?.call();

@@ -53,6 +53,9 @@ class LinkService {
   /// Requests from other Arcade apps that need the UI.
   Future<void> Function()? onQuit;
   Future<void> Function()? onShow;
+  Future<void> Function()? onOverlay;
+  Future<void> Function()? onHide;
+  Future<void> Function()? onToggle;
 
   /// `clipboard.pick`: open the picker for `caller`; the choice goes back
   /// through [answerPick].
@@ -150,6 +153,13 @@ class LinkService {
           await onQuit?.call();
         case 'show':
           await onShow?.call();
+        // `--overlay`, `--hide` and `--toggle` from a second launch.
+        case 'overlay':
+          await onOverlay?.call();
+        case 'hide':
+          await onHide?.call();
+        case 'toggle':
+          await onToggle?.call();
         case 'pick':
           await onPick?.call(event['request'] as int,
               event['caller_name'] as String? ?? 'another app');

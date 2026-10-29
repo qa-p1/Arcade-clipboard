@@ -223,6 +223,23 @@ pub async fn call(request: String) -> Result<String, String> {
         #[cfg(not(any(target_os = "android", target_os = "ios")))]
         "link_quit_running" => serde_json::json!({"quit": crate::link::quit_running()}),
         #[cfg(not(any(target_os = "android", target_os = "ios")))]
+        "link_call_running" => {
+            let method = value["method"]
+                .as_str()
+                .ok_or_else(|| "method is required".to_string())?
+                .to_owned();
+            let params = value.get("params").cloned().unwrap_or(Value::Null);
+            let answered =
+                tokio::task::spawn_blocking(move || crate::link::call_running(&method, params))
+                    .await
+                    .map_err(|_| "Couldn't reach the running copy".to_string())?;
+            serde_json::json!({"answered": answered})
+        }
+        #[cfg(not(any(target_os = "android", target_os = "ios")))]
+        "link_status" => tokio::task::spawn_blocking(crate::link::status_line)
+            .await
+            .map_err(|_| "Couldn't read the status".to_string())?,
+        #[cfg(not(any(target_os = "android", target_os = "ios")))]
         "link_configure" => {
             let settings = crate::link::LinkSettings::from_request(value.get("link"));
             tokio::task::spawn_blocking(move || crate::link::configure(&settings))

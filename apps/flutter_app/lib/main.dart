@@ -19,6 +19,14 @@ void main(List<String> arguments) async {
   if (isHeadlessCommand(arguments, isMacOS: Platform.isMacOS)) {
     exit(await _command(arguments));
   }
+  // Single instance (STANDARD §10): a second launch hands its request to the
+  // running copy over the Link and exits. A unique Linux instance forwards
+  // natively before Dart runs; development profiles (ARCADE_DATA_DIR) and
+  // Windows and macOS get here.
+  if ((Platform.isLinux || Platform.isWindows || Platform.isMacOS) &&
+      await _forwardedToRunning(arguments)) {
+    exit(0);
+  }
   runApp(ArcadeApp(
       controller: AppController(
           startInBackground: arguments.contains('--background') ||
@@ -65,11 +73,37 @@ Future<void> _answer(String text) async {
   await stdout.flush();
 }
 
+Future<bool> _forwardedToRunning(List<String> arguments) async {
+  final running = await RustCoreApi()
+      .invoke('link_status')
+      .catchError((Object _) => <String, dynamic>{});
+  if (running['running'] != true) return arguments.contains('--hide');
+  final request = runningInstanceRequest(arguments);
+  if (request == null) return true;
+  final answer = await RustCoreApi().invoke('link_call_running', {
+    'method': request.method,
+    'params': request.params
+  }).catchError((Object _) => <String, dynamic>{});
+  return answer['answered'] == true;
+}
+
 Future<int> _command(List<String> arguments) async {
   final core = RustCoreApi();
   final out = StringBuffer();
   try {
-    if (arguments.contains('--version')) {
+    if (arguments.contains('--help') || arguments.contains('-h')) {
+      out.write(desktopUsage);
+    } else if (arguments.contains('--status')) {
+      out.writeln(jsonEncode(await core.invoke('link_status')));
+    } else if (arguments.contains('--restart')) {
+      final answer = await core.invoke('link_call_running', {
+        'method': 'app.restart',
+        'params': {'mode': 'normal'},
+      });
+      if (answer['answered'] != true) {
+        throw StateError("Arcade Clipboard isn't running.");
+      }
+    } else if (arguments.contains('--version')) {
       final version = await core.invoke('version');
       out.writeln('Arcade Clipboard ${version['version']}');
     } else if (arguments.contains('--arcade-manifest')) {
