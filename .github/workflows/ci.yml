@@ -142,7 +142,8 @@ jobs:
       - name: Install Rust, the Android targets and the NDK
         run: |
           rustup toolchain install 1.98.1 --profile minimal --target aarch64-linux-android --target x86_64-linux-android
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$ANDROID_NDK_VERSION" > /dev/null
+          # Piping yes in would fail under pipefail once yes gets SIGPIPE.
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$ANDROID_NDK_VERSION" < <(yes) > /dev/null
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/$ANDROID_NDK_VERSION" >> "$GITHUB_ENV"
       - uses: Swatinem/rust-cache@v2
         with:
