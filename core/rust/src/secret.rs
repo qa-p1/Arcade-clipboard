@@ -46,6 +46,64 @@ impl SystemSecretStore {
             Ok(None)
         }
     }
+
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    fn legacy_profiles(&self) -> Vec<PathBuf> {
+        use arcade_link::paths::{app_dirs, legacy_dirs, Kind};
+        let default = app_dirs(arcade_link::ids::CLIPBOARD).data;
+        // A custom profile must never borrow the default profile's identity.
+        if self.data_dir != canonical_profile_path(&default) {
+            return Vec::new();
+        }
+        legacy_dirs(arcade_link::ids::CLIPBOARD)
+            .into_iter()
+            .filter(|old| old.kind == Kind::Data && old.into.as_os_str().is_empty())
+            .map(|old| old.path)
+            .collect()
+    }
+
+    #[cfg(not(target_os = "android"))]
+    fn load_with_legacy(
+        &self,
+        legacy_paths: &[PathBuf],
+        mut read: impl FnMut(&str) -> Result<Option<Vec<u8>>, String>,
+        mut promote: impl FnMut(&[u8]) -> Result<(), String>,
+    ) -> Result<Option<Vec<u8>>, String> {
+        if let Some(current) = read(&self.profile)? {
+            return Ok(Some(current));
+        }
+        let database = self.data_dir.join("history.sqlite");
+        if !database.exists() {
+            return Ok(None);
+        }
+        let mut recovered = None;
+        for path in legacy_paths {
+            let old = Self::for_data_dir(path);
+            if old.profile == self.profile {
+                continue;
+            }
+            let Some(bytes) = read(&old.profile)? else {
+                continue;
+            };
+            let Ok(identity) = IdentityMaterial::decode(&bytes) else {
+                continue;
+            };
+            if crate::store::Store::verify_recovery_identity(&database, &identity).is_err() {
+                continue;
+            }
+            if recovered.as_ref().is_some_and(|prior| prior != &bytes) {
+                return Err("More than one secure identity matches the migrated database; refusing to replace it".into());
+            }
+            recovered = Some(bytes);
+        }
+        if let Some(bytes) = recovered {
+            // Keep the original credential. Only create the new alias after a
+            // read-only check has authenticated the database and membership.
+            promote(&bytes)?;
+            return Ok(Some(bytes));
+        }
+        self.missing_secret_result()
+    }
 }
 
 impl SecretStore for SystemSecretStore {
@@ -59,12 +117,24 @@ impl SecretStore for SystemSecretStore {
         }
         #[cfg(not(target_os = "android"))]
         {
-            let entry = self.entry()?;
-            match entry.get_secret() {
-                Ok(secret) => Ok(Some(secret)),
-                Err(keyring::Error::NoEntry) => self.missing_secret_result(),
-                Err(e) => Err(format!("Could not read secure identity storage: {e}")),
-            }
+            #[cfg(not(target_os = "ios"))]
+            let legacy = self.legacy_profiles();
+            #[cfg(target_os = "ios")]
+            let legacy = Vec::new();
+            self.load_with_legacy(
+                &legacy,
+                |profile| {
+                    let entry = keyring::Entry::new(SERVICE_NAME, profile).map_err(|e| {
+                        format!("Could not access the system credential store: {e}")
+                    })?;
+                    match entry.get_secret() {
+                        Ok(secret) => Ok(Some(secret)),
+                        Err(keyring::Error::NoEntry) => Ok(None),
+                        Err(e) => Err(format!("Could not read secure identity storage: {e}")),
+                    }
+                },
+                |bytes| self.store(bytes),
+            )
         }
     }
 
@@ -411,6 +481,318 @@ pub(crate) mod test_support {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(not(target_os = "android"))]
+    fn recovery_fixture(path: &Path, paired: bool, history: bool) -> IdentityMaterial {
+        use crate::{
+            crypto,
+            model::*,
+            store::{now_ms, Store},
+        };
+        let mut identity = IdentityMaterial::generate().unwrap();
+        let mut store = Store::open(&path.join("history.sqlite"), identity.database_key).unwrap();
+        if paired {
+            let signing = crypto::generate_owner_signing_key();
+            identity.owner_signing_secret = Some(signing.to_bytes());
+            let mesh = Uuid::new_v4().to_string();
+            let device = identity.device_id.to_string();
+            let public = crypto::encode(signing.verifying_key().as_bytes());
+            let certificate = crypto::sign_member(
+                &signing,
+                MemberCertificate {
+                    version: PROTOCOL_VERSION,
+                    mesh_id: mesh.clone(),
+                    device_id: device.clone(),
+                    device_name: "Before migration".into(),
+                    static_public: crypto::encode(&identity.static_public),
+                    issued_at: now_ms(),
+                    item_signing_public: String::new(),
+                    platform: String::new(),
+                    capabilities: Vec::new(),
+                },
+            )
+            .unwrap();
+            store
+                .install_mesh(
+                    &[
+                        ("mesh_id", &mesh),
+                        ("owner_device_id", &device),
+                        ("owner_signing_public", &public),
+                        ("device_name", "Before migration"),
+                    ],
+                    &[PeerRecord {
+                        device_id: device.clone(),
+                        device_name: "Before migration".into(),
+                        static_public: identity.static_public.to_vec(),
+                        endpoint: String::new(),
+                        certificate,
+                        last_seen: now_ms(),
+                        revoked: false,
+                        owner: true,
+                    }],
+                )
+                .unwrap();
+        }
+        if history {
+            let text = "preserved encrypted history";
+            store
+                .capture(
+                    &WireItem {
+                        protocol_version: PROTOCOL_VERSION,
+                        id: "11111111-1111-4111-8111-111111111111".into(),
+                        origin_device: identity.device_id.to_string(),
+                        sender_sequence: 1,
+                        source_name: "Before migration".into(),
+                        created_at: now_ms(),
+                        expires_at: now_ms() + 86_400_000,
+                        text: text.into(),
+                        kind: "text".into(),
+                        content_hash: blake3::hash(text.as_bytes()).to_hex().to_string(),
+                        representations: Vec::new(),
+                        origin_signature: String::new(),
+                    },
+                    DEFAULT_MAX_ITEMS,
+                )
+                .unwrap();
+        }
+        identity
+    }
+
+    #[cfg(not(target_os = "android"))]
+    #[test]
+    fn migrated_identity_recovery_preserves_history_mesh_and_legacy_credential() {
+        use std::{cell::RefCell, collections::HashMap};
+        let root = tempfile::tempdir().unwrap();
+        let data = root.path().join("new");
+        let old = root.path().join("old");
+        let identity = recovery_fixture(&data, true, true);
+        let bytes = identity.encode();
+        let current = SystemSecretStore::for_data_dir(&data);
+        let old_profile = SystemSecretStore::for_data_dir(&old).profile;
+        let credentials = RefCell::new(HashMap::from([(old_profile.clone(), bytes.clone())]));
+        let database = data.join("history.sqlite");
+        let before = std::fs::read(&database).unwrap();
+        let recovered = current
+            .load_with_legacy(
+                &[old],
+                |profile| Ok(credentials.borrow().get(profile).cloned()),
+                |bytes| {
+                    credentials
+                        .borrow_mut()
+                        .insert(current.profile.clone(), bytes.to_vec());
+                    Ok(())
+                },
+            )
+            .unwrap()
+            .unwrap();
+        assert_eq!(recovered, bytes);
+        assert_eq!(credentials.borrow().get(&old_profile), Some(&bytes));
+        assert_eq!(std::fs::read(&database).unwrap(), before);
+        let material = IdentityMaterial::decode(&recovered).unwrap();
+        assert_eq!(material.device_id, identity.device_id);
+        let store = crate::store::Store::open(&database, material.database_key).unwrap();
+        assert_eq!(
+            store
+                .item("11111111-1111-4111-8111-111111111111")
+                .unwrap()
+                .unwrap()
+                .text,
+            "preserved encrypted history"
+        );
+        assert_eq!(
+            store.devices().unwrap()[0].device_id,
+            identity.device_id.to_string()
+        );
+        drop(store);
+        let restored = std::sync::Arc::new(test_support::MemorySecretStore::default());
+        restored.store(&recovered).unwrap();
+        crate::core::Core::open_with_secret_store(data, "After migration".into(), restored)
+            .unwrap();
+        // Once promoted, normal startup reads the current identity first.
+        current
+            .load_with_legacy(
+                &[root.path().join("unrelated-old-profile")],
+                |profile| Ok(credentials.borrow().get(profile).cloned()),
+                |_| panic!("existing identity must not be overwritten"),
+            )
+            .unwrap();
+    }
+
+    #[cfg(not(target_os = "android"))]
+    #[test]
+    fn recovery_rejects_wrong_missing_conflicting_and_unbound_credentials_without_writes() {
+        let root = tempfile::tempdir().unwrap();
+        let data = root.path().join("new");
+        let identity = recovery_fixture(&data, false, true);
+        let current = SystemSecretStore::for_data_dir(&data);
+        let aliases = [root.path().join("old-one"), root.path().join("old-two")];
+        let first = SystemSecretStore::for_data_dir(&aliases[0]).profile;
+        let database = data.join("history.sqlite");
+        let before = std::fs::read(&database).unwrap();
+        let wrong = IdentityMaterial::generate().unwrap().encode();
+        for candidate in [None, Some(wrong), Some(vec![0; SECRET_SIZE])] {
+            assert!(current
+                .load_with_legacy(
+                    &aliases,
+                    |profile| Ok(if profile == current.profile {
+                        None
+                    } else {
+                        candidate.clone()
+                    }),
+                    |_| panic!("unverified credential was promoted")
+                )
+                .is_err());
+        }
+        let mut conflicting = IdentityMaterial::generate().unwrap();
+        conflicting.database_key = identity.database_key;
+        assert!(current
+            .load_with_legacy(
+                &aliases,
+                |profile| Ok(if profile == current.profile {
+                    None
+                } else if profile == first {
+                    Some(identity.encode())
+                } else {
+                    Some(conflicting.encode())
+                }),
+                |_| panic!("ambiguous credential was promoted")
+            )
+            .unwrap_err()
+            .contains("More than one"));
+        assert_eq!(std::fs::read(&database).unwrap(), before);
+        let empty = root.path().join("empty");
+        let empty_identity = recovery_fixture(&empty, false, false);
+        let current = SystemSecretStore::for_data_dir(&empty);
+        assert!(current
+            .load_with_legacy(
+                &aliases,
+                |profile| Ok((profile != current.profile).then(|| empty_identity.encode())),
+                |_| panic!("empty unpaired database cannot bind a credential")
+            )
+            .is_err());
+    }
+
+    #[cfg(not(target_os = "android"))]
+    #[test]
+    fn recovery_accepts_empty_signed_mesh_but_rejects_foreign_membership_and_signing_key() {
+        let root = tempfile::tempdir().unwrap();
+        let identity = recovery_fixture(root.path(), true, false);
+        let database = root.path().join("history.sqlite");
+        crate::store::Store::verify_recovery_identity(&database, &identity).unwrap();
+        let mut foreign = IdentityMaterial::generate().unwrap();
+        foreign.database_key = identity.database_key;
+        assert!(crate::store::Store::verify_recovery_identity(&database, &foreign).is_err());
+        let mut damaged = identity;
+        damaged.owner_signing_secret = Some([0; 32]);
+        assert!(crate::store::Store::verify_recovery_identity(&database, &damaged).is_err());
+    }
+
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    #[test]
+    fn custom_profiles_cannot_adopt_default_legacy_identities() {
+        let root = tempfile::tempdir().unwrap();
+        assert!(SystemSecretStore::for_data_dir(root.path())
+            .legacy_profiles()
+            .is_empty());
+        let defaults = arcade_link::paths::app_dirs(arcade_link::ids::CLIPBOARD);
+        assert!(!SystemSecretStore::for_data_dir(&defaults.data)
+            .legacy_profiles()
+            .is_empty());
+    }
+
+    #[cfg(not(target_os = "android"))]
+    #[test]
+    fn recovery_verifier_reads_live_wal_and_rejects_tampered_history_without_changes() {
+        let root = tempfile::tempdir().unwrap();
+        let identity = recovery_fixture(root.path(), true, true);
+        let path = root.path().join("history.sqlite");
+        let writer = crate::store::Store::open(&path, identity.database_key).unwrap();
+        writer
+            .set_meta("owner_signing_public", &crate::crypto::encode(&[0; 32]))
+            .unwrap();
+        let main_before = std::fs::read(&path).unwrap();
+        let wal_before = std::fs::read(path.with_extension("sqlite-wal")).unwrap();
+        assert!(crate::store::Store::verify_recovery_identity(&path, &identity).is_err());
+        assert_eq!(std::fs::read(&path).unwrap(), main_before);
+        assert_eq!(
+            std::fs::read(path.with_extension("sqlite-wal")).unwrap(),
+            wal_before
+        );
+        let signing =
+            ed25519_dalek::SigningKey::from_bytes(&identity.owner_signing_secret.unwrap());
+        writer
+            .set_meta(
+                "owner_signing_public",
+                &crate::crypto::encode(signing.verifying_key().as_bytes()),
+            )
+            .unwrap();
+        crate::store::Store::verify_recovery_identity(&path, &identity).unwrap();
+        drop(writer);
+        let connection = rusqlite::Connection::open(&path).unwrap();
+        connection
+            .execute(
+                "UPDATE items SET ciphertext=zeroblob(length(ciphertext))",
+                [],
+            )
+            .unwrap();
+        let main_before = std::fs::read(&path).unwrap();
+        let wal_before = std::fs::read(path.with_extension("sqlite-wal")).unwrap();
+        assert!(crate::store::Store::verify_recovery_identity(&path, &identity).is_err());
+        assert_eq!(std::fs::read(&path).unwrap(), main_before);
+        assert_eq!(
+            std::fs::read(path.with_extension("sqlite-wal")).unwrap(),
+            wal_before
+        );
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    #[ignore = "requires scripts/verify-identity-migration.py's private D-Bus and keyring"]
+    fn migrated_profile_recovers_from_real_secret_service() {
+        use arcade_link::paths::{app_dirs, legacy_dirs, migrate_app_dirs, Kind};
+        assert_eq!(
+            std::env::var("ARCADE_TEST_IDENTITY_MIGRATION").as_deref(),
+            Ok("1")
+        );
+        let old = legacy_dirs(arcade_link::ids::CLIPBOARD)
+            .into_iter()
+            .find(|entry| entry.kind == Kind::Data && entry.into.as_os_str().is_empty())
+            .unwrap()
+            .path;
+        let identity = recovery_fixture(&old, true, true);
+        let old_secrets = SystemSecretStore::for_data_dir(&old);
+        identity.save(&old_secrets).unwrap();
+        let bytes = old_secrets.entry().unwrap().get_secret().unwrap();
+        let new = app_dirs(arcade_link::ids::CLIPBOARD).data;
+        let new_secrets = SystemSecretStore::for_data_dir(&new);
+        assert!(matches!(
+            new_secrets.entry().unwrap().get_secret(),
+            Err(keyring::Error::NoEntry)
+        ));
+        let migration = migrate_app_dirs(arcade_link::ids::CLIPBOARD);
+        assert!(migration.kept.is_empty(), "folder migration failed");
+        assert!(!old.join("history.sqlite").exists());
+        let core = crate::core::Core::open(new.clone(), "After migration".into()).unwrap();
+        assert_eq!(new_secrets.entry().unwrap().get_secret().unwrap(), bytes);
+        assert_eq!(old_secrets.entry().unwrap().get_secret().unwrap(), bytes);
+        drop(core);
+        let store =
+            crate::store::Store::open(&new.join("history.sqlite"), identity.database_key).unwrap();
+        assert_eq!(
+            store
+                .item("11111111-1111-4111-8111-111111111111")
+                .unwrap()
+                .unwrap()
+                .text,
+            "preserved encrypted history"
+        );
+        assert_eq!(
+            store.devices().unwrap()[0].device_id,
+            identity.device_id.to_string()
+        );
+        drop(store);
+        crate::core::Core::open(new, "After another restart".into()).unwrap();
+    }
 
     #[test]
     fn system_secret_profiles_are_canonical_and_isolated() {

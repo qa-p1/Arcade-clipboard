@@ -53,6 +53,14 @@ Tokens are single use. An expired or used token is rejected.
 
 If the stored identity for an existing profile is missing or damaged, the profile does not open. The app never creates a replacement identity silently and never writes private keys in plain text.
 
+After the standard desktop folder migration, Clipboard can reuse a credential
+under one of Link's recognized old data-folder paths. It opens the migrated
+database read-only, authenticates retained encrypted content and verifies signed
+mesh membership when present before adding the new credential alias. The old
+credential remains. Empty unpaired databases cannot authenticate a candidate;
+missing, invalid or conflicting candidates fail without replacing the identity.
+Custom profile paths never search the default profile's legacy credentials.
+
 On iOS the Keychain entry's name is derived from the profile's path relative to the app container, because the container's absolute path changes when the app is updated.
 
 ## Mobile extensions

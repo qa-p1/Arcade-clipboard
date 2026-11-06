@@ -1,5 +1,20 @@
 # Arcade Clipboard: status
 
+## 0.3.2 (2026-11-06)
+
+- Fix secure identity lookup after the standard data-folder migration. Only
+  recognized legacy folders are considered, and recovery checks the existing
+  database read-only before adding a credential alias. Existing credentials,
+  history and mesh membership are preserved. Empty, unpaired profiles and
+  conflicting or unverifiable identities fail safely without replacement.
+- Disable create/join until initialization succeeds; retry keeps the original
+  startup diagnostic until the core is ready.
+- Local checks pass: 98 workspace Rust tests, strict Clippy, 32 Flutter tests
+  and the separate production Secret Service migration check in a private
+  session. The migration check reproduces the original failure when recovery
+  is disabled and is required in CI. Release and installed-profile verification
+  are pending.
+
 ## 0.3.1 (2026-10-29)
 
 - Design kit Link `v0.4.4`: small text (metadata, hints, status badges) uses

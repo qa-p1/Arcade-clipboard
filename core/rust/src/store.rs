@@ -36,6 +36,98 @@ pub struct Store {
 }
 
 impl Store {
+    /// Authenticate a migrated credential without running migrations, expiry,
+    /// PRAGMA writes, or preview-cache repairs against an unverified database.
+    #[cfg(not(target_os = "android"))]
+    pub(crate) fn verify_recovery_identity(
+        path: &Path,
+        identity: &crate::secret::IdentityMaterial,
+    ) -> Result<(), String> {
+        let conn = Connection::open_with_flags(path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)
+            .map_err(db_error)?;
+        // Read the WAL as well as the main file, in one consistent snapshot.
+        conn.execute_batch("BEGIN").map_err(db_error)?;
+        let version: i64 = conn
+            .pragma_query_value(None, "user_version", |row| row.get(0))
+            .map_err(db_error)?;
+        if !(3..=SCHEMA_VERSION).contains(&version) {
+            return Err("Migrated history cannot safely authenticate this identity".into());
+        }
+        let store = Self {
+            conn,
+            key: identity.database_key,
+        };
+        let item_id: Option<String> = store
+            .conn
+            .query_row(
+                "SELECT id FROM items ORDER BY created_at DESC LIMIT 1",
+                [],
+                |row| row.get(0),
+            )
+            .optional()
+            .map_err(db_error)?;
+        if let Some(id) = &item_id {
+            store.item(id)?.ok_or("Migrated history item is missing")?;
+        }
+        if let Some(mesh_id) = store.meta("mesh_id")? {
+            uuid::Uuid::parse_str(&mesh_id).map_err(|_| "Stored mesh identity is invalid")?;
+            let public = crate::crypto::decode(
+                &store
+                    .meta("owner_signing_public")?
+                    .ok_or("Mesh signing identity is missing")?,
+            )?;
+            let owner = store
+                .meta("owner_device_id")?
+                .ok_or("Mesh owner is missing")?;
+            uuid::Uuid::parse_str(&owner).map_err(|_| "Stored mesh owner identity is invalid")?;
+            let name = store.meta("device_name")?.ok_or("Device name is missing")?;
+            let peers = store.devices()?;
+            let own = peers
+                .iter()
+                .find(|peer| peer.device_id == identity.device_id.to_string())
+                .ok_or("Secure identity does not belong to this mesh")?;
+            let certificate = &own.certificate.certificate;
+            if own.static_public != identity.static_public
+                || certificate.device_id != own.device_id
+                || crate::crypto::decode(&certificate.static_public)? != identity.static_public
+                || certificate.mesh_id != mesh_id
+                || certificate.device_name != name
+                || own.revoked
+            {
+                return Err("Secure identity does not match the stored mesh membership".into());
+            }
+            crate::crypto::verify_member(&public, &own.certificate)?;
+            let owner_peer = peers
+                .iter()
+                .find(|peer| peer.device_id == owner && peer.owner && !peer.revoked)
+                .ok_or("Mesh owner membership is missing")?;
+            if owner_peer.certificate.certificate.mesh_id != mesh_id
+                || owner_peer.certificate.certificate.device_id != owner
+            {
+                return Err("Mesh owner membership is inconsistent".into());
+            }
+            crate::crypto::verify_member(&public, &owner_peer.certificate)?;
+            if own.device_id == owner {
+                let secret = identity
+                    .owner_signing_secret
+                    .ok_or("Secure mesh signing identity is missing")?;
+                if ed25519_dalek::SigningKey::from_bytes(&secret)
+                    .verifying_key()
+                    .as_bytes()
+                    .as_slice()
+                    != public
+                {
+                    return Err("Secure mesh signing identity does not match".into());
+                }
+            }
+        } else if item_id.is_none() {
+            // Neither encrypted content nor signed membership can bind an
+            // empty, unpaired database to a candidate. Never guess or reset it.
+            return Err("Empty unpaired history cannot authenticate a migrated identity".into());
+        }
+        Ok(())
+    }
+
     pub fn open(path: &Path, key: [u8; 32]) -> Result<Self, String> {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)

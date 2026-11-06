@@ -30,6 +30,11 @@ Open **Settings → Shortcuts** and choose a different shortcut if another app o
 
 Make sure a Secret Service provider such as GNOME Keyring or KWallet is running and its keyring is unlocked. Clipboard stores its device identity there and does not silently create a replacement identity when the key is missing.
 
+Clipboard automatically recovers an existing credential after its standard
+data-folder move. Unlock the keyring and choose **Try again**. If the secure
+identity is still missing, keep the database and keyring entries; do not delete
+them or start a replacement mesh to work around the error.
+
 On Wayland, check that **wl-clipboard** is installed. On X11, automatic paste needs the X11 integration tools listed in the [Linux platform guide](https://github.com/qa-p1/Arcade-clipboard/blob/main/docs/dev/linux.md).
 
 ## I am on Windows or macOS
