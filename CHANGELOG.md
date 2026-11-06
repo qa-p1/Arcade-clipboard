@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.2 — 2026-11-06
+
+- Recover the existing secure identity after the standard data-folder move.
+  Check encrypted history and signed mesh membership without changing the
+  database before adding the new credential alias; keep the old alias.
+  Custom profiles stay separate and unverifiable identities are never reset.
+- Keep mesh setup disabled until initialization succeeds, preserving the
+  startup error and allowing a successful retry.
+
 ## 0.3.1 — 2026-10-29
 
 - **Readable small text.** Status badges, timestamps, hints and the picker's

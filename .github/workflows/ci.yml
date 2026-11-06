@@ -39,12 +39,14 @@ jobs:
         run: |
           rustup toolchain install 1.98.1 --profile minimal --component rustfmt --component clippy
           sudo apt-get update
-          sudo apt-get install -y pkg-config libdbus-1-dev libsecret-1-dev libgtk-3-dev
+          sudo apt-get install -y pkg-config libdbus-1-dev libsecret-1-dev libgtk-3-dev dbus-x11 gnome-keyring
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: App dev/Arcade-clipboard -> target
       - name: Docs, vendored checksums, rustfmt, clippy and tests
         run: bash scripts/check rust
+      - name: Secure identity survives the folder move (private Secret Service)
+        run: python3 scripts/verify-identity-migration.py --debug
   linux:
     name: Linux build and AppImage smoke
     runs-on: ubuntu-24.04

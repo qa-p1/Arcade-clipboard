@@ -735,7 +735,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         await _core.invoke('create_mesh', {'device_name': name});
         await refreshStatus();
         await Future.wait([refreshHistory(), refreshDevices()]);
-      });
+      }, requireReady: true);
 
   Future<void> createInvite() async => _perform(() async {
         if (!canManageDevices) {
@@ -782,7 +782,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         await refreshDevices();
         _notice =
             'Compare the verification code on both devices before approving.';
-      });
+      }, requireReady: true);
 
   Future<void> confirmPairing(String sessionId, {required bool accept}) async =>
       _perform(() async {
@@ -1669,8 +1669,9 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _perform(Future<void> Function() operation) async {
-    if (_working || _disposed) return;
+  Future<void> _perform(Future<void> Function() operation,
+      {bool requireReady = false}) async {
+    if (_working || _disposed || (requireReady && !_ready)) return;
     _working = true;
     _clearError('action');
     _notice = null;

@@ -241,7 +241,7 @@ class _WelcomeViewState extends State<_WelcomeView> {
               ArcadeButton(
                 label: 'Join',
                 variant: ArcadeButtonVariant.primary,
-                onPressed: controller.working
+                onPressed: controller.working || !controller.ready
                     ? null
                     : () => controller.joinMesh(
                         invite: _invite.text, deviceName: _deviceName.text),
@@ -250,7 +250,7 @@ class _WelcomeViewState extends State<_WelcomeView> {
               ArcadeButton(
                 label: 'Start on this device',
                 variant: ArcadeButtonVariant.primary,
-                onPressed: controller.working
+                onPressed: controller.working || !controller.ready
                     ? null
                     : () => controller.createMesh(_deviceName.text),
               ),

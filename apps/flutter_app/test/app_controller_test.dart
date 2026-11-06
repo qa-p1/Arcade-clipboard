@@ -16,6 +16,37 @@ void main() {
 
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
+  test('failed startup blocks setup until retry succeeds', () async {
+    final directory =
+        await Directory.systemTemp.createTemp('arcade-start-test-');
+    final core = FakeCoreApi(hasMesh: false);
+    core.failures['initialize'] = Exception('Secure identity unavailable');
+    final controller = AppController(
+      core: core,
+      desktop: _TestDesktopAdapter(),
+      dataDirectory: directory,
+    );
+    addTearDown(() async {
+      controller.dispose();
+      await directory.delete(recursive: true);
+    });
+    await controller.start();
+    final startupError = controller.error;
+    expect(controller.ready, isFalse);
+    await controller.createMesh('Laptop');
+    await controller.joinMesh(invite: 'invite', deviceName: 'Laptop');
+    expect(
+        core.calls.where((call) =>
+            call.operation == 'create_mesh' || call.operation == 'join'),
+        isEmpty);
+    expect(controller.error, startupError);
+    core.failures.remove('initialize');
+    await controller.start();
+    expect(controller.ready, isTrue);
+    await controller.createMesh('Laptop');
+    expect(controller.hasMesh, isTrue);
+  });
+
   test('onboarding validates a name, then creates and loads a mesh', () async {
     final fixture = await _Fixture.create();
     addTearDown(fixture.dispose);
