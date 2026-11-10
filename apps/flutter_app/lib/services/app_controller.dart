@@ -12,6 +12,7 @@ import '../platform/mobile_share_bridge.dart';
 import 'app_settings.dart';
 import 'core_api.dart';
 import 'diagnostics.dart';
+import 'html_text.dart';
 import 'link_service.dart';
 
 class AppController extends ChangeNotifier with WidgetsBindingObserver {
@@ -1478,6 +1479,10 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
             return;
           }
         }
+        final hasPlain = formats
+            .whereType<Map<dynamic, dynamic>>()
+            .any((format) => format['mimeType'] == 'text/plain');
+        var htmlText = '';
         for (final format in formats.whereType<Map<dynamic, dynamic>>()) {
           final mime = format['mimeType'];
           final bytes = format['bytes'];
@@ -1502,7 +1507,14 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
             text = utf8.decode(bytes, allowMalformed: true);
           }
           representations.add(ClipRepresentation(mimeType: mime, bytes: bytes));
+          if (mime == 'text/html' && !hasPlain) {
+            htmlText =
+                htmlToPlainText(utf8.decode(bytes, allowMalformed: true));
+          }
         }
+        // CB-7: an HTML-only copy is shown and searched as readable text; the
+        // markup stays as a representation.
+        if (text.isEmpty && htmlText.isNotEmpty) text = htmlText;
       }
       if (representations.isEmpty) return;
       final kind = files.isNotEmpty

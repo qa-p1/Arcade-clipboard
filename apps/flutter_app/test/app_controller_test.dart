@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -351,6 +352,29 @@ void main() {
     }, initial: false);
     expect(fixture.core.calls.where((call) => call.operation == 'capture'),
         hasLength(2));
+  });
+
+  test('CB-7: an HTML-only copy is stored with a plain-text rendering',
+      () async {
+    final fixture = await _Fixture.create(hasMesh: true);
+    addTearDown(fixture.dispose);
+    await fixture.desktop.richCapture!({
+      'formats': [
+        {
+          'mimeType': 'text/html',
+          'bytes': Uint8List.fromList(
+              utf8.encode('<p>Hello <b>bold</b> &amp; more</p><p>Two</p>'))
+        }
+      ]
+    }, initial: false);
+    final stored = fixture.core.calls
+        .singleWhere((call) => call.operation == 'capture')
+        .arguments;
+    expect(stored['text'], 'Hello bold & more\nTwo');
+    expect(stored['kind'], 'rich_text');
+    final mimes = (stored['representations'] as List)
+        .map((value) => (value as Map)['mime_type'] ?? (value)['mimeType']);
+    expect(mimes, contains('text/html'));
   });
 
   test('CB-2: an oversize copy shows a notice instead of vanishing', () async {
