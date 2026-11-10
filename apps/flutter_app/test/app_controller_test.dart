@@ -209,12 +209,15 @@ void main() {
     expect(fixture.controller.retentionHours, 168);
 
     await fixture.controller.setRetentionHours(0);
-    expect(fixture.controller.retentionHours, 168);
+    expect(fixture.controller.retentionHours, 0, reason: 'Forever');
+
+    await fixture.controller.setRetentionHours(5);
+    expect(fixture.controller.retentionHours, 0);
     expect(fixture.controller.error,
         'Choose a supported history retention period.');
 
-    await fixture.controller.setMaxItems(1000);
-    expect(fixture.controller.maxItems, 1000);
+    await fixture.controller.setMaxStorageMb(1024);
+    expect(fixture.controller.maxStorageMb, 1024);
 
     await fixture.controller.setThemeMode(ThemeMode.dark);
     expect(fixture.controller.themeMode, ThemeMode.dark);

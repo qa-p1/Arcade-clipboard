@@ -3,8 +3,12 @@ use serde::{Deserialize, Serialize};
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const MAX_TEXT_BYTES: usize = 32 * 1024;
 pub const MAX_FRAME_BYTES: usize = 65_535; // Noise ciphertext limit, including authentication tag.
-pub const DEFAULT_RETENTION_HOURS: u32 = 24;
-pub const DEFAULT_MAX_ITEMS: usize = 500;
+/// 0 means Forever.
+pub const DEFAULT_RETENTION_HOURS: u32 = 0;
+/// Ten years; the longest a user can ask to keep history.
+pub const MAX_RETENTION_HOURS: u32 = 87_600;
+pub const DEFAULT_MAX_ITEMS: usize = 10_000;
+pub const DEFAULT_MAX_STORAGE_MB: u64 = 256;
 pub const INVITE_TTL_SECONDS: u64 = 120;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

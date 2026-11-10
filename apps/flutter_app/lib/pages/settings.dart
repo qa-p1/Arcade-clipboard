@@ -201,28 +201,28 @@ class _SettingsPageState extends State<_SettingsPage> {
           subtitle:
               'Unpinned clips are deleted after this time. Pinned clips stay until you unpin or delete them.',
           trailing: _Choice<int>(
-            value:
-                controller.retentionHours > 0 ? controller.retentionHours : 24,
+            value: controller.retentionHours,
             options: [
               for (final hours in _withCurrent(
-                  const [1, 24, 168, 720], controller.retentionHours))
+                  const [0, 1, 24, 168, 720, 2160, 8760],
+                  controller.retentionHours))
                 (hours, _retentionLabel(hours))
             ],
             onChanged: working ? null : controller.setRetentionHours,
           ),
         ),
         ArcadeRow(
-          title: 'History limit',
+          title: 'Storage budget',
           subtitle:
-              'The oldest clips are deleted when the limit is reached. Pinned clips are kept first.',
+              '${formatSize(controller.storageUsedBytes)} used of ${_budgetLabel(controller.maxStorageMb)}. When history is over the budget, the oldest unpinned clips are deleted. Pinned clips are never deleted automatically.',
           trailing: _Choice<int>(
-            value: controller.maxItems > 0 ? controller.maxItems : 500,
+            value: controller.maxStorageMb,
             options: [
-              for (final count
-                  in _withCurrent(const [500, 1000, 5000], controller.maxItems))
-                (count, '${formatCount(count)} clips')
+              for (final megabytes in _withCurrent(
+                  const [64, 256, 1024, 4096], controller.maxStorageMb))
+                (megabytes, _budgetLabel(megabytes))
             ],
-            onChanged: working ? null : controller.setMaxItems,
+            onChanged: working ? null : controller.setMaxStorageMb,
           ),
         ),
         ArcadeRow(
@@ -371,7 +371,15 @@ class _SettingsPageState extends State<_SettingsPage> {
           ? presets
           : ([...presets, current]..sort());
 
+  static String _budgetLabel(int megabytes) =>
+      megabytes >= 1024 && megabytes % 1024 == 0
+          ? '${megabytes ~/ 1024} GB'
+          : '$megabytes MB';
+
   static String _retentionLabel(int hours) => switch (hours) {
+        0 => 'Forever',
+        2160 => '90 days',
+        8760 => '1 year',
         1 => '1 hour',
         24 => '1 day',
         168 => '7 days',

@@ -31,8 +31,8 @@ impl PortableSettings {
             app: arcade_link::ids::CLIPBOARD.into(),
             version: env!("CARGO_PKG_VERSION").into(),
             paused: value["paused"].as_bool().unwrap_or(false),
-            retention_hours: value["retention_hours"].as_u64().unwrap_or(24) as u32,
-            max_items: value["max_items"].as_u64().unwrap_or(500) as u32,
+            retention_hours: value["retention_hours"].as_u64().unwrap_or(0) as u32,
+            max_items: value["max_items"].as_u64().unwrap_or(10_000) as u32,
         };
         settings.validate()?;
         Ok(settings)
@@ -44,7 +44,7 @@ impl PortableSettings {
             || self.version.trim().is_empty()
             || self.version.len() > 64
             || self.version.chars().any(char::is_control)
-            || !(1..=720).contains(&self.retention_hours)
+            || self.retention_hours > crate::model::MAX_RETENTION_HOURS
             || !(1..=10_000).contains(&self.max_items)
         {
             return Err(LinkError::denied(
@@ -185,7 +185,7 @@ mod tests {
             app: arcade_link::ids::CLIPBOARD.into(),
             version: "0.1.0".into(),
             paused: false,
-            retention_hours: 0,
+            retention_hours: crate::model::MAX_RETENTION_HOURS + 1,
             max_items: 500,
         };
         assert!(invalid.validate().is_err());

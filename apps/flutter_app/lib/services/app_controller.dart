@@ -78,8 +78,10 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   bool _backgroundEnabled = true;
   bool _launchAtLogin = false;
   Directory? _supportDirectory;
-  int _retentionHours = 24;
-  int _maxItems = 500;
+  int _retentionHours = 0; // 0 is Forever
+  int _maxItems = 10000;
+  int _maxStorageMb = 256;
+  int _storageUsedBytes = 0;
   int _historyLimit = 250;
   bool _hasMoreHistory = false;
   ThemeMode _themeMode = ThemeMode.system;
@@ -145,6 +147,8 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   bool get backgroundEnabled => _backgroundEnabled;
   bool get launchAtLogin => _launchAtLogin;
   int get retentionHours => _retentionHours;
+  int get maxStorageMb => _maxStorageMb;
+  int get storageUsedBytes => _storageUsedBytes;
   int get maxItems => _maxItems;
   bool get hasMoreHistory => _hasMoreHistory;
   ThemeMode get themeMode => _themeMode;
@@ -836,7 +840,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       });
 
   Future<void> setRetentionHours(int hours) async => _perform(() async {
-        if (!const {1, 24, 168, 720}.contains(hours)) {
+        if (!const {0, 1, 24, 168, 720, 2160, 8760}.contains(hours)) {
           throw const AppActionException(
               'Choose a supported history retention period.');
         }
@@ -846,12 +850,12 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         await _loadSettings();
       });
 
-  Future<void> setMaxItems(int count) => _perform(() async {
-        if (!const {500, 1000, 5000}.contains(count)) {
-          throw const AppActionException('Choose a supported history limit.');
+  Future<void> setMaxStorageMb(int megabytes) => _perform(() async {
+        if (!const {64, 256, 1024, 4096}.contains(megabytes)) {
+          throw const AppActionException('Choose a supported storage budget.');
         }
         await _core.invoke('settings', {
-          'values': {'max_items': count}
+          'values': {'max_storage_mb': megabytes}
         });
         await _loadSettings();
         await refreshHistory(query: _query);
@@ -1669,8 +1673,10 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> _loadSettings() async {
     final result = await _core.invoke('settings');
-    _retentionHours = (result['retention_hours'] as num?)?.toInt() ?? 24;
-    _maxItems = (result['max_items'] as num?)?.toInt() ?? 500;
+    _retentionHours = (result['retention_hours'] as num?)?.toInt() ?? 0;
+    _maxItems = (result['max_items'] as num?)?.toInt() ?? 10000;
+    _maxStorageMb = (result['max_storage_mb'] as num?)?.toInt() ?? 256;
+    _storageUsedBytes = (result['storage_used_bytes'] as num?)?.toInt() ?? 0;
     _relayUrl = result['relay_url'] as String? ?? '';
     if (result.containsKey('paused') && _status != null) {
       _status = MeshStatus(

@@ -3,7 +3,7 @@ use crate::{
     model::{
         DeviceInfo, HistoryItem, InviteV1, MemberCertificate, PeerRecord, PendingPairingInfo,
         Revocation, SignedMemberCertificate, SignedPinState, SignedRevocation, Status, WireItem,
-        WireMessage, DEFAULT_MAX_ITEMS, DEFAULT_RETENTION_HOURS, INVITE_TTL_SECONDS,
+        WireMessage, DEFAULT_MAX_ITEMS, DEFAULT_MAX_STORAGE_MB, DEFAULT_RETENTION_HOURS, INVITE_TTL_SECONDS,
         MAX_FRAME_BYTES, PROTOCOL_VERSION,
     },
     profile_lock::ProfileLock,
@@ -1379,8 +1379,14 @@ impl Core {
                 sender_sequence: state.store.next_sequence()?,
                 source_name,
                 created_at: store::now_ms(),
-                expires_at: store::now_ms()
-                    .saturating_add(i64::from(retention.max(1)) * 60 * 60 * 1000),
+                // Forever (0) still tells peers a 30-day lifetime, the longest
+                // the protocol allows; each device keeps clips by its own setting.
+                expires_at: store::now_ms().saturating_add(
+                    i64::from(if retention == 0 { 720 } else { retention.min(720) })
+                        * 60
+                        * 60
+                        * 1000,
+                ),
                 text: text.to_string(),
                 kind: kind.into(),
                 content_hash,
@@ -1558,11 +1564,25 @@ impl Core {
                 "retention_hours" => {
                     let hours = value
                         .as_u64()
-                        .filter(|n| (1..=720).contains(n))
-                        .ok_or_else(|| "Retention must be between 1 and 720 hours".to_string())?;
+                        .filter(|n| *n <= u64::from(crate::model::MAX_RETENTION_HOURS))
+                        .ok_or_else(|| {
+                            "Retention must be Forever (0) or between 1 hour and 10 years"
+                                .to_string()
+                        })?;
                     state
                         .store
                         .set_setting("retention_hours", &hours.to_string())?;
+                }
+                "max_storage_mb" => {
+                    let megabytes = value
+                        .as_u64()
+                        .filter(|n| (16..=65_536).contains(n))
+                        .ok_or_else(|| {
+                            "The storage budget must be between 16 MB and 64 GB".to_string()
+                        })?;
+                    state
+                        .store
+                        .set_setting("max_storage_mb", &megabytes.to_string())?;
                 }
                 "max_items" => {
                     let count = value
@@ -1732,6 +1752,8 @@ impl Core {
             "paused": state.store.setting("paused", false),
             "retention_hours": state.store.setting("retention_hours", DEFAULT_RETENTION_HOURS),
             "max_items": state.store.setting("max_items", DEFAULT_MAX_ITEMS),
+            "max_storage_mb": state.store.setting("max_storage_mb", DEFAULT_MAX_STORAGE_MB),
+            "storage_used_bytes": state.store.storage_used_bytes()?,
             "relay_url": state.store.setting("relay_url", String::new()),
         }))
     }

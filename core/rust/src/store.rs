@@ -1,4 +1,7 @@
-use crate::model::{HistoryItem, PeerRecord, WireItem, DEFAULT_MAX_ITEMS, DEFAULT_RETENTION_HOURS};
+use crate::model::{
+    HistoryItem, PeerRecord, WireItem, DEFAULT_MAX_ITEMS, DEFAULT_MAX_STORAGE_MB,
+    DEFAULT_RETENTION_HOURS,
+};
 use chacha20poly1305::{
     aead::{Aead, KeyInit, Payload},
     XChaCha20Poly1305, XNonce,
@@ -18,6 +21,8 @@ const MAX_SYNC_SEEN: i64 = 100_000;
 const MAX_DELETED_TOMBSTONES: i64 = 100_000;
 const MAX_REVOCATION_TOMBSTONES: i64 = 10_000;
 const MAX_SOURCE_NAME_BYTES: usize = 128;
+const MIN_STORAGE_MB: u64 = 16;
+const MAX_STORAGE_MB: u64 = 65_536;
 const MAX_ITEM_LIFETIME_MS: i64 = 30 * 24 * 60 * 60 * 1000;
 const MAX_FUTURE_CLOCK_SKEW_MS: i64 = 5 * 60 * 1000;
 const MAX_TOMBSTONE_AGE_MS: i64 = 31 * 24 * 60 * 60 * 1000;
@@ -136,6 +141,9 @@ impl Store {
         let mut conn = Connection::open(path)
             .map_err(|e| format!("Could not open local history database: {e}"))?;
         conn.pragma_update(None, "journal_mode", "WAL")
+            .map_err(db_error)?;
+        // Keep the write-ahead log small (the audit saw 7.7 MB for 14 clips).
+        conn.pragma_update(None, "journal_size_limit", 1_048_576)
             .map_err(db_error)?;
         conn.pragma_update(None, "foreign_keys", "ON")
             .map_err(db_error)?;
@@ -1003,18 +1011,112 @@ impl Store {
     pub fn expire(&mut self) -> Result<(), String> {
         self.expire_expired()?;
         self.prune_count(self.setting("max_items", DEFAULT_MAX_ITEMS))?;
+        self.prune_storage()?;
         Ok(())
     }
 
     fn prune(&mut self, max_items: usize) -> Result<(), String> {
         self.expire_expired()?;
-        self.prune_count(max_items)
+        self.prune_count(max_items)?;
+        self.prune_storage()
+    }
+
+    /// Bytes the history occupies: live database pages (the free list is not
+    /// counted) plus the write-ahead log. The budget is checked against this.
+    pub fn storage_used_bytes(&self) -> Result<u64, String> {
+        let pages: i64 = self
+            .conn
+            .pragma_query_value(None, "page_count", |row| row.get(0))
+            .map_err(db_error)?;
+        let free: i64 = self
+            .conn
+            .pragma_query_value(None, "freelist_count", |row| row.get(0))
+            .map_err(db_error)?;
+        let page_size: i64 = self
+            .conn
+            .pragma_query_value(None, "page_size", |row| row.get(0))
+            .map_err(db_error)?;
+        let wal = self
+            .conn
+            .path()
+            .map(|path| {
+                let mut wal = path.as_os_str().to_owned();
+                wal.push("-wal");
+                std::fs::metadata(wal).map(|meta| meta.len()).unwrap_or(0)
+            })
+            .unwrap_or(0);
+        Ok((pages - free).max(0) as u64 * page_size.max(0) as u64 + wal)
+    }
+
+    /// The user's storage budget in bytes (Settings, default 256 MB).
+    pub fn storage_budget_bytes(&self) -> u64 {
+        let megabytes: u64 = self.setting("max_storage_mb", DEFAULT_MAX_STORAGE_MB);
+        megabytes.clamp(MIN_STORAGE_MB, MAX_STORAGE_MB) * 1024 * 1024
+    }
+
+    /// Removes the oldest unpinned clips until the history fits the storage
+    /// budget, then shrinks the write-ahead log. Pinned clips are never
+    /// removed here, so a history of only pinned clips can exceed the budget.
+    fn prune_storage(&mut self) -> Result<(), String> {
+        let budget = self.storage_budget_bytes();
+        let mut removed = false;
+        for _ in 0..8 {
+            let used = self.storage_used_bytes()?;
+            if used <= budget {
+                break;
+            }
+            let excess = (used - budget) as i64;
+            let mut statement = self
+                .conn
+                .prepare(
+                    "SELECT id, length(ciphertext)+length(nonce)+COALESCE((SELECT length(ciphertext) FROM item_previews WHERE id=items.id),0)
+                     FROM items WHERE pinned=0 ORDER BY created_at ASC, id ASC",
+                )
+                .map_err(db_error)?;
+            let mut rows = statement.query([]).map_err(db_error)?;
+            let mut doomed = Vec::new();
+            let mut freed = 0i64;
+            while let Some(row) = rows.next().map_err(db_error)? {
+                doomed.push(row.get::<_, String>(0).map_err(db_error)?);
+                freed += row.get::<_, i64>(1).map_err(db_error)?;
+                if freed >= excess {
+                    break;
+                }
+            }
+            drop(rows);
+            drop(statement);
+            if doomed.is_empty() {
+                break;
+            }
+            for id in &doomed {
+                self.conn
+                    .execute("DELETE FROM items WHERE id=?1", [id])
+                    .map_err(db_error)?;
+            }
+            removed = true;
+        }
+        if removed {
+            self.checkpoint()?;
+        }
+        Ok(())
+    }
+
+    /// Folds the write-ahead log into the database and truncates it.
+    pub fn checkpoint(&self) -> Result<(), String> {
+        self.conn
+            .pragma(None, "wal_checkpoint", "TRUNCATE", |_| Ok(()))
+            .map_err(db_error)
     }
 
     fn expire_expired(&self) -> Result<(), String> {
         let retention: u32 = self.setting("retention_hours", DEFAULT_RETENTION_HOURS);
         let now = now_ms();
-        let cutoff = now.saturating_sub(i64::from(retention.max(1)) * 60 * 60 * 1000);
+        // 0 is Forever: only the storage budget removes unpinned clips.
+        let cutoff = if retention == 0 {
+            i64::MIN
+        } else {
+            now.saturating_sub(i64::from(retention) * 60 * 60 * 1000)
+        };
         // Retention is this device's own setting: a clip from a device that
         // keeps history for less time (its expires_at) stays here as long as
         // this device keeps history. 720 hours is also the protocol's limit.
@@ -1518,7 +1620,7 @@ fn create_schema_v3(tx: &rusqlite::Transaction<'_>) -> Result<(), String> {
          );
          CREATE TABLE sync_seen (item_id TEXT PRIMARY KEY NOT NULL, content_tag TEXT NOT NULL, received_at INTEGER NOT NULL);
          CREATE TABLE settings (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);
-         INSERT INTO settings(key,value) VALUES ('paused','false'),('retention_hours','24'),('max_items','500');"
+         INSERT INTO settings(key,value) VALUES ('paused','false'),('retention_hours','0'),('max_items','10000'),('max_storage_mb','256');"
     ).map_err(db_error)?;
     Ok(())
 }
@@ -1539,11 +1641,25 @@ fn ensure_support_schema(conn: &Connection) -> Result<(), String> {
          );
          CREATE TABLE IF NOT EXISTS sync_seen (item_id TEXT PRIMARY KEY NOT NULL, content_tag TEXT NOT NULL, received_at INTEGER NOT NULL);
          CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);
-         INSERT OR IGNORE INTO settings(key,value) VALUES ('paused','false'),('retention_hours','24'),('max_items','500');"
+         INSERT OR IGNORE INTO settings(key,value) VALUES ('paused','false'),('retention_hours','0'),('max_items','10000'),('max_storage_mb','256');"
     ).map_err(db_error)?;
     if !column_exists(conn, "deleted_items", "pinned")? {
         conn.execute_batch(
             "ALTER TABLE deleted_items ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0",
+        )
+        .map_err(db_error)?;
+    }
+    // The 0.3 defaults (keep 1 day, 500 items) were stored as if chosen. Only
+    // the untouched item-count default moves; the user's retention is kept.
+    if conn
+        .query_row("SELECT 1 FROM meta WHERE key='retention_v1'", [], |_| Ok(()))
+        .optional()
+        .map_err(db_error)?
+        .is_none()
+    {
+        conn.execute_batch(
+            "UPDATE settings SET value='10000' WHERE key='max_items' AND value='500';
+             INSERT INTO meta(key,value) VALUES ('retention_v1','1');",
         )
         .map_err(db_error)?;
     }
@@ -1698,6 +1814,16 @@ mod tests {
 
     fn sample_text(text: &str) -> WireItem {
         sample_text_at(text, now_ms())
+    }
+
+    fn big_text(seed: &str, bytes: usize) -> String {
+        let mut text = String::with_capacity(bytes + 64);
+        let mut n = 0u64;
+        while text.len() < bytes {
+            text.push_str(&blake3::hash(format!("{seed}{n}").as_bytes()).to_hex());
+            n += 1;
+        }
+        text
     }
 
     fn sample_text_at(text: &str, created_at: i64) -> WireItem {
@@ -1907,6 +2033,63 @@ mod tests {
         assert!(page
             .iter()
             .all(|item| item.preview.chars().count() == PREVIEW_CHARS && item.text.len() > 2000));
+    }
+
+    #[test]
+    fn a_new_history_keeps_clips_forever_within_256_mb() {
+        let dir = tempdir().unwrap();
+        let mut store = Store::open(&dir.path().join("history.sqlite"), [14; 32]).unwrap();
+        assert_eq!(store.setting("retention_hours", 99u32), 0);
+        assert_eq!(store.storage_budget_bytes(), 256 * 1024 * 1024);
+        let ancient = sample_text_at("a year old", now_ms() - 365 * 24 * HOUR);
+        store.capture(&ancient, 10).unwrap();
+        store.expire().unwrap();
+        assert!(store.item(&ancient.id).unwrap().is_some());
+    }
+
+    #[test]
+    fn an_existing_one_day_setting_is_kept_and_the_old_item_cap_is_lifted() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("history.sqlite");
+        {
+            let store = Store::open(&path, [15; 32]).unwrap();
+            store.set_setting("retention_hours", "24").unwrap();
+            store.set_setting("max_items", "500").unwrap();
+            store
+                .conn
+                .execute("DELETE FROM meta WHERE key='retention_v1'", [])
+                .unwrap();
+        }
+        let store = Store::open(&path, [15; 32]).unwrap();
+        assert_eq!(store.setting("retention_hours", 0u32), 24);
+        assert_eq!(store.setting("max_items", 0usize), 10_000);
+    }
+
+    #[test]
+    fn the_budget_removes_the_oldest_unpinned_clips_and_never_pinned_ones() {
+        let dir = tempdir().unwrap();
+        let mut store = Store::open(&dir.path().join("history.sqlite"), [16; 32]).unwrap();
+        store.set_setting("max_storage_mb", "16").unwrap();
+        let mut pinned = sample_text_at("pinned and oldest", now_ms() - 100 * HOUR);
+        pinned.text = big_text("pinned", 512 * 1024);
+        pinned.content_hash = blake3::hash(pinned.text.as_bytes()).to_hex().to_string();
+        store.capture(&pinned, 10_000).unwrap();
+        store.set_pinned(&pinned.id, true).unwrap();
+        let mut ids = Vec::new();
+        for n in 0..60 {
+            let mut item = sample_text_at(&format!("clip {n}"), now_ms() - (60 - n) * HOUR);
+            item.text = big_text(&format!("clip {n}"), 512 * 1024);
+            item.content_hash = blake3::hash(item.text.as_bytes()).to_hex().to_string();
+            ids.push(item.id.clone());
+            store.capture(&item, 10_000).unwrap();
+        }
+        let used = store.storage_used_bytes().unwrap();
+        assert!(used <= 16 * 1024 * 1024, "used {used} bytes");
+        assert!(store.item(&pinned.id).unwrap().is_some(), "pinned kept");
+        assert!(store.item(&ids[0]).unwrap().is_none(), "oldest removed");
+        assert!(store.item(&ids[59]).unwrap().is_some(), "newest kept");
+        let wal = dir.path().join("history.sqlite-wal");
+        assert!(std::fs::metadata(wal).map(|m| m.len()).unwrap_or(0) <= 4 * 1024 * 1024);
     }
 
     #[test]
