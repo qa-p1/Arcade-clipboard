@@ -325,6 +325,48 @@ void main() {
     expect(fixture.core.historyItems.map((item) => item['id']), ['pin']);
     expect(fixture.controller.items, isEmpty);
   });
+
+  test('CB-2: a copied folder becomes a clip and a mixed list keeps both',
+      () async {
+    final fixture = await _Fixture.create(hasMesh: true);
+    addTearDown(fixture.dispose);
+    final folder = Directory('${fixture.directory.path}/Projects')
+      ..createSync();
+    final file = File('${fixture.directory.path}/a.txt')
+      ..writeAsStringSync('a');
+
+    await fixture.desktop.richCapture!({
+      'files': [file.path, folder.path]
+    }, initial: false);
+    final stored =
+        fixture.core.calls.where((call) => call.operation == 'capture');
+    expect(stored, hasLength(1));
+    final names = (stored.single.arguments['representations'] as List)
+        .map((value) => (value as Map)['name'])
+        .toList();
+    expect(names, ['a.txt', 'Projects']);
+
+    await fixture.desktop.richCapture!({
+      'files': [folder.path]
+    }, initial: false);
+    expect(fixture.core.calls.where((call) => call.operation == 'capture'),
+        hasLength(2));
+  });
+
+  test('CB-2: an oversize copy shows a notice instead of vanishing', () async {
+    final fixture = await _Fixture.create(hasMesh: true);
+    addTearDown(fixture.dispose);
+    final big = File('${fixture.directory.path}/big.bin')
+      ..writeAsBytesSync(List.filled(17 * 1024 * 1024, 1));
+
+    await fixture.desktop.richCapture!({
+      'files': [big.path]
+    }, initial: false);
+    expect(fixture.controller.notice, contains('big.bin'));
+    expect(fixture.controller.notice, contains('16 MB'));
+    expect(fixture.core.calls.where((call) => call.operation == 'capture'),
+        isEmpty);
+  });
 }
 
 Map<String, dynamic> _historyItem(String id, String text) => {
@@ -340,7 +382,9 @@ Map<String, dynamic> _historyItem(String id, String text) => {
     };
 
 class _Fixture {
-  _Fixture(this.controller, this.core, this.directory);
+  _Fixture(this.controller, this.core, this.directory, this.desktop);
+
+  final _TestDesktopAdapter desktop;
 
   final AppController controller;
   final FakeCoreApi core;
@@ -350,13 +394,14 @@ class _Fixture {
     final directory =
         await Directory.systemTemp.createTemp('arcade-controller-test-');
     final core = FakeCoreApi(hasMesh: hasMesh);
+    final desktop = _TestDesktopAdapter();
     final controller = AppController(
       core: core,
-      desktop: _TestDesktopAdapter(),
+      desktop: desktop,
       dataDirectory: directory,
     );
     await controller.start();
-    return _Fixture(controller, core, directory);
+    return _Fixture(controller, core, directory, desktop);
   }
 
   Future<void> dispose() async {
@@ -366,6 +411,16 @@ class _Fixture {
 }
 
 class _TestDesktopAdapter extends DesktopAdapter {
+  Future<void> Function(Map<String, Object?>, {required bool initial})?
+      richCapture;
+
+  @override
+  void setRichCaptureHandler(
+          Future<void> Function(Map<String, Object?> clipboard,
+                  {required bool initial})
+              handler) =>
+      richCapture = handler;
+
   @override
   Future<DesktopCapabilities> initialize({
     required Future<void> Function(String text) onTextCaptured,

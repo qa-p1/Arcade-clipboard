@@ -1430,20 +1430,40 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     try {
       if (files.isNotEmpty) {
         for (final path in files) {
+          final name = Uri.file(path)
+              .pathSegments
+              .lastWhere((segment) => segment.isNotEmpty, orElse: () => path);
+          if (await FileSystemEntity.isDirectory(path)) {
+            // CB-2: a copied folder becomes a clip holding its location.
+            text = text.isEmpty ? path : '$text\n$path';
+            representations.add(ClipRepresentation(
+                mimeType: 'text/uri-list',
+                name: name,
+                bytes: Uint8List.fromList(
+                    utf8.encode(Uri.file(path).toString()))));
+            continue;
+          }
           final file = File(path);
-          if (!await file.exists()) continue;
+          if (!await file.exists()) {
+            Diagnostics.log('capture', 'skipped a copied path: not found');
+            continue;
+          }
           size += await file.length();
-          if (size > 16 * 1024 * 1024) {
+          if (size > _maxClipBytes) {
+            Diagnostics.log('capture',
+                'skipped a copy: over ${_maxClipBytes ~/ (1024 * 1024)} MB');
             if (files.length == 1 &&
                 RegExp(r'\.(png|jpe?g)$', caseSensitive: false)
                     .hasMatch(path)) {
               await _offerLargePhoto(path: path, size: size);
+            } else {
+              _noticeTooLarge(name);
             }
             return;
           }
           representations.add(ClipRepresentation(
               mimeType: 'application/octet-stream',
-              name: file.uri.pathSegments.last,
+              name: name,
               bytes: await file.readAsBytes()));
         }
       } else {
@@ -1472,7 +1492,12 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
             continue;
           }
           size += bytes.length;
-          if (size > 16 * 1024 * 1024) return;
+          if (size > _maxClipBytes) {
+            Diagnostics.log('capture',
+                'skipped a copy: over ${_maxClipBytes ~/ (1024 * 1024)} MB');
+            _noticeTooLarge(null);
+            return;
+          }
           if (mime == 'text/plain') {
             text = utf8.decode(bytes, allowMalformed: true);
           }
@@ -1512,6 +1537,15 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       Diagnostics.log('capture', 'core rejected clip: $exception');
       _setError(exception, source: 'capture');
     }
+  }
+
+  static const _maxClipBytes = 16 * 1024 * 1024;
+
+  void _noticeTooLarge(String? name) {
+    _notice = name == null
+        ? 'Couldn\'t add the copied content (over 16 MB).'
+        : 'Couldn\'t add $name (over 16 MB).';
+    _notifyListeners();
   }
 
   Future<void> _offerLargePhoto(
