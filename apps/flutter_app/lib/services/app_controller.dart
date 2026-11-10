@@ -367,7 +367,6 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
           _desktop.setRichCaptureHandler(_captureRichFromDesktop);
           _desktop.onQuit = shutdown;
           _desktop.onOpenSettings = () => settingsRequests.value++;
-          _desktop.onOverlayFocusLost = dismissOverlay;
           _link.onQuit = _desktop.quit;
           _link.onShow = _desktop.showMainWindow;
           _link.onOverlay = openOverlay;
@@ -1213,6 +1212,11 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         !hasMesh ||
         _overlayBusy ||
         _disposed) {
+      return;
+    }
+    if (_overlayOpen) {
+      // The shortcut again closes the picker (it never closes on its own).
+      await dismissOverlay();
       return;
     }
     _overlayBusy = true;

@@ -267,11 +267,17 @@ void main() {
     await tester.pumpAndSettle();
     expect(fixture.controller.overlayOpen, isFalse);
 
-    // Clicking elsewhere closes it too (the desktop reports the blur).
+    // C0: losing focus (or the pointer leaving) never closes the picker.
     await fixture.controller.openOverlay();
     await tester.pumpAndSettle();
     expect(fixture.controller.overlayOpen, isTrue);
-    await fixture.desktop.onOverlayFocusLost!();
+    fixture.desktop.onWindowBlur();
+    await tester.pumpAndSettle(const Duration(seconds: 1));
+    expect(fixture.controller.overlayOpen, isTrue,
+        reason: 'a focus change must not close the picker');
+
+    // The shortcut again closes it.
+    await fixture.controller.openOverlay();
     await tester.pumpAndSettle();
     expect(fixture.controller.overlayOpen, isFalse);
     expect(tester.takeException(), isNull);

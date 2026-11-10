@@ -1,0 +1,36 @@
+[
+  {
+    "cycle": 0,
+    "pid": 135149,
+    "quitExit": 0,
+    "alive": false,
+    "core": "No coredumps found.\n"
+  },
+  {
+    "cycle": 1,
+    "pid": 182778,
+    "quitExit": 0,
+    "alive": false,
+    "core": "No coredumps found.\n"
+  },
+  {
+    "cycle": 2,
+    "pid": 183446,
+    "quitExit": 0,
+    "alive": false,
+    "core": "No coredumps found.\n"
+  },
+  {
+    "operation": "restart",
+    "oldPid": 184104,
+    "exit": 0,
+    "status": "{\"app\":\"arcade.clipboard\",\"link\":\"unregistered\",\"running\":false,\"runningVersion\":null,\"version\":\"0.3.2\"}\n",
+    "stderr": "MESA-EGL: warning: DRI3 error: Could not get DRI3 device\nMESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering\n\n(dev.arcade.Clipboard:184898): Atk-CRITICAL **: 19:36:11.971: atk_socket_embed: assertion 'plug_id != NULL' failed\n[IMPORTANT:flutter/shell/platform/embedder/embedder_surface_gl_impeller.cc(126)] Using the Impeller rendering backend (OpenGLESSDF).\n"
+  },
+  {
+    "successorPid": "184584",
+    "cmd": "/tmp/claude-1000/-home-harneet-Work-Coding/c7347b9d-c34f-4fc8-b57d-de9a2d5591f6/scratchpad/audit-cswt/resume/tmp/.mount_ArcadeFeamLP/usr/lib/arcade-clipboard/clipboard --background ",
+    "exe": "/usr/lib/arcade-clipboard/clipboard",
+    "exeExists": false
+  }
+]
