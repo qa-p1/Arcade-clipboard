@@ -171,13 +171,14 @@ class _ClipboardPageState extends State<_ClipboardPage> {
           Padding(
             padding: const EdgeInsets.only(bottom: ArcadeTokens.space12),
             child: ArcadeNotice(
-                'Sharing is paused. Existing clips are still available.',
+                'Nothing you copy is being saved or shared. Existing clips are still available.',
                 tone: ArcadeTone.warn,
                 title: 'Private mode',
                 action: ArcadeButton(
-                    label: 'Resume',
+                    label: 'Turn off',
                     small: true,
-                    onPressed: () => controller.setPrivatePause(false))),
+                    onPressed: () => controller.setPrivatePause(false,
+                        cause: 'history header'))),
           ),
         if (controller.status?.connection == 'offline' &&
             controller.devices.isNotEmpty)

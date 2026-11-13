@@ -546,7 +546,7 @@ impl ClipboardHandler {
         self.runtime
             .block_on(core.request(json!({
                 "op": "settings",
-                "values": {"paused": paused}
+                "values": {"paused": paused, "cause": "Link menu"}
             })))
             .map_err(LinkError::unavailable)?;
         if let Err(error) = refresh_document(&core, &self.runtime) {
@@ -590,9 +590,11 @@ impl ClipboardHandler {
         let previous_portable = PortableSettings::from_core(&previous)?;
         portable_settings::save_backup(core.data_dir(), &previous)
             .map_err(portable_settings::io_error)?;
+        let mut values = document.core_values();
+        values["cause"] = json!("settings import");
         let apply = self.runtime.block_on(core.request(json!({
             "op": "settings",
-            "values": document.core_values()
+            "values": values
         })));
         if let Err(error) = apply {
             let rollback = self.runtime.block_on(core.request(json!({

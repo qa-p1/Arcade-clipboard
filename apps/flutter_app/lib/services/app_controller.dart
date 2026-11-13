@@ -387,7 +387,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
           _link.onRestart = _desktop.restart;
           _link.onShortcutSet = _setShortcutFromLink;
           _desktop.onTogglePrivateMode =
-              () => setPrivatePause(_status?.paused != true);
+              () => setPrivatePause(_status?.paused != true, cause: 'tray');
           _link.listen();
           try {
             // Wait for Tools' first tray-host answer (300 ms cap) so a hosted
@@ -832,9 +832,13 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         await refreshHistory(query: _query);
       });
 
-  Future<void> setPrivatePause(bool paused) async => _perform(() async {
+  Future<void> setPrivatePause(bool paused,
+          {String cause = 'settings'}) async =>
+      _perform(() async {
+        Diagnostics.log(
+            'private', 'Private mode ${paused ? 'on' : 'off'} (cause: $cause)');
         await _core.invoke('settings', {
-          'values': {'paused': paused}
+          'values': {'paused': paused, 'cause': cause}
         });
         await refreshStatus();
       });

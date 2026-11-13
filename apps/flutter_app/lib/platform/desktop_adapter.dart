@@ -255,7 +255,6 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
   bool _initialized = false;
   bool _captureEnabled = false;
   bool _overlayVisible = false;
-  DateTime? _overlayShownAt;
 
   /// Losing focus or the pointer leaving never closes the quick picker (fleet
   /// popup rule): it closes on Escape, choosing a clip, the shortcut again or
@@ -974,7 +973,6 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
       await windowManager.show();
       await windowManager.focus();
       _overlayVisible = true;
-      _overlayShownAt = DateTime.now();
     } catch (error) {
       final snapshot = _windowSnapshot;
       if (snapshot != null) {
@@ -1013,7 +1011,6 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
       await _ensureHyprlandPickerRule();
       await windowManager.show();
       _overlayVisible = true;
-      _overlayShownAt = DateTime.now();
       final own = await _ownHyprlandWindow();
       if (own != null) {
         if (own['floating'] != true) {
@@ -1129,7 +1126,6 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
 
   Future<void> hideOverlay() async {
     if (!_overlayVisible) return;
-    _overlayShownAt = null;
     if (Platform.isLinux && _isWayland && _isHyprland) {
       _overlayVisible = false;
       await _restoreHyprlandMainWindow(focusTarget: true);

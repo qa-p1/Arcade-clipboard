@@ -1040,8 +1040,7 @@ impl Store {
             .conn
             .path()
             .map(|path| {
-                let mut wal = path.as_os_str().to_owned();
-                wal.push("-wal");
+                let wal = format!("{path}-wal");
                 std::fs::metadata(wal).map(|meta| meta.len()).unwrap_or(0)
             })
             .unwrap_or(0);
@@ -2041,10 +2040,28 @@ mod tests {
         let mut store = Store::open(&dir.path().join("history.sqlite"), [14; 32]).unwrap();
         assert_eq!(store.setting("retention_hours", 99u32), 0);
         assert_eq!(store.storage_budget_bytes(), 256 * 1024 * 1024);
-        let ancient = sample_text_at("a year old", now_ms() - 365 * 24 * HOUR);
+        // Captured fresh, then a year passes (a clip cannot arrive already expired).
+        let ancient = sample_text("a year old");
         store.capture(&ancient, 10).unwrap();
+        store
+            .conn
+            .execute(
+                "UPDATE items SET created_at=?1 WHERE id=?2",
+                params![now_ms() - 365 * 24 * HOUR, ancient.id],
+            )
+            .unwrap();
         store.expire().unwrap();
-        assert!(store.item(&ancient.id).unwrap().is_some());
+        // The row is still there (created_at is authenticated, so the aged
+        // copy is checked in SQL rather than read back).
+        let kept: i64 = store
+            .conn
+            .query_row(
+                "SELECT COUNT(*) FROM items WHERE id=?1",
+                [&ancient.id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(kept, 1);
     }
 
     #[test]
@@ -2065,21 +2082,33 @@ mod tests {
         assert_eq!(store.setting("max_items", 0usize), 10_000);
     }
 
+    /// A 512 KiB file clip (text is capped at 32 KiB, so size comes from a file).
+    fn as_big_file(item: &mut WireItem, seed: &str) {
+        use base64::{engine::general_purpose::STANDARD, Engine};
+        item.kind = "file".into();
+        item.representations = vec![crate::payload::Representation {
+            mime_type: "application/octet-stream".into(),
+            name: Some(format!("{seed}.bin")),
+            data_base64: STANDARD.encode(big_text(seed, 512 * 1024)),
+        }];
+        item.content_hash = crate::payload::content_hash(&item.text, &item.representations);
+    }
+
     #[test]
     fn the_budget_removes_the_oldest_unpinned_clips_and_never_pinned_ones() {
         let dir = tempdir().unwrap();
         let mut store = Store::open(&dir.path().join("history.sqlite"), [16; 32]).unwrap();
         store.set_setting("max_storage_mb", "16").unwrap();
         let mut pinned = sample_text_at("pinned and oldest", now_ms() - 100 * HOUR);
-        pinned.text = big_text("pinned", 512 * 1024);
-        pinned.content_hash = blake3::hash(pinned.text.as_bytes()).to_hex().to_string();
+        pinned.expires_at = pinned.created_at + 29 * 24 * HOUR;
+        as_big_file(&mut pinned, "pinned");
         store.capture(&pinned, 10_000).unwrap();
         store.set_pinned(&pinned.id, true).unwrap();
         let mut ids = Vec::new();
         for n in 0..60 {
             let mut item = sample_text_at(&format!("clip {n}"), now_ms() - (60 - n) * HOUR);
-            item.text = big_text(&format!("clip {n}"), 512 * 1024);
-            item.content_hash = blake3::hash(item.text.as_bytes()).to_hex().to_string();
+            item.expires_at = item.created_at + 29 * 24 * HOUR;
+            as_big_file(&mut item, &format!("clip {n}"));
             ids.push(item.id.clone());
             store.capture(&item, 10_000).unwrap();
         }
@@ -2432,6 +2461,7 @@ mod tests {
     fn pinned_expired_items_are_retained_and_expire_immediately_when_unpinned() {
         let directory = tempdir().unwrap();
         let mut store = Store::open(&directory.path().join("history.sqlite"), [31; 32]).unwrap();
+        store.set_setting("retention_hours", "24").unwrap();
         // Older than this device's 24-hour retention.
         let mut item = sample_text_at("Pinned beyond retention", now_ms() - 25 * 60 * 60 * 1000);
         item.expires_at = now_ms() - 60 * 60 * 1000;

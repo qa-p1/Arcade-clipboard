@@ -171,7 +171,8 @@ GVariant* EmptyPixmaps() { return g_variant_new_array(G_VARIANT_TYPE("(iiay)"), 
 // The tray icon: Clipboard's glyph in white for the usual dark panels
 // (STANDARD §8), as ARGB32 in network byte order. Rendered by
 // scripts/sync-design.py into the app's assets; empty if it is missing.
-GVariant* TrayPixmaps() {
+// With [badge], an amber dot marks the icon while Private mode is on.
+GVariant* TrayPixmaps(bool badge) {
   static GBytes* argb = nullptr;
   static int width = 0, height = 0;
   if (argb == nullptr) {
@@ -203,7 +204,24 @@ GVariant* TrayPixmaps() {
     }
   }
   if (g_bytes_get_size(argb) == 0) return EmptyPixmaps();
-  GVariant* data = g_variant_new_from_bytes(G_VARIANT_TYPE("ay"), argb, TRUE);
+  GBytes* shown = argb;
+  if (badge) {
+    gsize size = 0;
+    const guchar* source = static_cast<const guchar*>(g_bytes_get_data(argb, &size));
+    auto* copy = static_cast<guchar*>(g_memdup2(source, size));
+    const int radius = width / 4 > 3 ? width / 4 : 3;
+    const int cx = width - radius - 1, cy = height - radius - 1;
+    for (int y = 0; y < height; ++y) {
+      for (int x = 0; x < width; ++x) {
+        if ((x - cx) * (x - cx) + (y - cy) * (y - cy) > radius * radius) continue;
+        guchar* pixel = copy + (static_cast<gsize>(y) * width + x) * 4;
+        pixel[0] = 255; pixel[1] = 255; pixel[2] = 170; pixel[3] = 0;  // ARGB amber
+      }
+    }
+    shown = g_bytes_new_take(copy, size);
+  }
+  GVariant* data = g_variant_new_from_bytes(G_VARIANT_TYPE("ay"), shown, TRUE);
+  if (shown != argb) g_bytes_unref(shown);  // the variant holds its own reference
   GVariant* pixmap = g_variant_new("(ii@ay)", width, height, data);
   return g_variant_new_array(G_VARIANT_TYPE("(iiay)"), &pixmap, 1);
 }
@@ -213,15 +231,19 @@ GVariant* ItemProperty(GDBusConnection*, const gchar*, const gchar*, const gchar
   auto* state = static_cast<LinuxLifecycle*>(data);
   if (g_strcmp0(name, "Category") == 0) return g_variant_new_string("ApplicationStatus");
   if (g_strcmp0(name, "Id") == 0) return g_variant_new_string("arcade-clipboard");
-  if (g_strcmp0(name, "Title") == 0) return g_variant_new_string("Arcade Clipboard");
+  if (g_strcmp0(name, "Title") == 0) {
+    return g_variant_new_string(state->private_mode ? "Arcade Clipboard (Private mode)" : "Arcade Clipboard");
+  }
   if (g_strcmp0(name, "Status") == 0) return g_variant_new_string(state->background && !state->tray_hosted ? "Active" : "Passive");
   // A pixmap rather than a theme icon name, so the tray shows Clipboard's glyph.
   if (g_strcmp0(name, "IconName") == 0) return g_variant_new_string("");
-  if (g_strcmp0(name, "IconPixmap") == 0) return TrayPixmaps();
+  if (g_strcmp0(name, "IconPixmap") == 0) return TrayPixmaps(state->private_mode);
   if (g_strcmp0(name, "Menu") == 0) return g_variant_new_object_path("/Menu");
   if (g_strcmp0(name, "ItemIsMenu") == 0) return g_variant_new_boolean(FALSE);
-  if (g_strcmp0(name, "ToolTip") == 0) return g_variant_new("(s@a(iiay)ss)", "", EmptyPixmaps(), "Arcade Clipboard",
-                                                               "An encrypted copy history, synced across your own devices.");
+  if (g_strcmp0(name, "ToolTip") == 0) return g_variant_new("(s@a(iiay)ss)", "", EmptyPixmaps(),
+      state->private_mode ? "Arcade Clipboard (Private mode)" : "Arcade Clipboard",
+      state->private_mode ? "Private mode is on: nothing you copy is being saved or shared."
+                          : "An encrypted copy history, synced across your own devices.");
   if (g_str_has_suffix(name, "Pixmap")) return EmptyPixmaps();
   return g_variant_new_string("");
 }
@@ -654,6 +676,13 @@ bool HandleLifecycleMethod(LinuxLifecycle* state, FlMethodCall* call) {
                 g_variant_new_array(G_VARIANT_TYPE("(ias)"), nullptr, 0)), nullptr);
         g_dbus_connection_emit_signal(state->bus, nullptr, "/Menu", "com.canonical.dbusmenu", "LayoutUpdated",
             g_variant_new("(ui)", state->menu_revision, 0), nullptr);
+      }
+      if (state->bus != nullptr && state->item_registration != 0) {
+        // The tray icon carries the badge, so Private mode is never hidden.
+        for (const char* signal : {"NewIcon", "NewTitle", "NewToolTip"}) {
+          g_dbus_connection_emit_signal(state->bus, nullptr, "/StatusNotifierItem", "org.kde.StatusNotifierItem", signal,
+              nullptr, nullptr);
+        }
       }
     }
     Respond(call);

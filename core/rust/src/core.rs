@@ -1372,16 +1372,20 @@ impl Core {
             let retention: u32 = state
                 .store
                 .setting("retention_hours", DEFAULT_RETENTION_HOURS);
+            // One clock reading: with Forever the lifetime is exactly the
+            // protocol's 30-day maximum, so a second, later reading for the
+            // expiry made it a millisecond too long and the capture failed.
+            let created_at = store::now_ms();
             let mut wire = WireItem {
                 protocol_version: PROTOCOL_VERSION,
                 id: id.clone(),
                 origin_device: state.identity.device_id.to_string(),
                 sender_sequence: state.store.next_sequence()?,
                 source_name,
-                created_at: store::now_ms(),
+                created_at,
                 // Forever (0) still tells peers a 30-day lifetime, the longest
                 // the protocol allows; each device keeps clips by its own setting.
-                expires_at: store::now_ms().saturating_add(
+                expires_at: created_at.saturating_add(
                     i64::from(if retention == 0 { 720 } else { retention.min(720) })
                         * 60
                         * 60
@@ -1551,12 +1555,28 @@ impl Core {
             .ok_or_else(|| "Settings values must be an object".to_string())?;
         let mut state = self.state.lock().await;
         let was_paused = state.store.setting("paused", false);
+        let cause = object
+            .get("cause")
+            .and_then(|value| value.as_str())
+            .unwrap_or("unspecified")
+            .chars()
+            .filter(|c| !c.is_control())
+            .take(64)
+            .collect::<String>();
         for (key, value) in object {
             match key.as_str() {
+                "cause" => {}
                 "paused" => {
                     let paused = value
                         .as_bool()
                         .ok_or_else(|| "The paused setting must be true or false".to_string())?;
+                    if paused != was_paused {
+                        // Every path that changes Private mode leaves a trace.
+                        eprintln!(
+                            "arcade-clipboard: Private mode {} (cause: {cause})",
+                            if paused { "on" } else { "off" }
+                        );
+                    }
                     state
                         .store
                         .set_setting("paused", if paused { "true" } else { "false" })?;
