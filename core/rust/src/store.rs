@@ -1651,7 +1651,11 @@ fn ensure_support_schema(conn: &Connection) -> Result<(), String> {
     // The 0.3 defaults (keep 1 day, 500 items) were stored as if chosen. Only
     // the untouched item-count default moves; the user's retention is kept.
     if conn
-        .query_row("SELECT 1 FROM meta WHERE key='retention_v1'", [], |_| Ok(()))
+        .query_row(
+            "SELECT 1 FROM meta WHERE key='retention_v1'",
+            [],
+            |_| Ok(()),
+        )
         .optional()
         .map_err(db_error)?
         .is_none()

@@ -3,8 +3,8 @@ use crate::{
     model::{
         DeviceInfo, HistoryItem, InviteV1, MemberCertificate, PeerRecord, PendingPairingInfo,
         Revocation, SignedMemberCertificate, SignedPinState, SignedRevocation, Status, WireItem,
-        WireMessage, DEFAULT_MAX_ITEMS, DEFAULT_MAX_STORAGE_MB, DEFAULT_RETENTION_HOURS, INVITE_TTL_SECONDS,
-        MAX_FRAME_BYTES, PROTOCOL_VERSION,
+        WireMessage, DEFAULT_MAX_ITEMS, DEFAULT_MAX_STORAGE_MB, DEFAULT_RETENTION_HOURS,
+        INVITE_TTL_SECONDS, MAX_FRAME_BYTES, PROTOCOL_VERSION,
     },
     profile_lock::ProfileLock,
     secret::{IdentityMaterial, SecretStore, SystemSecretStore},
@@ -1386,8 +1386,11 @@ impl Core {
                 // Forever (0) still tells peers a 30-day lifetime, the longest
                 // the protocol allows; each device keeps clips by its own setting.
                 expires_at: created_at.saturating_add(
-                    i64::from(if retention == 0 { 720 } else { retention.min(720) })
-                        * 60
+                    i64::from(if retention == 0 {
+                        720
+                    } else {
+                        retention.min(720)
+                    }) * 60
                         * 60
                         * 1000,
                 ),
