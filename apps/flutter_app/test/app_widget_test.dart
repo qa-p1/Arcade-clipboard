@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:arcade_clipboard/app.dart';
+import 'package:arcade_clipboard/design/arcade_widgets.dart';
 import 'package:arcade_clipboard/platform/desktop_adapter.dart';
 import 'package:arcade_clipboard/services/app_controller.dart';
 import 'package:flutter/material.dart';
@@ -224,6 +225,26 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.tap(find.text('Done'));
     await tester.pumpAndSettle();
+  });
+
+  testWidgets('a search narrows the list, not the header count or Clear (CB-6)',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final fixture =
+        (await tester.runAsync(() => _Fixture.create(hasMesh: true)))!;
+    addTearDown(fixture.dispose);
+    await fixture.controller.addText('First clip');
+    await fixture.controller.addText('Second clip');
+    await tester.pumpWidget(ArcadeApp(controller: fixture.controller));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('2 clips ·'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).first, 'zzzz');
+    await tester.pumpAndSettle(const Duration(seconds: 1));
+    expect(find.textContaining('2 clips ·'), findsOneWidget);
+    final clear = tester.widget<ArcadeButton>(
+        find.widgetWithText(ArcadeButton, 'Clear history…'));
+    expect(clear.onPressed, isNotNull);
   });
 
   testWidgets(
