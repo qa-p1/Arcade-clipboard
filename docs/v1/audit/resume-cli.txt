@@ -1,0 +1,34 @@
+--help (0.053s) exit=0
+Usage: arcade-clipboard [OPTION]
+
+  --show              Show the window of the running instance, or start the app
+  --hide              Hide the window of the running instance
+  --toggle            Show or hide the window
+  --background        Start without showing the window (Launch at login)
+  --overlay           Open the picker in the running instance, or start the app and open it
+  --settings          Open Settings in the running instance, or start the app and open it
+  --status            Print one line of JSON: version, whether it runs, Link state
+  --restart           Restart the running instance
+  --quit              Quit the running instance
+  --version           Print the version
+  --install [--silent] [--no-launch] [--keep-download] [--channel stable|nightly]
+                      Install this AppImage
+  --uninstall [--silent] [--remove-data]
+                      Remove the installation; data is kept unless --remove-data
+  --repair            Restore the launcher, command and login entries
+  --integration-status
+                      Print the integration as JSON
+  --arcade-manifest   Print the Arcade Link manifest
+  -h, --help          Print this help
+
+STDERR:
+
+--version (0.534s) exit=0
+Arcade Clipboard 0.3.2
+
+STDERR:
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+
+(dev.arcade.Clipboard:126719): Atk-CRITICAL **: 19:10:45.085: atk_socket_embed: assertion 'plug_id != NULL' failed
+[IMPORTANT:flutter/shell/platform/embedder/embedder_surface_gl_impeller.cc(126)] Using the Impeller rendering backend (OpenGLESSDF).

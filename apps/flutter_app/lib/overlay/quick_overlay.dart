@@ -158,6 +158,21 @@ class _MeshOverlayState extends State<MeshOverlay> {
                     child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
+                          if (controller.status?.paused == true)
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                  top: ArcadeTokens.space6),
+                              child: ArcadeNotice(
+                                  'Nothing you copy is being saved or shared.',
+                                  tone: ArcadeTone.warn,
+                                  title: 'Private mode is on',
+                                  action: ArcadeButton(
+                                      label: 'Turn off',
+                                      small: true,
+                                      onPressed: () =>
+                                          controller.setPrivatePause(false,
+                                              cause: 'picker'))),
+                            ),
                           LinkWorkStatus(controller: controller),
                           WaitingPhoto(controller: controller),
                           if (controller.error case final error?)

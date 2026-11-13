@@ -12,6 +12,7 @@ import '../platform/mobile_share_bridge.dart';
 import 'app_settings.dart';
 import 'core_api.dart';
 import 'diagnostics.dart';
+import 'html_text.dart';
 import 'link_service.dart';
 
 class AppController extends ChangeNotifier with WidgetsBindingObserver {
@@ -77,8 +78,10 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   bool _backgroundEnabled = true;
   bool _launchAtLogin = false;
   Directory? _supportDirectory;
-  int _retentionHours = 24;
-  int _maxItems = 500;
+  int _retentionHours = 0; // 0 is Forever
+  int _maxItems = 10000;
+  int _maxStorageMb = 256;
+  int _storageUsedBytes = 0;
   int _historyLimit = 250;
   bool _hasMoreHistory = false;
   ThemeMode _themeMode = ThemeMode.system;
@@ -144,6 +147,8 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   bool get backgroundEnabled => _backgroundEnabled;
   bool get launchAtLogin => _launchAtLogin;
   int get retentionHours => _retentionHours;
+  int get maxStorageMb => _maxStorageMb;
+  int get storageUsedBytes => _storageUsedBytes;
   int get maxItems => _maxItems;
   bool get hasMoreHistory => _hasMoreHistory;
   ThemeMode get themeMode => _themeMode;
@@ -367,7 +372,6 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
           _desktop.setRichCaptureHandler(_captureRichFromDesktop);
           _desktop.onQuit = shutdown;
           _desktop.onOpenSettings = () => settingsRequests.value++;
-          _desktop.onOverlayFocusLost = dismissOverlay;
           _link.onQuit = _desktop.quit;
           _link.onShow = _desktop.showMainWindow;
           _link.onOverlay = openOverlay;
@@ -383,7 +387,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
           _link.onRestart = _desktop.restart;
           _link.onShortcutSet = _setShortcutFromLink;
           _desktop.onTogglePrivateMode =
-              () => setPrivatePause(_status?.paused != true);
+              () => setPrivatePause(_status?.paused != true, cause: 'tray');
           _link.listen();
           try {
             // Wait for Tools' first tray-host answer (300 ms cap) so a hosted
@@ -828,15 +832,19 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         await refreshHistory(query: _query);
       });
 
-  Future<void> setPrivatePause(bool paused) async => _perform(() async {
+  Future<void> setPrivatePause(bool paused,
+          {String cause = 'settings'}) async =>
+      _perform(() async {
+        Diagnostics.log(
+            'private', 'Private mode ${paused ? 'on' : 'off'} (cause: $cause)');
         await _core.invoke('settings', {
-          'values': {'paused': paused}
+          'values': {'paused': paused, 'cause': cause}
         });
         await refreshStatus();
       });
 
   Future<void> setRetentionHours(int hours) async => _perform(() async {
-        if (!const {1, 24, 168, 720}.contains(hours)) {
+        if (!const {0, 1, 24, 168, 720, 2160, 8760}.contains(hours)) {
           throw const AppActionException(
               'Choose a supported history retention period.');
         }
@@ -846,12 +854,12 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         await _loadSettings();
       });
 
-  Future<void> setMaxItems(int count) => _perform(() async {
-        if (!const {500, 1000, 5000}.contains(count)) {
-          throw const AppActionException('Choose a supported history limit.');
+  Future<void> setMaxStorageMb(int megabytes) => _perform(() async {
+        if (!const {64, 256, 1024, 4096}.contains(megabytes)) {
+          throw const AppActionException('Choose a supported storage budget.');
         }
         await _core.invoke('settings', {
-          'values': {'max_items': count}
+          'values': {'max_storage_mb': megabytes}
         });
         await _loadSettings();
         await refreshHistory(query: _query);
@@ -1215,6 +1223,11 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         _disposed) {
       return;
     }
+    if (_overlayOpen) {
+      // The shortcut again closes the picker (it never closes on its own).
+      await dismissOverlay();
+      return;
+    }
     _overlayBusy = true;
     _notifyListeners();
     try {
@@ -1426,20 +1439,40 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     try {
       if (files.isNotEmpty) {
         for (final path in files) {
+          final name = Uri.file(path)
+              .pathSegments
+              .lastWhere((segment) => segment.isNotEmpty, orElse: () => path);
+          if (await FileSystemEntity.isDirectory(path)) {
+            // CB-2: a copied folder becomes a clip holding its location.
+            text = text.isEmpty ? path : '$text\n$path';
+            representations.add(ClipRepresentation(
+                mimeType: 'text/uri-list',
+                name: name,
+                bytes: Uint8List.fromList(
+                    utf8.encode(Uri.file(path).toString()))));
+            continue;
+          }
           final file = File(path);
-          if (!await file.exists()) continue;
+          if (!await file.exists()) {
+            Diagnostics.log('capture', 'skipped a copied path: not found');
+            continue;
+          }
           size += await file.length();
-          if (size > 16 * 1024 * 1024) {
+          if (size > _maxClipBytes) {
+            Diagnostics.log('capture',
+                'skipped a copy: over ${_maxClipBytes ~/ (1024 * 1024)} MB');
             if (files.length == 1 &&
                 RegExp(r'\.(png|jpe?g)$', caseSensitive: false)
                     .hasMatch(path)) {
               await _offerLargePhoto(path: path, size: size);
+            } else {
+              _noticeTooLarge(name);
             }
             return;
           }
           representations.add(ClipRepresentation(
               mimeType: 'application/octet-stream',
-              name: file.uri.pathSegments.last,
+              name: name,
               bytes: await file.readAsBytes()));
         }
       } else {
@@ -1454,6 +1487,10 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
             return;
           }
         }
+        final hasPlain = formats
+            .whereType<Map<dynamic, dynamic>>()
+            .any((format) => format['mimeType'] == 'text/plain');
+        var htmlText = '';
         for (final format in formats.whereType<Map<dynamic, dynamic>>()) {
           final mime = format['mimeType'];
           final bytes = format['bytes'];
@@ -1468,12 +1505,24 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
             continue;
           }
           size += bytes.length;
-          if (size > 16 * 1024 * 1024) return;
+          if (size > _maxClipBytes) {
+            Diagnostics.log('capture',
+                'skipped a copy: over ${_maxClipBytes ~/ (1024 * 1024)} MB');
+            _noticeTooLarge(null);
+            return;
+          }
           if (mime == 'text/plain') {
             text = utf8.decode(bytes, allowMalformed: true);
           }
           representations.add(ClipRepresentation(mimeType: mime, bytes: bytes));
+          if (mime == 'text/html' && !hasPlain) {
+            htmlText =
+                htmlToPlainText(utf8.decode(bytes, allowMalformed: true));
+          }
         }
+        // CB-7: an HTML-only copy is shown and searched as readable text; the
+        // markup stays as a representation.
+        if (text.isEmpty && htmlText.isNotEmpty) text = htmlText;
       }
       if (representations.isEmpty) return;
       final kind = files.isNotEmpty
@@ -1508,6 +1557,15 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       Diagnostics.log('capture', 'core rejected clip: $exception');
       _setError(exception, source: 'capture');
     }
+  }
+
+  static const _maxClipBytes = 16 * 1024 * 1024;
+
+  void _noticeTooLarge(String? name) {
+    _notice = name == null
+        ? 'Couldn\'t add the copied content (over 16 MB).'
+        : 'Couldn\'t add $name (over 16 MB).';
+    _notifyListeners();
   }
 
   Future<void> _offerLargePhoto(
@@ -1619,8 +1677,10 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> _loadSettings() async {
     final result = await _core.invoke('settings');
-    _retentionHours = (result['retention_hours'] as num?)?.toInt() ?? 24;
-    _maxItems = (result['max_items'] as num?)?.toInt() ?? 500;
+    _retentionHours = (result['retention_hours'] as num?)?.toInt() ?? 0;
+    _maxItems = (result['max_items'] as num?)?.toInt() ?? 10000;
+    _maxStorageMb = (result['max_storage_mb'] as num?)?.toInt() ?? 256;
+    _storageUsedBytes = (result['storage_used_bytes'] as num?)?.toInt() ?? 0;
     _relayUrl = result['relay_url'] as String? ?? '';
     if (result.containsKey('paused') && _status != null) {
       _status = MeshStatus(

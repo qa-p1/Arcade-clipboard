@@ -192,8 +192,10 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
   /// Starts a new background instance, then quits. Quitting without a
   /// successor would silently remove the app, so a failed start keeps it.
   Future<void> restart() async {
+    final executable = restartExecutable(
+        Platform.environment, Platform.resolvedExecutable, File.new);
     try {
-      await Process.start(Platform.resolvedExecutable, ['--background'],
+      await Process.start(executable, ['--background'],
           environment: {restartEnvironment: '$pid'},
           mode: ProcessStartMode.detached);
     } catch (error) {
@@ -201,6 +203,20 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
       return;
     }
     await _quit();
+  }
+
+  /// The program a restart starts. Inside an AppImage
+  /// [resolvedExecutable] lives in the runtime's mount, which disappears when
+  /// this process exits; the successor must be the AppImage file itself
+  /// (`$APPIMAGE`), which mounts its own copy.
+  @visibleForTesting
+  static String restartExecutable(Map<String, String> environment,
+      String resolvedExecutable, File Function(String) file) {
+    final image = environment['APPIMAGE'];
+    if (image != null && image.isNotEmpty && file(image).existsSync()) {
+      return image;
+    }
+    return resolvedExecutable;
   }
 
   final List<StreamSubscription<ProcessSignal>> _exitSignals = [];
@@ -239,23 +255,12 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
   bool _initialized = false;
   bool _captureEnabled = false;
   bool _overlayVisible = false;
-  DateTime? _overlayShownAt;
 
-  /// The quick picker closes when it loses focus (STANDARD §8).
-  Future<void> Function()? onOverlayFocusLost;
-
+  /// Losing focus or the pointer leaving never closes the quick picker (fleet
+  /// popup rule): it closes on Escape, choosing a clip, the shortcut again or
+  /// an explicit click outside. A blur is therefore ignored on purpose.
   @override
-  void onWindowBlur() {
-    final shownAt = _overlayShownAt;
-    if (!_overlayVisible || shownAt == null) return;
-    // Focus can bounce while the window maps; only a later blur means the
-    // user went elsewhere.
-    if (DateTime.now().difference(shownAt) <
-        const Duration(milliseconds: 400)) {
-      return;
-    }
-    unawaited(onOverlayFocusLost?.call());
-  }
+  void onWindowBlur() {}
 
   bool _closed = false;
 
@@ -968,7 +973,6 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
       await windowManager.show();
       await windowManager.focus();
       _overlayVisible = true;
-      _overlayShownAt = DateTime.now();
     } catch (error) {
       final snapshot = _windowSnapshot;
       if (snapshot != null) {
@@ -1007,7 +1011,6 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
       await _ensureHyprlandPickerRule();
       await windowManager.show();
       _overlayVisible = true;
-      _overlayShownAt = DateTime.now();
       final own = await _ownHyprlandWindow();
       if (own != null) {
         if (own['floating'] != true) {
@@ -1123,7 +1126,6 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
 
   Future<void> hideOverlay() async {
     if (!_overlayVisible) return;
-    _overlayShownAt = null;
     if (Platform.isLinux && _isWayland && _isHyprland) {
       _overlayVisible = false;
       await _restoreHyprlandMainWindow(focusTarget: true);
@@ -2050,7 +2052,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
       final capture = _waylandCaptureAvailable
           ? 'Copies are captured automatically.'
           : _waylandCaptureDetail();
-      return '$capture This desktop does not let apps register global shortcuts or paste into other windows. Bind a system shortcut to “clipboard --overlay”; choosing a clip copies it so you can paste with Ctrl+V.';
+      return '$capture This desktop does not let apps register global shortcuts or paste into other windows. Bind a system shortcut to “arcade-clipboard --overlay”; choosing a clip copies it so you can paste with Ctrl+V.';
     }
     if (platform == 'linux-wayland-hyprland') {
       final integration = globalShortcut && paste

@@ -227,6 +227,30 @@ void main() {
   });
 
   testWidgets(
+      'Private mode is visible in History and the picker, and turns off',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final fixture =
+        (await tester.runAsync(() => _Fixture.create(hasMesh: true)))!;
+    addTearDown(fixture.dispose);
+    await fixture.controller.addText('A clip');
+    await fixture.controller.setPrivatePause(true, cause: 'test');
+    await tester.pumpWidget(ArcadeApp(controller: fixture.controller));
+    await tester.pumpAndSettle();
+    expect(find.text('Private mode'), findsWidgets);
+    expect(find.text('Turn off'), findsOneWidget);
+
+    await fixture.controller.openOverlay();
+    await tester.pumpAndSettle();
+    expect(find.text('Private mode is on'), findsOneWidget);
+    await tester.tap(find.text('Turn off').last);
+    await tester.pumpAndSettle();
+    expect(fixture.controller.status?.paused, isFalse);
+    expect(find.text('Private mode is on'), findsNothing);
+  });
+
+  testWidgets(
       'overlay supports arrow, Home, End, Enter, and Escape while search has focus',
       (tester) async {
     await tester.binding.setSurfaceSize(const Size(430, 510));
@@ -267,11 +291,17 @@ void main() {
     await tester.pumpAndSettle();
     expect(fixture.controller.overlayOpen, isFalse);
 
-    // Clicking elsewhere closes it too (the desktop reports the blur).
+    // C0: losing focus (or the pointer leaving) never closes the picker.
     await fixture.controller.openOverlay();
     await tester.pumpAndSettle();
     expect(fixture.controller.overlayOpen, isTrue);
-    await fixture.desktop.onOverlayFocusLost!();
+    fixture.desktop.onWindowBlur();
+    await tester.pumpAndSettle(const Duration(seconds: 1));
+    expect(fixture.controller.overlayOpen, isTrue,
+        reason: 'a focus change must not close the picker');
+
+    // The shortcut again closes it.
+    await fixture.controller.openOverlay();
     await tester.pumpAndSettle();
     expect(fixture.controller.overlayOpen, isFalse);
     expect(tester.takeException(), isNull);

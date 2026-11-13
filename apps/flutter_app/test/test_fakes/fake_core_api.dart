@@ -16,6 +16,7 @@ class FakeCoreApi implements CoreApi {
   final List<Map<String, dynamic>> historyItems = [];
   String _relayUrl = "";
   int _retentionHours = 24;
+  int _maxStorageMb = 256;
   int _maxItems = 500;
   Map<String, dynamic> linkOffers = {};
   List<Map<String, dynamic>> linkPeers = [];
@@ -83,6 +84,9 @@ class FakeCoreApi implements CoreApi {
           if (values['retention_hours'] is num) {
             _retentionHours = (values['retention_hours'] as num).toInt();
           }
+          if (values['max_storage_mb'] is num) {
+            _maxStorageMb = (values['max_storage_mb'] as num).toInt();
+          }
           if (values['max_items'] is num) {
             _maxItems = (values['max_items'] as num).toInt();
           }
@@ -95,6 +99,8 @@ class FakeCoreApi implements CoreApi {
           'paused': _status['paused'] == true,
           'retention_hours': _retentionHours,
           'max_items': _maxItems,
+          'max_storage_mb': _maxStorageMb,
+          'storage_used_bytes': 1048576,
           'relay_url': _relayUrl,
         };
       case 'create_mesh':
