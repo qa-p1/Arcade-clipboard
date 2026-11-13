@@ -19,6 +19,15 @@ apply_standard_settings(${BINARY_NAME})
 # Add preprocessor definitions for the application ID.
 add_definitions(-DAPPLICATION_ID="${APPLICATION_ID}")
 
+# The workspace version, so --version answers before GTK and the Flutter
+# engine start (CB-5). Cargo.toml's first `version =` is [workspace.package].
+file(STRINGS "${CMAKE_SOURCE_DIR}/../../../Cargo.toml" ARCADE_CARGO_VERSION_LINE REGEX "^version = \"[^\"]+\"" LIMIT_COUNT 1)
+string(REGEX REPLACE "^version = \"([^\"]+)\".*" "\\1" ARCADE_CLIPBOARD_VERSION "${ARCADE_CARGO_VERSION_LINE}")
+if(NOT ARCADE_CLIPBOARD_VERSION)
+  message(FATAL_ERROR "Couldn't read the version from Cargo.toml")
+endif()
+target_compile_definitions(${BINARY_NAME} PRIVATE ARCADE_CLIPBOARD_VERSION="${ARCADE_CLIPBOARD_VERSION}")
+
 # Add dependency libraries. Add any application-specific dependencies here.
 target_link_libraries(${BINARY_NAME} PRIVATE flutter)
 target_link_libraries(${BINARY_NAME} PRIVATE PkgConfig::GTK)

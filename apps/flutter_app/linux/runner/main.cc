@@ -80,6 +80,11 @@ static void wait_for_predecessor() {
 }
 
 int main(int argc, char** argv) {
+  // Answered here, before GTK and the engine print their warnings (CB-5).
+  if (argc == 2 && strcmp(argv[1], "--version") == 0) {
+    fputs("Arcade Clipboard " ARCADE_CLIPBOARD_VERSION "\n", stdout);
+    return 0;
+  }
   for (int i = 1; i < argc; ++i) {
     if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
       fputs(kUsage, stdout);
