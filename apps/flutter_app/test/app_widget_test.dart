@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:arcade_clipboard/app.dart';
+import 'package:arcade_clipboard/clipboard_widgets.dart';
+import 'package:arcade_clipboard/design/arcade_widgets.dart';
 import 'package:arcade_clipboard/platform/desktop_adapter.dart';
 import 'package:arcade_clipboard/services/app_controller.dart';
 import 'package:flutter/material.dart';
@@ -226,6 +228,68 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  test('a dismissed startup notice stays dismissed after a restart (CB-8)',
+      () async {
+    final directory = await Directory.systemTemp.createTemp('arcade-cb8-');
+    addTearDown(() => directory.delete(recursive: true));
+    final first = AppController(
+        core: FakeCoreApi(hasMesh: true),
+        desktop: _NoShortcutDesktop(),
+        dataDirectory: directory);
+    await first.start();
+    expect(first.notice, 'No global shortcuts on this test desktop.');
+    first.dismissNotice();
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    final second = AppController(
+        core: FakeCoreApi(hasMesh: true),
+        desktop: _NoShortcutDesktop(),
+        dataDirectory: directory);
+    await second.start();
+    expect(second.notice, isNull);
+  });
+
+  testWidgets('an empty Add clip shows its message once, until typing (CB-9)',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final fixture =
+        (await tester.runAsync(() => _Fixture.create(hasMesh: true)))!;
+    addTearDown(fixture.dispose);
+    await tester.pumpWidget(ArcadeApp(controller: fixture.controller));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ArcadeButton, 'Add clip').first);
+    await tester.pumpAndSettle();
+    final dialog = find.byType(AddClipDialog);
+    await tester.tap(find.descendant(
+        of: dialog, matching: find.widgetWithText(ArcadeButton, 'Add clip')));
+    await tester.pumpAndSettle();
+    expect(find.text('Enter something to share.'), findsOneWidget);
+    await tester.enterText(
+        find.descendant(of: dialog, matching: find.byType(TextField)), 'h');
+    await tester.pumpAndSettle();
+    expect(find.text('Enter something to share.'), findsNothing);
+  });
+
+  testWidgets('a search narrows the list, not the header count or Clear (CB-6)',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final fixture =
+        (await tester.runAsync(() => _Fixture.create(hasMesh: true)))!;
+    addTearDown(fixture.dispose);
+    await fixture.controller.addText('First clip');
+    await fixture.controller.addText('Second clip');
+    await tester.pumpWidget(ArcadeApp(controller: fixture.controller));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('2 clips ·'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).first, 'zzzz');
+    await tester.pumpAndSettle(const Duration(seconds: 1));
+    expect(find.textContaining('2 clips ·'), findsOneWidget);
+    final clear = tester.widget<ArcadeButton>(
+        find.widgetWithText(ArcadeButton, 'Clear history…'));
+    expect(clear.onPressed, isNotNull);
+  });
+
   testWidgets(
       'Private mode is visible in History and the picker, and turns off',
       (tester) async {
@@ -326,6 +390,21 @@ class _Fixture {
   }
 
   Future<void> dispose() async => directory.delete(recursive: true);
+}
+
+class _NoShortcutDesktop extends _Desktop {
+  @override
+  Future<DesktopCapabilities> initialize(
+          {required Future<void> Function(String text) onTextCaptured,
+          required Future<void> Function() onOverlayRequested}) async =>
+      DesktopCapabilities(
+          platform: 'test',
+          clipboardCapture: true,
+          globalShortcut: false,
+          overlay: true,
+          paste: true,
+          copyFallback: true,
+          detail: 'No global shortcuts on this test desktop.');
 }
 
 class _Desktop extends DesktopAdapter {

@@ -1021,6 +1021,14 @@ impl Store {
         self.prune_storage()
     }
 
+    /// Every clip in the history, whatever a search shows (CB-6).
+    pub fn item_count(&self) -> Result<u64, String> {
+        self.conn
+            .query_row("SELECT COUNT(*) FROM items", [], |r| r.get::<_, i64>(0))
+            .map(|n| n.max(0) as u64)
+            .map_err(db_error)
+    }
+
     /// Bytes the history occupies: live database pages (the free list is not
     /// counted) plus the write-ahead log. The budget is checked against this.
     pub fn storage_used_bytes(&self) -> Result<u64, String> {

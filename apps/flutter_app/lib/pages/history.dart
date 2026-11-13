@@ -84,9 +84,12 @@ class _ClipboardPageState extends State<_ClipboardPage> {
       for (final item in allItems) item.originDevice: item.sourceName,
     };
     final paused = controller.status?.paused == true;
+    // The whole history, not the search results (CB-6).
+    final total = controller.historyTotal > allItems.length
+        ? controller.historyTotal
+        : allItems.length;
     final deviceCount = controller.devices.length;
-    final subtitle =
-        '${formatCount(allItems.length)} ${allItems.length == 1 ? 'clip' : 'clips'} · '
+    final subtitle = '${formatCount(total)} ${total == 1 ? 'clip' : 'clips'} · '
         '${deviceCount == 0 ? 'not synced with other devices yet' : 'synced with $deviceCount ${deviceCount == 1 ? 'device' : 'devices'}'}';
 
     final Widget list;
@@ -160,8 +163,7 @@ class _ClipboardPageState extends State<_ClipboardPage> {
           ArcadeButton(
             label: 'Clear history…',
             variant: ArcadeButtonVariant.danger,
-            onPressed:
-                controller.working || allItems.isEmpty ? null : _clearHistory,
+            onPressed: controller.working || total == 0 ? null : _clearHistory,
           ),
         ]),
         _Messages(controller: controller),

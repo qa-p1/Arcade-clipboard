@@ -120,7 +120,8 @@ class FakeCoreApi implements CoreApi {
                         (item['text'] as String? ?? '')
                             .toLowerCase()
                             .contains(query.toLowerCase()))
-                    .toList()
+                    .toList(),
+                'total': historyItems.length,
               }
             : await reply();
       case 'devices':

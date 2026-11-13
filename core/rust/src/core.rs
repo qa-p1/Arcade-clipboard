@@ -2056,7 +2056,8 @@ impl Core {
                 } else {
                     self.history(Some(query), limit).await?
                 };
-                Ok(serde_json::json!({"items":items}))
+                let total = self.state.lock().await.store.item_count()?;
+                Ok(serde_json::json!({"items":items,"total":total}))
             }
             "capture" => {
                 let id = object.get("id").and_then(|value| value.as_str());

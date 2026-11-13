@@ -82,6 +82,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   int _maxItems = 10000;
   int _maxStorageMb = 256;
   int _storageUsedBytes = 0;
+  int _historyTotal = 0;
   int _historyLimit = 250;
   bool _hasMoreHistory = false;
   ThemeMode _themeMode = ThemeMode.system;
@@ -149,6 +150,9 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   int get retentionHours => _retentionHours;
   int get maxStorageMb => _maxStorageMb;
   int get storageUsedBytes => _storageUsedBytes;
+
+  /// Every clip in the history; a search narrows [items], not this (CB-6).
+  int get historyTotal => _historyTotal;
   int get maxItems => _maxItems;
   bool get hasMoreHistory => _hasMoreHistory;
   ThemeMode get themeMode => _themeMode;
@@ -237,9 +241,17 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       });
 
   void dismissNotice() {
+    final dismissed = _notice;
     _notice = null;
     _notifyListeners();
+    if (dismissed != null && dismissed == _startupNotice) {
+      unawaited(AppSettings.instance().then(
+          (prefs) => prefs.setString(_dismissedStartupNoticeKey, dismissed)));
+    }
   }
+
+  static const _dismissedStartupNoticeKey = 'dismissed_startup_notice';
+  String? _startupNotice;
 
   Future<void> openKeyboardSettings() => _perform(_mobile.openKeyboardSettings);
   Future<void> exportMobileFile(
@@ -412,9 +424,15 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
           if (_desktopCapabilities?.globalShortcut == true) {
             await _desktop.configureShortcut(_shortcut);
           } else {
-            _notice = _desktopCapabilities?.detail.isNotEmpty == true
+            final notice = _desktopCapabilities?.detail.isNotEmpty == true
                 ? _desktopCapabilities!.detail
                 : 'Global shortcuts are not available in this desktop session.';
+            // Once dismissed, the same startup notice stays dismissed (CB-8).
+            final prefs = await AppSettings.instance();
+            if (prefs.getString(_dismissedStartupNoticeKey) != notice) {
+              _notice = notice;
+              _startupNotice = notice;
+            }
           }
         } catch (exception) {
           _setError(exception, source: 'desktop');
@@ -608,6 +626,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       }
       final result = _parseHistory(data);
       _items = _sortedItems(result);
+      _historyTotal = (data['total'] as num?)?.toInt() ?? _items.length;
       _hasMoreHistory =
           result.length >= _historyLimit && _historyLimit < _maxItems;
       _clearError('history');
