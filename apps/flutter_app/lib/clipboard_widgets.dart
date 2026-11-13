@@ -62,6 +62,11 @@ class _AddClipDialogState extends State<AddClipDialog> {
   }
 
   Future<void> _submit() async {
+    // Checked here, so the message shows once, in the dialog (CB-9).
+    if (_text.text.trim().isEmpty) {
+      setState(() => _error = 'Enter something to share.');
+      return;
+    }
     setState(() {
       _busy = true;
       _error = null;
@@ -151,6 +156,10 @@ class _AddClipDialogState extends State<AddClipDialog> {
             decoration:
                 const InputDecoration(hintText: 'Text or a link to share'),
             enabled: !_busy,
+            // A message about the old input goes once the user types (CB-9).
+            onChanged: (_) {
+              if (_error != null) setState(() => _error = null);
+            },
           ),
           const SizedBox(height: ArcadeTokens.space12),
           Row(children: [

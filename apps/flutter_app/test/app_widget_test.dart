@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:arcade_clipboard/app.dart';
+import 'package:arcade_clipboard/clipboard_widgets.dart';
 import 'package:arcade_clipboard/design/arcade_widgets.dart';
 import 'package:arcade_clipboard/platform/desktop_adapter.dart';
 import 'package:arcade_clipboard/services/app_controller.dart';
@@ -225,6 +226,28 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.tap(find.text('Done'));
     await tester.pumpAndSettle();
+  });
+
+  testWidgets('an empty Add clip shows its message once, until typing (CB-9)',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final fixture =
+        (await tester.runAsync(() => _Fixture.create(hasMesh: true)))!;
+    addTearDown(fixture.dispose);
+    await tester.pumpWidget(ArcadeApp(controller: fixture.controller));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ArcadeButton, 'Add clip').first);
+    await tester.pumpAndSettle();
+    final dialog = find.byType(AddClipDialog);
+    await tester.tap(find.descendant(
+        of: dialog, matching: find.widgetWithText(ArcadeButton, 'Add clip')));
+    await tester.pumpAndSettle();
+    expect(find.text('Enter something to share.'), findsOneWidget);
+    await tester.enterText(
+        find.descendant(of: dialog, matching: find.byType(TextField)), 'h');
+    await tester.pumpAndSettle();
+    expect(find.text('Enter something to share.'), findsNothing);
   });
 
   testWidgets('a search narrows the list, not the header count or Clear (CB-6)',
