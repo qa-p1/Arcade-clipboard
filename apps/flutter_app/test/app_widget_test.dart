@@ -228,6 +228,26 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  test('a dismissed startup notice stays dismissed after a restart (CB-8)',
+      () async {
+    final directory = await Directory.systemTemp.createTemp('arcade-cb8-');
+    addTearDown(() => directory.delete(recursive: true));
+    final first = AppController(
+        core: FakeCoreApi(hasMesh: true),
+        desktop: _NoShortcutDesktop(),
+        dataDirectory: directory);
+    await first.start();
+    expect(first.notice, 'No global shortcuts on this test desktop.');
+    first.dismissNotice();
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    final second = AppController(
+        core: FakeCoreApi(hasMesh: true),
+        desktop: _NoShortcutDesktop(),
+        dataDirectory: directory);
+    await second.start();
+    expect(second.notice, isNull);
+  });
+
   testWidgets('an empty Add clip shows its message once, until typing (CB-9)',
       (tester) async {
     await tester.binding.setSurfaceSize(const Size(900, 700));
@@ -370,6 +390,21 @@ class _Fixture {
   }
 
   Future<void> dispose() async => directory.delete(recursive: true);
+}
+
+class _NoShortcutDesktop extends _Desktop {
+  @override
+  Future<DesktopCapabilities> initialize(
+          {required Future<void> Function(String text) onTextCaptured,
+          required Future<void> Function() onOverlayRequested}) async =>
+      DesktopCapabilities(
+          platform: 'test',
+          clipboardCapture: true,
+          globalShortcut: false,
+          overlay: true,
+          paste: true,
+          copyFallback: true,
+          detail: 'No global shortcuts on this test desktop.');
 }
 
 class _Desktop extends DesktopAdapter {

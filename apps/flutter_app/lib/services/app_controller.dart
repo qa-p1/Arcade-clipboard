@@ -241,9 +241,17 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       });
 
   void dismissNotice() {
+    final dismissed = _notice;
     _notice = null;
     _notifyListeners();
+    if (dismissed != null && dismissed == _startupNotice) {
+      unawaited(AppSettings.instance().then(
+          (prefs) => prefs.setString(_dismissedStartupNoticeKey, dismissed)));
+    }
   }
+
+  static const _dismissedStartupNoticeKey = 'dismissed_startup_notice';
+  String? _startupNotice;
 
   Future<void> openKeyboardSettings() => _perform(_mobile.openKeyboardSettings);
   Future<void> exportMobileFile(
@@ -416,9 +424,15 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
           if (_desktopCapabilities?.globalShortcut == true) {
             await _desktop.configureShortcut(_shortcut);
           } else {
-            _notice = _desktopCapabilities?.detail.isNotEmpty == true
+            final notice = _desktopCapabilities?.detail.isNotEmpty == true
                 ? _desktopCapabilities!.detail
                 : 'Global shortcuts are not available in this desktop session.';
+            // Once dismissed, the same startup notice stays dismissed (CB-8).
+            final prefs = await AppSettings.instance();
+            if (prefs.getString(_dismissedStartupNoticeKey) != notice) {
+              _notice = notice;
+              _startupNotice = notice;
+            }
           }
         } catch (exception) {
           _setError(exception, source: 'desktop');
