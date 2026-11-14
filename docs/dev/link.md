@@ -167,7 +167,7 @@ arcade-clipboard --integration-status
 
 The Linux AppImage starts through a small launcher (`arcade-clipboard-launcher`)
 that runs these commands and, on a first start from a downloaded file, offers
-**Install**, **Just run it once** or **Don't ask again for this file** with the
+**Install**, **Just run it** or **Don't ask again for this file** with the
 shared Arcade wording. On macOS, a copy outside Applications offers **Move to
 Applications**. Windows installs per user with the shared Arcade installer.
 
