@@ -43,6 +43,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: App dev/Arcade-clipboard -> target
+          # Saved only on main (Link spec §4): caches from pull requests crowded main's out of the 10 GB.
+          save-if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
       - name: Docs, vendored checksums, rustfmt, clippy and tests
         run: bash scripts/check rust
       - name: Secure identity survives the folder move (private Secret Service)
@@ -70,6 +72,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: App dev/Arcade-clipboard -> target
+          # Saved only on main (Link spec §4): caches from pull requests crowded main's out of the 10 GB.
+          save-if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
       - name: Dart format, flutter analyze and tests
         run: bash scripts/check flutter
       - name: Build Linux release bundle
@@ -150,6 +154,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: App dev/Arcade-clipboard -> target
+          # Saved only on main (Link spec §4): caches from pull requests crowded main's out of the 10 GB.
+          save-if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
       - name: Build the Rust core for Android
         run: python3 scripts/build-android-core.py
       - name: Release key (the CI secret, or a throwaway key where secrets are unavailable)
@@ -208,6 +214,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: App dev/Arcade-clipboard -> target
+          # Saved only on main (Link spec §4): caches from pull requests crowded main's out of the 10 GB.
+          save-if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
       - name: Install Inno Setup
         shell: pwsh
         run: |
@@ -265,6 +273,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: App dev/Arcade-clipboard -> target
+          # Saved only on main (Link spec §4): caches from pull requests crowded main's out of the 10 GB.
+          save-if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
       - name: Test Rust core and build the Flutter desktop app with its core
         run: |
           python3 scripts/check-docs.py
