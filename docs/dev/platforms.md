@@ -62,6 +62,6 @@ The macOS plugin watches the pasteboard for changes while capture is on. The sho
 
 
 Desktop release formats are a Linux x64 tarball, a Windows x64 per-user Inno
-installer, and a macOS dmg for the CI runner architecture. Stable and nightly
-workflows are defined; no releases have been published from this work. See
-[Releases](releases.md) for installation.
+installer, and a macOS dmg for the CI runner architecture. Release candidates are
+published on the test channel and promoted to stable byte for byte; see
+[Releases](releases.md).

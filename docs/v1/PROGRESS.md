@@ -2,6 +2,18 @@
 
 Detail for `qa-p1/Arcade-catalog` › `dev/v1/PROGRESS.md`. Newest first.
 
+## 2026-11-14 (cloud session)
+
+- **Step 6, release machinery (rule zero):** `release.yml` ran on every pushed `v*` tag and published it as the latest
+  stable release, so a first `v1.0.0` tag would have reached users untested. It now has Tools' and Box's shape:
+  "Tag a release" makes only `vX.Y.Z-rc.N` and starts "Desktop releases", which runs CI, builds every desktop
+  package once and publishes them through Link's `app-publish` on the hidden `test` channel; "Promote" (Link
+  `app-promote`) republishes a verified rc's bytes as stable with a signed manifest; "Nightly" republishes main
+  CI's packages. The Inno installer keeps its switches through publish and promotion (`windows-installer: inno`,
+  added to Link's reusable workflows for 1.0.8). The main-push nightly in `release.yml` is gone.
+- **Link 1.0.8 groundwork:** `assets/strings/install.json` matches Link's ("Just run it"), the CI lifecycle runner
+  clones the Link tag `Cargo.toml` pins. The pin, the lockfile and the design kit move once v1.0.8 is tagged.
+
 ## 2026-11-13 (local session)
 
 - **Merged (#16):** `80f741d` C0/CB-3 (the picker never closes on blur), CB-4 (restart through `$APPIMAGE`), CB-1
