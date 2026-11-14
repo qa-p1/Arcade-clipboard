@@ -1114,6 +1114,35 @@ pub(crate) fn status_line() -> Value {
     })
 }
 
+/// `--status` for the Linux runner's `main()`, which answers it before GTK and
+/// the Flutter engine start (CB-5). Returns the line `status_line` prints,
+/// without the newline, for `arcade_clipboard_free_string`; null if it could
+/// not be read, and the runner then asks through the engine as before.
+#[cfg(target_os = "linux")]
+#[unsafe(no_mangle)]
+pub extern "C" fn arcade_clipboard_status_line() -> *mut std::ffi::c_char {
+    std::panic::catch_unwind(|| serde_json::to_string(&status_line()).ok())
+        .ok()
+        .flatten()
+        .and_then(|line| std::ffi::CString::new(line).ok())
+        .map_or(std::ptr::null_mut(), std::ffi::CString::into_raw)
+}
+
+/// Frees a string returned by `arcade_clipboard_status_line`.
+///
+/// # Safety
+///
+/// `line` must be null or a pointer `arcade_clipboard_status_line` returned
+/// that has not been freed yet.
+#[cfg(target_os = "linux")]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn arcade_clipboard_free_string(line: *mut std::ffi::c_char) {
+    if !line.is_null() {
+        // SAFETY: the caller passes a pointer from CString::into_raw, once.
+        drop(unsafe { std::ffi::CString::from_raw(line) });
+    }
+}
+
 #[cfg(test)]
 mod tests {
 
@@ -1260,6 +1289,31 @@ mod tests {
             Unavailable
         );
         assert_eq!(code("Clipboard payload exceeds the 16 MiB limit"), TooLarge);
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn the_runner_reads_status_through_the_c_abi() {
+        let dir = tempfile::tempdir().unwrap();
+        std::env::set_var("ARCADE_HOME", dir.path());
+        let line = arcade_clipboard_status_line();
+        assert!(!line.is_null());
+        // SAFETY: a live, NUL-terminated string from arcade_clipboard_status_line.
+        let text = unsafe { std::ffi::CStr::from_ptr(line) }
+            .to_str()
+            .unwrap()
+            .to_owned();
+        // SAFETY: freed once, as returned.
+        unsafe { arcade_clipboard_free_string(line) };
+        unsafe { arcade_clipboard_free_string(std::ptr::null_mut()) };
+        assert!(!text.contains('\n'), "{text}");
+        let status: Value = serde_json::from_str(&text).unwrap();
+        assert_eq!(status["app"], ids::CLIPBOARD);
+        assert_eq!(status["version"], crate::VERSION);
+        assert!(
+            status["running"].is_boolean() && status["link"].is_string(),
+            "{status}"
+        );
     }
 
     #[test]

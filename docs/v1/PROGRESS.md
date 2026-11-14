@@ -11,6 +11,13 @@ Detail for `qa-p1/Arcade-catalog` › `dev/v1/PROGRESS.md`. Newest first.
   `app-promote`) republishes a verified rc's bytes as stable with a signed manifest; "Nightly" republishes main
   CI's packages. The Inno installer keeps its switches through publish and promotion (`windows-installer: inno`,
   added to Link's reusable workflows for 1.0.8). The main-push nightly in `release.yml` is gone.
+- **CB-5, second half:** `--status` answers from the Rust core before GTK and the engine start. The core exports
+  `arcade_clipboard_status_line` (C ABI, the same `link::status_line` the Dart path printed); the runner's `main()`
+  loads `lib/libarcade_core.so` beside itself for a lone `--status` and falls back to the engine path if it can't.
+  Tests: a core unit test through the C ABI, and `verify-appimage.py` runs the installed `--status` with no display
+  and asserts one JSON line and an empty stderr (before: GTK started and needed a display). The runner path was
+  checked locally by compiling `main.cc` against the built core: headless answer, symlinked CLI, write failure
+  (exit 1), missing core and extra arguments (engine path). The AppImage check runs in CI.
 - **Link 1.0.8 groundwork:** `assets/strings/install.json` matches Link's ("Just run it"), the CI lifecycle runner
   clones the Link tag `Cargo.toml` pins. The pin, the lockfile and the design kit move once v1.0.8 is tagged.
 
@@ -27,7 +34,6 @@ Detail for `qa-p1/Arcade-catalog` › `dev/v1/PROGRESS.md`. Newest first.
 - **Tested locally:** `cargo test --workspace`, `cargo clippy -D warnings`, `scripts/check flutter` (analyze clean,
   40 tests). The Linux bundle and `verify-appimage.py` run in CI.
 - **Open:**
-  - CB-5 `--status` still starts the engine: it answers from a Link query that only the Dart/Rust side makes.
   - CB-8's remote relay field "looks disabled": visual, needs a look on screen.
   - RD-CLIPBOARD-2 (shortcut chips stretch) and CB-10 (colour emoji) are in `lib/design/`, vendored from Link's
     design kit: they are fixed in Link and arrive with the next kit.

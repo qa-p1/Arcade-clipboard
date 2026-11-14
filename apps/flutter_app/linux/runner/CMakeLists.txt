@@ -31,5 +31,7 @@ target_compile_definitions(${BINARY_NAME} PRIVATE ARCADE_CLIPBOARD_VERSION="${AR
 # Add dependency libraries. Add any application-specific dependencies here.
 target_link_libraries(${BINARY_NAME} PRIVATE flutter)
 target_link_libraries(${BINARY_NAME} PRIVATE PkgConfig::GTK)
+# dlopen() for --status before GTK (CB-5); part of libc from glibc 2.34.
+target_link_libraries(${BINARY_NAME} PRIVATE ${CMAKE_DL_LIBS})
 
 target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")
