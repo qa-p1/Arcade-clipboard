@@ -58,3 +58,35 @@ outcome as before. The statements are unchanged; the two early-return callbacks 
 second hard-coded 16 MiB (the large-photo check) now uses the same `maxClipBytes`. `clip_capture_test.dart` covers
 text, url, HTML-only (CB-7), folder (CB-2), blank and unkept formats, both over-limit outcomes, and the 32 KiB
 text cut.
+
+## D7. Dead code (step 4)
+Removed, one commit each, with the proof in the commit body:
+- `Core::capture` (Rust): a `pub` wrapper around `capture_representations` that nothing called. Proof: with `api` and
+  `Core` made private in `lib.rs` for one build (reverted), rustc reports "method `capture` is never used" for the lib
+  and the lib test build; it is not bridged (the bridge exposes only `api::call`, and the `capture` op goes through
+  `request`). Every other `pub` method of `Core`, and every other item in the private modules, is already covered by
+  rustc's dead-code lint, which CI turns into an error.
+- `ClipboardItem.searchText`, `PairingInvite.displayCode`, `AppController.pairingApproved` (and the write-only
+  `_approvedPairingSessions` set behind it), `AppController.maxItems`, `AppController.overlayBusy` and
+  `LinkService.disabledPeers` (Dart). Proof: a script counted every identifier in `lib/`, `test/` and
+  `integration_test/` with comments and strings stripped; each name occurred once, at its declaration. The vendored
+  `lib/design/` and the generated `lib/src/rust/` were not touched.
+- `scripts/package-source.py` and `apps/flutter_app/android/clipboard_android.iml`: no file in the repository names
+  either (`git grep`), and no workflow, script, build file or doc runs them. The `.iml` is Android Studio metadata.
+
+Checked and kept:
+- All pubspec dependencies are imported; all Cargo dependencies of the four crates are used.
+- Every platform channel method Dart calls has a native handler and every native handler has a Dart caller
+  (`arcade_clipboard/desktop_bridge`, `/mobile`, `/instance`, `/answer`); every JSON op in `api.rs` is sent by Dart.
+- Code under `cfg(windows)`, `cfg(target_os = "macos")` and `cfg(target_os = "android")` is reached from `api.rs`,
+  `secret.rs` or `lib.rs`; the Windows check could not be run here (see PROGRESS).
+- Candidates left for a decision, not removed:
+  - `platform/desktop/arcade_desktop_bridge/linux/tests/clipboard_bridge_test.cc`: no workflow or script builds it
+    (CI builds only `lifecycle_bridge_test.cc`). It is a test, so wiring it into CI is better than deleting it.
+  - `scripts/bootstrap-toolchains.sh`: nothing names it, but it fills the `.tools/` directory that `scripts/dev-env.sh`
+    falls back to, and it pins Rust 1.98.0 against `rust-toolchain.toml`'s 1.98.1. Update or remove it with the
+    toolchain policy.
+  - `services/relay` exposes `pub` items (`RENDEZVOUS_TTL`, `with_max_connections_per_ip`, `cleanup_loop`, `app`,
+    `Health`) that only the crate itself uses; they could be `pub(crate)`, which is a visibility change, not a removal.
+  - The bridge function `api::call` is the only bridged function and is used; nothing bridged was touched, so no
+    bindings were regenerated.
