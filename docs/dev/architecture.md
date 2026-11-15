@@ -75,6 +75,8 @@ Capture runs in `DesktopAdapter` (`lib/platform/desktop_adapter.dart`):
 
 Wayland reads and writes run in Dart rather than in the GTK plugin. The Dart VM reaps every child process once it has started any, which breaks GLib's subprocess handling, so a read would intermittently report no clipboard data. The helper process is the only native piece. It exits when its standard input closes, which happens when the app exits for any reason, so it cannot outlive the app.
 
+On Hyprland, `Hyprland` (`lib/platform/hyprland.dart`) is the only code that runs `hyprctl`: the global shortcut bind and its cleanup, the app to paste into and the focus and paste dispatches, and the picker's window rule and placement. It speaks Lua to compositors configured with Lua and the keyword and dispatch syntax to the rest. The adapter owns one instance and passes it its command runner.
+
 ### Deduplication
 
 The core compares a keyed hash of the content with existing clips:
