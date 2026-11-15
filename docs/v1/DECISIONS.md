@@ -38,3 +38,11 @@ belonged to the adapter, are now arguments. Code was moved with a script; a line
 - The `_isHyprland` check after clearing the bindings on dispose is removed. Bindings are only made on Hyprland, so
   off Hyprland the list is empty and the check never skipped anything.
 `desktop_adapter.dart` is now 1,924 lines.
+
+## D5. The Wayland clipboard read and write leave the desktop adapter (untangle)
+The `wl-paste` read, the `wl-copy` write and their binary process runner used no adapter state apart from the two
+tool paths, so they are now the functions `readWaylandClipboard` and `writeWaylandClipboard` in
+`lib/platform/wayland_clipboard.dart`, which take the paths as arguments. Moved with a script; the line-multiset
+check shows only the renames, the paths as arguments, and one removal: the read fell back to the native plugin when
+`wl-paste` was missing, but its only caller reads through `wl-paste` only when it was found, so the fallback never
+ran. `desktop_adapter.dart` is now 1,761 lines.

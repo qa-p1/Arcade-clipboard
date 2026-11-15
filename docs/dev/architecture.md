@@ -69,7 +69,7 @@ How the Rust library is loaded:
 Capture runs in `DesktopAdapter` (`lib/platform/desktop_adapter.dart`):
 
 1. **Change notification.** On Wayland, the bundled `arcade_clipboard_wl_capture` helper supervises `wl-paste --watch` and writes a line for each change. On X11 and the other desktop platforms, the native plugin listens for clipboard ownership changes.
-2. **Read.** On Wayland, Dart runs `wl-paste --list-types`, then reads up to one candidate per canonical type: text, HTML, PNG, JPEG and file URIs. Content flagged as sensitive by password managers is dropped.
+2. **Read.** On Wayland, Dart (`lib/platform/wayland_clipboard.dart`) runs `wl-paste --list-types`, then reads up to one candidate per canonical type: text, HTML, PNG, JPEG and file URIs. Content flagged as sensitive by password managers is dropped.
 3. **Self-write check.** Anything the app wrote to the clipboard in the last three seconds, for example a clip it just pasted, is ignored.
 4. **Store.** `AppController` turns the formats into representations and sends a `capture` request. Plain text takes a fast path with no image or file processing.
 
