@@ -1128,6 +1128,18 @@ pub extern "C" fn arcade_clipboard_status_line() -> *mut std::ffi::c_char {
         .map_or(std::ptr::null_mut(), std::ffi::CString::into_raw)
 }
 
+/// `--restart` for the Linux runner's `main()`, which answers it before GTK
+/// and the Flutter engine start, as it does `--status`: asks the running
+/// instance to restart over the Link. Returns 0 when one answered, 1 when
+/// none is running and -1 if the call could not be made (the runner then
+/// asks through the engine as before).
+#[cfg(target_os = "linux")]
+#[unsafe(no_mangle)]
+pub extern "C" fn arcade_clipboard_restart_running() -> std::ffi::c_int {
+    std::panic::catch_unwind(|| call_running("app.restart", json!({ "mode": "normal" })))
+        .map_or(-1, |answered| i32::from(!answered))
+}
+
 /// Frees a string returned by `arcade_clipboard_status_line`.
 ///
 /// # Safety
@@ -1291,9 +1303,72 @@ mod tests {
         assert_eq!(code("Clipboard payload exceeds the 16 MiB limit"), TooLarge);
     }
 
+    /// The two C ABI tests below point `ARCADE_HOME` at their own folder.
+    #[cfg(target_os = "linux")]
+    static ABI_ENV: Mutex<()> = Mutex::new(());
+
+    /// A Link server that only knows `app.restart`, which it counts.
+    #[cfg(target_os = "linux")]
+    struct RestartCounter(Arc<AtomicU64>);
+
+    #[cfg(target_os = "linux")]
+    impl Handler for RestartCounter {
+        fn methods(&self) -> Vec<String> {
+            vec!["app.restart".into()]
+        }
+        fn restart(&self, mode: &str) -> Result<(), LinkError> {
+            assert_eq!(mode, "normal");
+            self.0.fetch_add(1, Ordering::SeqCst);
+            Ok(())
+        }
+        fn describe(&self) -> Vec<Action> {
+            Vec::new()
+        }
+        fn invoke(&self, _: InvokeRequest, _: &InvokeContext) -> Result<Reply, LinkError> {
+            Err(LinkError::unavailable("not used"))
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn the_runner_restarts_the_running_instance_through_the_c_abi() {
+        let _env = ABI_ENV.lock().unwrap_or_else(|e| e.into_inner());
+        let dir = tempfile::tempdir().unwrap();
+        std::env::set_var("ARCADE_HOME", dir.path());
+        // Nothing runs yet: the runner prints "isn't running" and exits 1.
+        assert_eq!(arcade_clipboard_restart_running(), 1);
+
+        let restarts = Arc::new(AtomicU64::new(0));
+        let presence = Presence::start_document(
+            Locations::discover(),
+            printed_document(&LinkSettings::from_request(None)),
+            Arc::new(RestartCounter(restarts.clone())),
+        );
+        let mut answered = -1;
+        // The listener starts on its own thread.
+        for _ in 0..100 {
+            answered = arcade_clipboard_restart_running();
+            if answered == 0 {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(50));
+        }
+        presence.stop();
+        assert_eq!(answered, 0, "the running instance answers");
+        // `restart` runs after the response is sent.
+        for _ in 0..100 {
+            if restarts.load(Ordering::SeqCst) > 0 {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        assert_eq!(restarts.load(Ordering::SeqCst), 1);
+    }
+
     #[cfg(target_os = "linux")]
     #[test]
     fn the_runner_reads_status_through_the_c_abi() {
+        let _env = ABI_ENV.lock().unwrap_or_else(|e| e.into_inner());
         let dir = tempfile::tempdir().unwrap();
         std::env::set_var("ARCADE_HOME", dir.path());
         let line = arcade_clipboard_status_line();
