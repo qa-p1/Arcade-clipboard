@@ -198,13 +198,35 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
         Platform.environment, Platform.resolvedExecutable, File.new);
     try {
       await Process.start(executable, ['--background'],
-          environment: {restartEnvironment: '$pid'},
+          environment: successorEnvironment(
+              Platform.environment, Platform.resolvedExecutable, pid),
+          includeParentEnvironment: false,
           mode: ProcessStartMode.detached);
     } catch (error) {
       Diagnostics.log('lifecycle', 'restart failed: $error');
       return;
     }
     await _quit();
+  }
+
+  /// The environment of the process [restart] starts: this one's, plus the old
+  /// process id the successor waits for. A resident running from its unpacked
+  /// copy (`<data>/arcade/runtime/clipboard-<version>-<key>/`, Link U1) has
+  /// `ARCADE_UNPACKED` set, which would make the successor's own launcher
+  /// believe it already is the copy and keep it on the AppImage mount; it is
+  /// dropped so the successor unpacks (or reuses) the copy as a fresh start
+  /// does. Anywhere else (a test harness that sets it on purpose) it stays.
+  @visibleForTesting
+  static Map<String, String> successorEnvironment(
+      Map<String, String> environment, String resolvedExecutable, int pid) {
+    final fromCopy = RegExp(r'/arcade/runtime/clipboard-[^/]+/')
+        .hasMatch(resolvedExecutable);
+    return {
+      for (final entry in environment.entries)
+        if (!(fromCopy && entry.key == 'ARCADE_UNPACKED'))
+          entry.key: entry.value,
+      restartEnvironment: '$pid',
+    };
   }
 
   /// The program a restart starts. Inside an AppImage
