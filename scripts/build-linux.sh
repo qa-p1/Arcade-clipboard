@@ -19,6 +19,8 @@ arcade_keybinder_dir="$(pkg-config --variable=libdir keybinder-3.0)"
 cp -L "$arcade_keybinder_dir/libkeybinder-3.0.so.0" "$arcade_bundle/lib/"
 mkdir -p "$arcade_bundle/data/licenses"
 cp platform/desktop/licenses/keybinder.txt "$arcade_bundle/data/licenses/keybinder.txt"
+# Third-party notices (scripts/notices.py); scripts/native-notices.py --check compares the AppImage's copy.
+cp THIRD_PARTY_NOTICES.md "$arcade_bundle/data/licenses/THIRD_PARTY_NOTICES.md"
 for arcade_license in /usr/share/doc/libkeybinder-3.0-0/copyright \
   /usr/share/licenses/keybinder3/COPYING "$arcade_root/.tools/native/usr/share/licenses/keybinder3/COPYING"; do
   if [[ -f "$arcade_license" ]]; then

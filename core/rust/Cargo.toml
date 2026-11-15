@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
+publish = false
 
 [lib]
 crate-type = ["cdylib", "staticlib", "rlib"]
@@ -14,12 +15,12 @@ blake3 = "1.8.2"
 chacha20poly1305 = "0.10.1"
 ed25519-dalek = { version = "2.2.0", features = ["rand_core", "serde"] }
 flutter_rust_bridge = "=2.13.0"
-futures-util = "=0.3.31"
+futures-util = "=0.3.34"
 fs2.workspace = true
 mdns-sd = "=0.21.4"
 keyring = { version = "3.6.3", default-features = false }
 rand = "0.8.5"
-rusqlite = { version = "0.37.0", features = ["bundled"] }
+rusqlite = { version = "0.41.0", features = ["bundled", "fallible_uint"] }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
 snow = "0.10.0"

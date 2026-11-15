@@ -108,3 +108,34 @@ pub async fn connect(
     });
     Ok(client)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::validate_relay_url;
+
+    #[test]
+    fn relay_addresses_must_be_secure_and_carry_nothing_but_the_server() {
+        for good in [
+            "",
+            "wss://relay.example.com",
+            "wss://relay.example.com:8443/",
+            "ws://localhost:8787",
+            "ws://127.0.0.1:8787",
+        ] {
+            assert!(validate_relay_url(good).is_ok(), "{good:?} is accepted");
+        }
+        for bad in [
+            "ws://relay.example.com",
+            "http://relay.example.com",
+            "https://relay.example.com",
+            "wss://user:secret@relay.example.com",
+            "wss://relay.example.com/v1/relay",
+            "wss://relay.example.com/?token=abc",
+            "wss://relay.example.com/#fragment",
+            "relay.example.com",
+        ] {
+            assert!(validate_relay_url(bad).is_err(), "{bad:?} is refused");
+        }
+        assert!(validate_relay_url(&format!("wss://{}.example.com", "a".repeat(2048))).is_err());
+    }
+}

@@ -380,6 +380,24 @@ void main() {
     expect(mimes, contains('text/html'));
   });
 
+  test('a copy marked sensitive by a password manager is never stored',
+      () async {
+    final fixture = await _Fixture.create(hasMesh: true);
+    addTearDown(fixture.dispose);
+    await fixture.desktop.richCapture!({
+      'sensitive': true,
+      'formats': [
+        {
+          'mimeType': 'text/plain',
+          'bytes': Uint8List.fromList(utf8.encode('hunter2'))
+        }
+      ],
+      'files': <Object?>[],
+    }, initial: false);
+    expect(fixture.core.calls.where((call) => call.operation == 'capture'),
+        isEmpty);
+  });
+
   test('CB-2: an oversize copy shows a notice instead of vanishing', () async {
     final fixture = await _Fixture.create(hasMesh: true);
     addTearDown(fixture.dispose);
