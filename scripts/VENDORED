@@ -3,8 +3,8 @@ arcade-release.py is copied unchanged from Arcade-link commit
 SHA-256: 8f360855419930730c486d0978acaecf7a8179cc063465c9f8324878dcf6c2fd.
 License: MIT. Protocol v1 and release manifest schema 1.
 
-Arcade Link shared installer and shortcut assets are copied from commit
-4c75f3a7c806ae78f96127c556708e65eaeeb476 (v0.3.0 plus unreleased installer fixes):
+Arcade Link shared installer and shortcut assets are copied unchanged from tag v1.0.8 (commit
+34f8030e494c0c662a5f95efd8e868c8536b9989); the files are the same as at 4c75f3a (v0.3.0 plus installer fixes):
   packaging/windows/arcade.iss SHA-256 fe152028ff674fdacdef4aed8970bb0a7afeb2dd67d2a3af075d7d95683bf96b
   packaging/windows/arcade.nsh SHA-256 1f548b420bc08b479d6c65801a208aa67dc80fef851b5e2a49696d307562831e
   packaging/windows/arcade-integration.ps1 SHA-256 2b2a8b699dc1e6c81c02bb9ad9be1ddf2f8a5447541eb1dfe886056aa5dc4fd6
@@ -12,17 +12,17 @@ Arcade Link shared installer and shortcut assets are copied from commit
   spec/shortcuts.schema.json SHA-256 68e8ed4c5adae97895b215813f5a528b53f2b720bb428112e94ab35489269a1a
   spec/vectors/shortcuts.json SHA-256 2691d5b60314b7060bac5c219ada25edbfdc30829ea8a22d7496714afe2d4cc5
 
-assets/strings/install.json is copied unchanged from Arcade Link commit
-ce9a71cb71b95eb2f69e8b83f219ffba90c8b30d (1.0.8), the wording Link's installer shows:
+assets/strings/install.json is copied unchanged from Arcade Link tag v1.0.8 (commit
+34f8030e494c0c662a5f95efd8e868c8536b9989), the wording Link's installer shows:
   assets/strings/install.json SHA-256 2567789e4eba440240fcf4de8c1e43f126b0eb0aadc6306d743e299cb4c80407
 
-Arcade design kit files are copied unchanged from Arcade Link tag v0.4.4 (commit
-1d150983114b36c6adb2dc80f8889cec43079bf8) by scripts/sync-design.py; never edit them here.
+Arcade design kit files are copied unchanged from Arcade Link tag v1.0.8 (commit
+34f8030e494c0c662a5f95efd8e868c8536b9989) by scripts/sync-design.py; never edit them here.
 License: MIT OR Apache-2.0; Inter is under the SIL Open Font License 1.1.
   apps/flutter_app/lib/design/arcade_format.dart SHA-256 7ffd1b47823a51e50eee82099eca6a7989e36a5e7a2f8cd930226b7e60ff845e
-  apps/flutter_app/lib/design/arcade_icons.dart SHA-256 47153ff522ed1aa3ee2e7d2597618902c61e38014e4d93feb421bdf71330f6be
-  apps/flutter_app/lib/design/arcade_theme.dart SHA-256 2bddfafe838bc81f7f3b10c060394797566807314c4860b8496c7bdfefc743fc
-  apps/flutter_app/lib/design/arcade_widgets.dart SHA-256 796001ff67dc3cd82e8976bc2e0f74ddbe90cdd6d5091e74d50de97c960f66f7
+  apps/flutter_app/lib/design/arcade_icons.dart SHA-256 c1f7c05b7c4557b28403dbf35ced745d20e3aa028a8b2e576f4a78063f72d1f8
+  apps/flutter_app/lib/design/arcade_theme.dart SHA-256 e15e9395f526ec54d4c1caa4057fba77666a47fd78a612a62e5a3d9decb5386a
+  apps/flutter_app/lib/design/arcade_widgets.dart SHA-256 0c52d4d87f55f1d6b928fc3918c47eb2f7ad4467389eda0009f2adbf57524330
   apps/flutter_app/assets/fonts/InterVariable.ttf SHA-256 4989b125924991b90d05b2d16e0e388c48f7d5bb8b30539bbf9c755278d0ccaf
   apps/flutter_app/assets/fonts/OFL.txt SHA-256 262481e844521b326f5ecd053e59b98c8b2da78c8ee1bdbb6e8174305e54935a
   apps/flutter_app/assets/arcade/arcade.box.svg SHA-256 11405845a97dcec4150fb3943d03dbd11eeb086ded31a5cab27aa92b620838c1
@@ -33,7 +33,7 @@ License: MIT OR Apache-2.0; Inter is under the SIL Open Font License 1.1.
   apps/flutter_app/assets/arcade/arcade.shelf.svg SHA-256 42ff3fbca18365d18875061617446aca6876bf5f740160412663d3460f81e0cc
   apps/flutter_app/assets/arcade/arcade.tools.svg SHA-256 dd2aa2c70bb8ebe8b597eb8440dfc032a548ff43f90f2ffd08ec00cd02b4fac2
   apps/flutter_app/assets/arcade/arcade.wheel.svg SHA-256 6718ccee834c345aac4b4a71ea83461412e5f4ae6f24179ab897192cf243ce63
-  apps/flutter_app/assets/arcade/tokens.json SHA-256 7d9c59fde70e5b9d0ca2d37f8968b400bbe74e79982aa12f3ba2b49b9d4ca364
+  apps/flutter_app/assets/arcade/tokens.json SHA-256 11a9ea138ca77330c634d5d6400b08a504e2abfafc1362bb724f1e3663021557
   packaging/linux/dev.arcade.Clipboard.svg SHA-256 63fb05cc120d1fc08f9fec9df73c8cfe44362b48dfd9746f4bdb8f4b064ab265
   apps/flutter_app/windows/runner/resources/app_icon.ico SHA-256 0f0d2bdfe58c0bbebf2fe1d61370d44015cd8ac131a64420392c102c8e52df2f
   assets/logo.png SHA-256 ecb43b61e6cf43bced2179a18d2c63111ebb56519ae6259cce049fe8062a8598

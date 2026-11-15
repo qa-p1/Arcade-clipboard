@@ -189,7 +189,8 @@ class ArcadeKeyChip extends StatelessWidget {
     return Container(
       constraints: const BoxConstraints(minWidth: ArcadeTokens.keyChip, minHeight: ArcadeTokens.keyChip),
       padding: const EdgeInsets.symmetric(horizontal: ArcadeTokens.space6),
-      alignment: Alignment.center,
+      // No `alignment` on the Container: with one it fills the width it is
+      // offered, and a chip in a stretched row became a full-width bar.
       decoration: BoxDecoration(
         color: c.panel,
         borderRadius: const BorderRadius.all(Radius.circular(ArcadeTokens.radiusXs)),
@@ -200,7 +201,7 @@ class ArcadeKeyChip extends StatelessWidget {
           bottom: BorderSide(color: c.lineStrong, width: 2),
         ),
       ),
-      child: Text(label, style: ArcadeTokens.textCaption.copyWith(color: c.muted)),
+      child: Center(widthFactor: 1, heightFactor: 1, child: Text(label, style: ArcadeTokens.textCaption.copyWith(color: c.muted))),
     );
   }
 }

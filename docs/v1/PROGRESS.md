@@ -18,8 +18,13 @@ Detail for `qa-p1/Arcade-catalog` › `dev/v1/PROGRESS.md`. Newest first.
   and asserts one JSON line and an empty stderr (before: GTK started and needed a display). The runner path was
   checked locally by compiling `main.cc` against the built core: headless answer, symlinked CLI, write failure
   (exit 1), missing core and extra arguments (engine path). The AppImage check runs in CI.
-- **Link 1.0.8 groundwork:** `assets/strings/install.json` matches Link's ("Just run it"), the CI lifecycle runner
-  clones the Link tag `Cargo.toml` pins. The pin, the lockfile and the design kit move once v1.0.8 is tagged.
+- **Link 1.0.8** (was v0.4.4): `Cargo.toml` pins `v1.0.8`, the lockfile follows, and `sync-design.py` copied the
+  kit at the tag (compact key chips, RD-CLIPBOARD-2; colour-emoji fallback after Inter, CB-10; additive only).
+  `assets/strings/install.json` matches Link's ("Just run it"), the CI lifecycle runner clones the pinned tag, and
+  the shared installer and shortcut assets are byte-identical at v1.0.8 (VENDORED now names the tag). The new
+  installer retires the old `dev.arcade.clipboard` launcher and login item, which the real-fleet e2e checks
+  (`arcade_clipboard_update_retires_old_desktop_ids`, XFAIL until this is on main). Locally: clippy (1.98.1, clean),
+  `cargo test --workspace` and `check-docs.py`.
 
 ## 2026-11-13 (local session)
 

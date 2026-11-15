@@ -52,6 +52,7 @@ abstract final class ArcadeTokens {
   static const double focusOffset = 2;
   static const double selectionBar = 2;
   static const double hitTarget = 28;
+  static const double launcherWidth = 680;
   static const double iconSize = 16;
   static const double iconStroke = 1.5;
   static const Duration fast = Duration(milliseconds: 120);
@@ -63,16 +64,18 @@ abstract final class ArcadeTokens {
   static const Duration copied = Duration(milliseconds: 1500);
   static const String fontFamily = 'Inter';
   static const List<String> monoFallback = <String>['JetBrains Mono', 'Cascadia Mono', 'Menlo', 'Consolas', 'monospace'];
-  static const TextStyle textDisplay = TextStyle(fontFamily: fontFamily, fontSize: 26, height: 1.231, fontWeight: FontWeight.w600);
-  static const TextStyle textTitle = TextStyle(fontFamily: fontFamily, fontSize: 21, height: 1.238, fontWeight: FontWeight.w600, letterSpacing: -0.315);
-  static const TextStyle textTitleSm = TextStyle(fontFamily: fontFamily, fontSize: 16, height: 1.375, fontWeight: FontWeight.w600);
-  static const TextStyle textHeading = TextStyle(fontFamily: fontFamily, fontSize: 14, height: 1.429, fontWeight: FontWeight.w600);
-  static const TextStyle textBody = TextStyle(fontFamily: fontFamily, fontSize: 13, height: 1.538, fontWeight: FontWeight.w400);
-  static const TextStyle textControl = TextStyle(fontFamily: fontFamily, fontSize: 12.5, height: 1.28, fontWeight: FontWeight.w500);
-  static const TextStyle textSmall = TextStyle(fontFamily: fontFamily, fontSize: 12, height: 1.5, fontWeight: FontWeight.w400);
-  static const TextStyle textCaption = TextStyle(fontFamily: fontFamily, fontSize: 11.5, height: 1.391, fontWeight: FontWeight.w500);
-  static const TextStyle textMono = TextStyle(fontFamily: fontFamily, fontSize: 12, height: 1.5, fontWeight: FontWeight.w400);
-  static const TextStyle textLauncher = TextStyle(fontFamily: fontFamily, fontSize: 18, height: 1.333, fontWeight: FontWeight.w400);
+  /// Colour emoji after Inter, so emoji never render as tiny monochrome glyphs (Clipboard CB-10).
+  static const List<String> fontFamilyFallback = <String>['Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', 'Twemoji Mozilla'];
+  static const TextStyle textDisplay = TextStyle(fontFamily: fontFamily, fontFamilyFallback: fontFamilyFallback, fontSize: 26, height: 1.231, fontWeight: FontWeight.w600);
+  static const TextStyle textTitle = TextStyle(fontFamily: fontFamily, fontFamilyFallback: fontFamilyFallback, fontSize: 21, height: 1.238, fontWeight: FontWeight.w600, letterSpacing: -0.315);
+  static const TextStyle textTitleSm = TextStyle(fontFamily: fontFamily, fontFamilyFallback: fontFamilyFallback, fontSize: 16, height: 1.375, fontWeight: FontWeight.w600);
+  static const TextStyle textHeading = TextStyle(fontFamily: fontFamily, fontFamilyFallback: fontFamilyFallback, fontSize: 14, height: 1.429, fontWeight: FontWeight.w600);
+  static const TextStyle textBody = TextStyle(fontFamily: fontFamily, fontFamilyFallback: fontFamilyFallback, fontSize: 13, height: 1.538, fontWeight: FontWeight.w400);
+  static const TextStyle textControl = TextStyle(fontFamily: fontFamily, fontFamilyFallback: fontFamilyFallback, fontSize: 12.5, height: 1.28, fontWeight: FontWeight.w500);
+  static const TextStyle textSmall = TextStyle(fontFamily: fontFamily, fontFamilyFallback: fontFamilyFallback, fontSize: 12, height: 1.5, fontWeight: FontWeight.w400);
+  static const TextStyle textCaption = TextStyle(fontFamily: fontFamily, fontFamilyFallback: fontFamilyFallback, fontSize: 11.5, height: 1.391, fontWeight: FontWeight.w500);
+  static const TextStyle textMono = TextStyle(fontFamily: fontFamily, fontFamilyFallback: fontFamilyFallback, fontSize: 12, height: 1.5, fontWeight: FontWeight.w400);
+  static const TextStyle textLauncher = TextStyle(fontFamily: fontFamily, fontFamilyFallback: fontFamilyFallback, fontSize: 18, height: 1.333, fontWeight: FontWeight.w400);
 }
 
 /// Theme colours: shared neutrals and status, plus the app's accent.
