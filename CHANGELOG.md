@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
+- **Less memory in the background (Linux).** Clipboard now gives back memory it no longer needs a few seconds after
+  it starts and two seconds after you close its window, and the AppImage runs from a copy of itself in your user
+  data folder (`arcade/runtime`) instead of staying mounted. The copy is made once per version, and a command that
+  only asks something (`--status`, `--version`, `--restart`) does not make one.
+- `arcade-clipboard --restart` answers at once without starting the app's window code, like `--status`.
+- Pictures in the history use at most 24 MiB of memory for their previews (Flutter's default is 100 MiB).
+
 ## 0.3.2 — 2026-11-06
 
 - Recover the existing secure identity after the standard data-folder move.
