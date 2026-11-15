@@ -26,7 +26,7 @@ Rust owns everything that must be correct across devices: identities, membership
 | Path | Contents |
 | --- | --- |
 | `apps/flutter_app` | Flutter app: UI (`lib/app.dart`, `lib/clipboard_widgets.dart`), `AppController`, platform adapters, generated bridge bindings, platform runners |
-| `core/rust` | The core library: `core.rs` (operations, connections), `store.rs` (SQLite), `transport.rs` (sessions), `crypto.rs`, `payload.rs`, `discovery.rs` (mDNS), `secret.rs` (key storage) |
+| `core/rust` | The core library: `core/` (`mod.rs`: profile, history, settings and the operation dispatcher; `pairing.rs`; `replication.rs`; `peers.rs`: connections, reconnect, discovery and relay), `store.rs` (SQLite), `transport.rs` (sessions), `crypto.rs`, `payload.rs`, `discovery.rs` (mDNS), `secret.rs` (key storage) |
 | `services/relay` | The relay server |
 | `platform/desktop/arcade_desktop_bridge` | Flutter plugin for Linux, Windows and macOS clipboard, focus, tray and login items |
 | `platform/ios` | Swift sources for the iOS host channel, share extension and keyboard extension |
