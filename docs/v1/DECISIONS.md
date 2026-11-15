@@ -23,7 +23,8 @@ invitations, both sides of the pairing handshake, revocation), `replication.rs` 
 messages, chunked transfers, per-peer sync) and `peers.rs` (listener, hello handshake and `Bootstrap`, reconnect
 and dialling, discovery, relay). Code was moved by line range with a script; a line-multiset check shows no line
 lost or changed except `pub(super)` on items another part of `core` uses and the new module headers. The public
-interface (`Core` and its `pub`/`pub(crate)` methods) is unchanged.
+interface (`Core` and its `pub`/`pub(crate)` methods) is unchanged. `scripts/dev` no longer runs a separate `rustfmt` on `core_helpers.rs`: `cargo fmt --all`
+did not reach an `include!`d file, and now every file is a module it formats.
 
 ## D4. The Hyprland code leaves the desktop adapter (untangle)
 `desktop_adapter.dart` (2,462 lines) mixed the generic desktop work with fourteen methods, four fields and six

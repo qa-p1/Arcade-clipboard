@@ -18,7 +18,6 @@ case "${1:-help}" in
   rust-check)
     cargo fmt --all --check
     cargo clippy --workspace --all-targets --locked -- -D warnings
-    rustfmt --edition 2021 --check core/rust/src/core_helpers.rs
     ;;
   flutter-test)
     (cd apps/flutter_app && flutter test)
@@ -40,7 +39,6 @@ case "${1:-help}" in
   check)
     cargo fmt --all --check
     cargo clippy --workspace --all-targets --locked -- -D warnings
-    rustfmt --edition 2021 --check core/rust/src/core_helpers.rs
     (cd apps/flutter_app && flutter analyze)
     ;;
   relay)
