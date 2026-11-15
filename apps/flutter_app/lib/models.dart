@@ -117,8 +117,6 @@ class ClipboardItem {
     return '${normalized.substring(0, 177)}…';
   }
 
-  String get searchText => '$text $sourceName $kind'.toLowerCase();
-
   Map<String, Object?> toKeyboardJson() => {
         'id': id,
         'source_name': sourceName,
@@ -248,18 +246,6 @@ class PairingInvite {
         invite: json['invite'] as String? ?? '',
         expiresAt: _date(json['expires_at']),
       );
-
-  String get displayCode {
-    try {
-      final decoded = jsonDecode(invite);
-      if (decoded is Map<String, dynamic>) {
-        return decoded['code'] as String? ?? invite;
-      }
-    } on FormatException {
-      // Older core builds may return a compact opaque invite string.
-    }
-    return invite;
-  }
 }
 
 String? _nullableString(Object? value) {
