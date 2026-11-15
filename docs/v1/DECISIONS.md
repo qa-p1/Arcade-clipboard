@@ -46,3 +46,14 @@ tool paths, so they are now the functions `readWaylandClipboard` and `writeWayla
 check shows only the renames, the paths as arguments, and one removal: the read fell back to the native plugin when
 `wl-paste` was missing, but its only caller reads through `wl-paste` only when it was found, so the fallback never
 ran. `desktop_adapter.dart` is now 1,761 lines.
+
+## D6. Building a clip from a desktop copy is a function the controller acts on (untangle)
+`AppController._captureRichFromDesktop` (140 lines) read the copied files and formats, applied the 16 MB limit,
+picked the kind and bounded the text, and in the middle of that called back into the controller to show the
+"too large" notice or offer Link's photo compression. The reading and deciding is now `captureCopy` in
+`lib/services/clip_capture.dart`, which returns what the copy becomes (`NothingToCapture`, `CopyTooLarge`,
+`LargePhoto` or `ClipToCapture`, which builds the core's `capture` request), and the controller handles each
+outcome as before. The statements are unchanged; the two early-return callbacks became returned outcomes. The
+second hard-coded 16 MiB (the large-photo check) now uses the same `maxClipBytes`. `clip_capture_test.dart` covers
+text, url, HTML-only (CB-7), folder (CB-2), blank and unkept formats, both over-limit outcomes, and the 32 KiB
+text cut.
