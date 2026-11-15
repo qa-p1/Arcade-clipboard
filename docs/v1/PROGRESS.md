@@ -2,6 +2,25 @@
 
 Detail for `qa-p1/Arcade-catalog` › `dev/v1/PROGRESS.md`. Newest first.
 
+## 2026-11-15 (cloud session) - step 4
+
+- **Dead code (step 4):** decisions in `docs/v1/DECISIONS.md` (D7). Removed `Core::capture` (Rust), six unused Dart
+  members (`searchText`, `displayCode`, `pairingApproved` with its write-only set, `maxItems`, `overlayBusy`,
+  `disabledPeers`), `scripts/package-source.py` and the Android Studio file `clipboard_android.iml`. No behaviour
+  change, nothing bridged touched (no bindings regenerated), no vendored file touched. Candidates kept are listed in D7.
+- **Tested locally:**
+  - `python3 scripts/check-docs.py`: passed (71 local links, 62 vendored checksums).
+  - `cargo +1.98.1 fmt --all --check`: clean.
+  - `cargo +1.98.1 clippy --workspace --all-targets --locked -- -D warnings`: clean.
+  - `cargo +1.98.1 test --workspace --locked`: all pass (core 87 passed, 1 ignored; relay 6; others 5 and 4).
+  - `scripts/check flutter` (dart format --set-exit-if-changed on the non-vendored files, `flutter analyze`,
+    `flutter test`): exit 0, no issues, 47 tests passed.
+  - Windows: `cargo +1.98.1 clippy -p arcade_core --lib --locked --target x86_64-pc-windows-gnu` could not run: the
+    target installed, but `ring v0.17.14`'s build script fails with `failed to find tool "x86_64-w64-mingw32-gcc": No
+    such file or directory`. The Windows-only code (`windows_login.rs`, the `windows_login_*` ops) was checked by hand:
+    every function is called from `api.rs`.
+- Windows, macOS and Android code compiles only in CI.
+
 ## 2026-11-14 (cloud session)
 
 - **Untangle (step 2) started:** decisions in `docs/v1/DECISIONS.md`. D2: the vendored manifest script

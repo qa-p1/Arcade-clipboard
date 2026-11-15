@@ -332,16 +332,6 @@ impl Core {
         }
     }
 
-    pub async fn capture(
-        self: &Arc<Self>,
-        id: Option<&str>,
-        text: &str,
-        kind: Option<&str>,
-    ) -> Result<String, String> {
-        self.capture_representations(id, text, kind, Vec::new(), false)
-            .await
-    }
-
     async fn capture_representations(
         self: &Arc<Self>,
         id: Option<&str>,

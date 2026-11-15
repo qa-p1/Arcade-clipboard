@@ -84,7 +84,6 @@ class LinkService {
       Platform.isLinux || Platform.isWindows || Platform.isMacOS;
 
   bool get enabled => _enabled;
-  List<String> get disabledPeers => _disabledPeers;
   List<Map<String, dynamic>> get peers => _peers;
   List<Map<String, dynamic>> get shortcuts => _shortcuts;
   Map<String, dynamic> get diagnostics => _diagnostics;

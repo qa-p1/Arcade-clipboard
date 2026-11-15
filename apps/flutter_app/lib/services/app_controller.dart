@@ -66,7 +66,6 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   List<PairingRequest> _pairings = const [];
   PairingInvite? _invite;
   PairingRequest? _currentJoin;
-  final Set<String> _approvedPairingSessions = {};
   String? _query;
   final Map<String, String> _errors = {};
   final Map<String, int> _errorOrder = {};
@@ -128,8 +127,6 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   List<PairingRequest> get pairings => _pairings;
   PairingInvite? get invite => _invite;
   PairingRequest? get currentJoin => _currentJoin;
-  bool pairingApproved(String sessionId) =>
-      _approvedPairingSessions.contains(sessionId);
   String? get query => _query;
   String? get error {
     if (_errors.isEmpty) return null;
@@ -153,7 +150,6 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
 
   /// Every clip in the history; a search narrows [items], not this (CB-6).
   int get historyTotal => _historyTotal;
-  int get maxItems => _maxItems;
   bool get hasMoreHistory => _hasMoreHistory;
   ThemeMode get themeMode => _themeMode;
   bool get ready => _ready;
@@ -165,7 +161,6 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   /// The app waiting for a clip from the picker, if any.
   String? get linkPickFor => _linkPickFor;
   bool get working => _working;
-  bool get overlayBusy => _overlayBusy;
   bool get overlaySearchLoading => _overlaySearchLoading;
   bool get automaticDesktopCapture => _automaticDesktopCapture;
   DesktopCapabilities? get desktopCapabilities => _desktopCapabilities;
@@ -815,7 +810,6 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         }
         await _core.invoke(
             'confirm_pairing', {'session_id': sessionId, 'accept': accept});
-        if (accept) _approvedPairingSessions.add(sessionId);
         if (!accept && _currentJoin?.sessionId == sessionId) {
           _currentJoin = null;
         }
