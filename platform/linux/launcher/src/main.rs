@@ -2,7 +2,9 @@
 //!
 //! `--install`, `--uninstall`, `--repair` and `--integration-status` run here
 //! (SPEC §8.1). Any other start first offers to install a downloaded copy,
-//! then hands the original arguments to the Flutter bundle's launcher.
+//! then hands the original arguments to the Flutter bundle's launcher. A start
+//! that keeps a resident Clipboard first moves to the unpacked copy of the
+//! image (Arcade Link RT-7, U1), so no FUSE helper stays resident.
 
 #[cfg(target_os = "linux")]
 mod installer;
@@ -34,8 +36,23 @@ fn main() {
             }
         }
     }
-    if installer::first_run_prompt(&argv) {
+    // The AppImage's launcher already asked (and was told to continue): the
+    // unpacked copy it started must not ask a second time.
+    if std::env::var_os(arcade_link::runtime::UNPACKED_ENV).is_none()
+        && installer::first_run_prompt(&argv)
+    {
         return;
+    }
+    // U1: a resident runs from `<data>/arcade/runtime/clipboard-<version>-<key>/`
+    // and this launcher exits at once; the copy's own launcher (same
+    // `AppRun`, `ARCADE_UNPACKED` set) execs the Flutter bundle inside the copy.
+    // One-shot commands answer from the mount and need no copy.
+    if starts_resident(&argv[1..]) {
+        if let Some(code) =
+            arcade_link::runtime::relaunch_unpacked(installer::ME, installer::VERSION, false)
+        {
+            std::process::exit(code);
+        }
     }
     let Some(app) = installer::bundled_app() else {
         eprintln!("arcade-clipboard: the Flutter bundle is missing beside the launcher");
@@ -44,6 +61,28 @@ fn main() {
     let error = std::process::Command::new(app).args(&argv[1..]).exec();
     eprintln!("arcade-clipboard: {error}");
     std::process::exit(1);
+}
+
+/// Whether a start with these arguments (without the program name) leaves a
+/// resident Clipboard running. The commands below answer and exit, or only
+/// talk to a running instance (`--hide` and `--quit` never start one), so
+/// they run from the mount and never trigger the first extraction. Every
+/// other start (the window, `--background`, `--overlay`, `--settings`,
+/// `--show`, `--toggle`) can start the resident and so runs from the copy.
+#[cfg(target_os = "linux")]
+fn starts_resident(args: &[String]) -> bool {
+    const ONE_SHOT: &[&str] = &[
+        "--version",
+        "--help",
+        "-h",
+        "--status",
+        "--arcade-manifest",
+        "--restart",
+        "--quit",
+        "--hide",
+        "--integration-status",
+    ];
+    !args.iter().any(|arg| ONE_SHOT.contains(&arg.as_str()))
 }
 
 #[cfg(target_os = "linux")]
@@ -86,6 +125,48 @@ fn integration_command(args: &[String]) -> Result<String, String> {
         "--uninstall" => installer::uninstall_cli(silent, remove_data),
         "--repair" => installer::repair_cli(),
         _ => installer::integration_status_cli(),
+    }
+}
+
+#[cfg(all(test, target_os = "linux"))]
+mod tests {
+    use super::starts_resident;
+
+    fn args(list: &[&str]) -> Vec<String> {
+        list.iter().map(ToString::to_string).collect()
+    }
+
+    #[test]
+    fn starts_that_keep_a_resident_run_from_the_copy() {
+        for list in [
+            &[][..],
+            &["--background"],
+            &["--show"],
+            &["--toggle"],
+            &["--overlay"],
+            &["--settings"],
+            &["--background", "--overlay"],
+        ] {
+            assert!(starts_resident(&args(list)), "{list:?} keeps a resident");
+        }
+    }
+
+    #[test]
+    fn one_shot_commands_run_from_the_mount() {
+        for list in [
+            &["--version"][..],
+            &["--help"],
+            &["-h"],
+            &["--status"],
+            &["--arcade-manifest"],
+            &["--restart"],
+            &["--quit"],
+            &["--hide"],
+            &["--integration-status"],
+            &["--background", "--status"],
+        ] {
+            assert!(!starts_resident(&args(list)), "{list:?} is one-shot");
+        }
     }
 }
 
