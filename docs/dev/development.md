@@ -48,7 +48,7 @@ For running the app you also need a Secret Service provider and, on Wayland, `wl
 
 [Architecture](architecture.md) describes the layout and how the pieces fit together. A few things to know before changing code:
 
-- **Bindings.** `apps/flutter_app/lib/src/rust/` and `core/rust/src/frb_generated.rs` are generated. The Rust API is a single JSON function, so adding an operation needs no regeneration: add a branch to the operation match in `core.rs` and call it from Dart with `CoreApi.invoke`.
+- **Bindings.** `apps/flutter_app/lib/src/rust/` and `core/rust/src/frb_generated.rs` are generated. The Rust API is a single JSON function, so adding an operation needs no regeneration: add a branch to the operation match in `core/mod.rs` (`Core::request`) and call it from Dart with `CoreApi.invoke`.
 - **Platform runners.** `apps/flutter_app/{linux,ios,android,macos,windows}` are customized. Do not run `flutter create` over them. `scripts/prepare-runners.sh` only creates runners that are missing.
 - **iOS project.** `scripts/setup-ios.rb` adds the extension targets and build settings to the Xcode project. Run it after changing the extension wiring. It edits `project.pbxproj` in place and is safe to rerun. On Linux, run it with any Ruby that has the `xcodeproj` gem.
 - **Desktop plugin.** Native Linux code is in `platform/desktop/arcade_desktop_bridge/linux`. The Wayland capture helper (`wl_capture_helper.cc`) is built as a separate executable and installed into the bundle's `lib/` directory.

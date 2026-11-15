@@ -26,7 +26,7 @@ Rust owns everything that must be correct across devices: identities, membership
 | Path | Contents |
 | --- | --- |
 | `apps/flutter_app` | Flutter app: UI (`lib/app.dart`, `lib/clipboard_widgets.dart`), `AppController`, platform adapters, generated bridge bindings, platform runners |
-| `core/rust` | The core library: `core.rs` (operations, connections), `store.rs` (SQLite), `transport.rs` (sessions), `crypto.rs`, `payload.rs`, `discovery.rs` (mDNS), `secret.rs` (key storage) |
+| `core/rust` | The core library: `core/` (`mod.rs`: profile, history, settings and the operation dispatcher; `pairing.rs`; `replication.rs`; `peers.rs`: connections, reconnect, discovery and relay), `store.rs` (SQLite), `transport.rs` (sessions), `crypto.rs`, `payload.rs`, `discovery.rs` (mDNS), `secret.rs` (key storage) |
 | `services/relay` | The relay server |
 | `platform/desktop/arcade_desktop_bridge` | Flutter plugin for Linux, Windows and macOS clipboard, focus, tray and login items |
 | `platform/ios` | Swift sources for the iOS host channel, share extension and keyboard extension |
@@ -69,11 +69,13 @@ How the Rust library is loaded:
 Capture runs in `DesktopAdapter` (`lib/platform/desktop_adapter.dart`):
 
 1. **Change notification.** On Wayland, the bundled `arcade_clipboard_wl_capture` helper supervises `wl-paste --watch` and writes a line for each change. On X11 and the other desktop platforms, the native plugin listens for clipboard ownership changes.
-2. **Read.** On Wayland, Dart runs `wl-paste --list-types`, then reads up to one candidate per canonical type: text, HTML, PNG, JPEG and file URIs. Content flagged as sensitive by password managers is dropped.
+2. **Read.** On Wayland, Dart (`lib/platform/wayland_clipboard.dart`) runs `wl-paste --list-types`, then reads up to one candidate per canonical type: text, HTML, PNG, JPEG and file URIs. Content flagged as sensitive by password managers is dropped.
 3. **Self-write check.** Anything the app wrote to the clipboard in the last three seconds, for example a clip it just pasted, is ignored.
 4. **Store.** `AppController` turns the formats into representations and sends a `capture` request. Plain text takes a fast path with no image or file processing.
 
 Wayland reads and writes run in Dart rather than in the GTK plugin. The Dart VM reaps every child process once it has started any, which breaks GLib's subprocess handling, so a read would intermittently report no clipboard data. The helper process is the only native piece. It exits when its standard input closes, which happens when the app exits for any reason, so it cannot outlive the app.
+
+On Hyprland, `Hyprland` (`lib/platform/hyprland.dart`) is the only code that runs `hyprctl`: the global shortcut bind and its cleanup, the app to paste into and the focus and paste dispatches, and the picker's window rule and placement. It speaks Lua to compositors configured with Lua and the keyword and dispatch syntax to the rest. The adapter owns one instance and passes it its command runner.
 
 ### Deduplication
 

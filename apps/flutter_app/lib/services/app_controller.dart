@@ -10,9 +10,9 @@ import '../models.dart';
 import '../platform/desktop_adapter.dart';
 import '../platform/mobile_share_bridge.dart';
 import 'app_settings.dart';
+import 'clip_capture.dart';
 import 'core_api.dart';
 import 'diagnostics.dart';
-import 'html_text.dart';
 import 'link_service.dart';
 
 class AppController extends ChangeNotifier with WidgetsBindingObserver {
@@ -1449,127 +1449,21 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         clipboard['sensitive'] == true) {
       return;
     }
-    final representations = <ClipRepresentation>[];
-    var text = '';
-    var size = 0;
-    final files = (clipboard['files'] as List<dynamic>? ?? const [])
-        .whereType<String>()
-        .toList();
     try {
-      if (files.isNotEmpty) {
-        for (final path in files) {
-          final name = Uri.file(path)
-              .pathSegments
-              .lastWhere((segment) => segment.isNotEmpty, orElse: () => path);
-          if (await FileSystemEntity.isDirectory(path)) {
-            // CB-2: a copied folder becomes a clip holding its location.
-            text = text.isEmpty ? path : '$text\n$path';
-            representations.add(ClipRepresentation(
-                mimeType: 'text/uri-list',
-                name: name,
-                bytes: Uint8List.fromList(
-                    utf8.encode(Uri.file(path).toString()))));
-            continue;
-          }
-          final file = File(path);
-          if (!await file.exists()) {
-            Diagnostics.log('capture', 'skipped a copied path: not found');
-            continue;
-          }
-          size += await file.length();
-          if (size > _maxClipBytes) {
-            Diagnostics.log('capture',
-                'skipped a copy: over ${_maxClipBytes ~/ (1024 * 1024)} MB');
-            if (files.length == 1 &&
-                RegExp(r'\.(png|jpe?g)$', caseSensitive: false)
-                    .hasMatch(path)) {
-              await _offerLargePhoto(path: path, size: size);
-            } else {
-              _noticeTooLarge(name);
-            }
-            return;
-          }
-          representations.add(ClipRepresentation(
-              mimeType: 'application/octet-stream',
-              name: name,
-              bytes: await file.readAsBytes()));
-        }
-      } else {
-        final formats = clipboard['formats'] as List<dynamic>? ?? const [];
-        for (final format in formats.whereType<Map<dynamic, dynamic>>()) {
-          final mime = format['mimeType'];
-          final bytes = format['bytes'];
-          if ((mime == 'image/png' || mime == 'image/jpeg') &&
-              bytes is Uint8List &&
-              bytes.length > 16 * 1024 * 1024) {
-            await _offerLargePhoto(bytes: bytes, mime: mime as String);
-            return;
-          }
-        }
-        final hasPlain = formats
-            .whereType<Map<dynamic, dynamic>>()
-            .any((format) => format['mimeType'] == 'text/plain');
-        var htmlText = '';
-        for (final format in formats.whereType<Map<dynamic, dynamic>>()) {
-          final mime = format['mimeType'];
-          final bytes = format['bytes'];
-          if (mime is! String || bytes is! Uint8List) continue;
-          if (!const {
-            'text/plain',
-            'text/html',
-            'text/uri-list',
-            'image/png',
-            'image/jpeg'
-          }.contains(mime)) {
-            continue;
-          }
-          size += bytes.length;
-          if (size > _maxClipBytes) {
-            Diagnostics.log('capture',
-                'skipped a copy: over ${_maxClipBytes ~/ (1024 * 1024)} MB');
-            _noticeTooLarge(null);
-            return;
-          }
-          if (mime == 'text/plain') {
-            text = utf8.decode(bytes, allowMalformed: true);
-          }
-          representations.add(ClipRepresentation(mimeType: mime, bytes: bytes));
-          if (mime == 'text/html' && !hasPlain) {
-            htmlText =
-                htmlToPlainText(utf8.decode(bytes, allowMalformed: true));
-          }
-        }
-        // CB-7: an HTML-only copy is shown and searched as readable text; the
-        // markup stays as a representation.
-        if (text.isEmpty && htmlText.isNotEmpty) text = htmlText;
+      switch (await captureCopy(clipboard)) {
+        case NothingToCapture():
+          return;
+        case CopyTooLarge(:final name):
+          _noticeTooLarge(name);
+          return;
+        case LargePhoto(:final bytes, :final mime, :final path, :final size):
+          await _offerLargePhoto(
+              bytes: bytes, mime: mime, path: path, size: size);
+          return;
+        case ClipToCapture clip:
+          await _core.invoke('capture', clip.request(initial: initial));
+          Diagnostics.log('capture', 'stored ${clip.kind} clip');
       }
-      if (representations.isEmpty) return;
-      final kind = files.isNotEmpty
-          ? files.length > 1
-              ? 'files'
-              : 'file'
-          : representations.any((value) => value.mimeType.startsWith('image/'))
-              ? 'image'
-              : representations.any((value) => value.mimeType == 'text/html')
-                  ? 'rich_text'
-                  : _isWebUrl(text)
-                      ? 'url'
-                      : 'text';
-      final textOnly = representations.length == 1 &&
-          representations.single.mimeType == 'text/plain' &&
-          utf8.encode(text).length <= _maxPreviewTextBytes;
-      if (text.trim().isEmpty && textOnly) return;
-      await _core.invoke('capture', {
-        // The text field drives search, previews and the mobile keyboard and
-        // is bounded; the full content always travels as a representation.
-        'text': _boundedText(text),
-        'kind': kind,
-        if (initial) 'only_if_new': true,
-        if (!textOnly)
-          'representations':
-              representations.map((value) => value.toJson()).toList()
-      });
-      Diagnostics.log('capture', 'stored $kind clip');
       await refreshHistory(query: _query);
       _clearError('capture');
     } catch (exception) {
@@ -1577,8 +1471,6 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       _setError(exception, source: 'capture');
     }
   }
-
-  static const _maxClipBytes = 16 * 1024 * 1024;
 
   void _noticeTooLarge(String? name) {
     _notice = name == null
@@ -1855,28 +1747,6 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     unawaited(_desktop.dispose());
     super.dispose();
   }
-}
-
-const int _maxPreviewTextBytes = 32 * 1024;
-
-bool _isWebUrl(String text) {
-  final trimmed = text.trim();
-  if (trimmed.contains(RegExp(r'\s'))) return false;
-  return const {'http', 'https'}.contains(Uri.tryParse(trimmed)?.scheme);
-}
-
-/// Truncates on a character boundary to the core's 32 KiB text field limit.
-String _boundedText(String text) {
-  if (utf8.encode(text).length <= _maxPreviewTextBytes) return text;
-  final buffer = StringBuffer();
-  var size = 0;
-  for (final rune in text.runes) {
-    final length = utf8.encode(String.fromCharCode(rune)).length;
-    if (size + length > _maxPreviewTextBytes) break;
-    buffer.writeCharCode(rune);
-    size += length;
-  }
-  return buffer.toString();
 }
 
 class AppActionException implements Exception {
