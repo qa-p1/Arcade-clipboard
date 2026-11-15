@@ -1,13 +1,22 @@
 # Desktop releases
 
-The release workflow defines stable (`v<version>` tags) and nightly (pushes to
-`main`) channels. A manual run can choose either channel; stable must run on a
-version tag matching both Cargo.toml and pubspec.yaml. To ship a stable release, bump
-both versions on `main`, run "Tag a release" (`tag.yml`) with the tag and the
-commit SHA, then run "Release" on that tag with channel `stable`. Nothing is tagged, pushed
-or published by local development. CI builds the Windows and macOS desktop apps
-and runs the Rust core tests on them; their installers run install, repair and uninstall smoke checks in disposable CI
-profiles. Interactive behavior on Windows and macOS has not been verified.
+Stable is never built: it is a verified release candidate promoted byte for byte (Link spec §CI, the fleet's rule
+zero).
+
+1. Bump the version in `Cargo.toml` and `apps/flutter_app/pubspec.yaml` on `main`.
+2. Run "Tag a release" (`tag.yml`) with `vX.Y.Z-rc.N` and the commit SHA on `main`. It creates the tag and starts
+   "Desktop releases" (`release.yml`) on it, which runs CI, builds the Linux AppImage and tarball, the Windows Inno
+   installer and the macOS dmg once, and publishes them through Link's `app-publish` as a hidden prerelease on the
+   `test` channel, which Tools never offers.
+3. Run every exit gate against those published files.
+4. Run "Promote" (`promote.yml`) with the rc tag. Link's `app-promote` republishes the same files as `vX.Y.Z` on the
+   stable channel with a signed `manifest.json`, then downloads them again and compares every hash.
+
+"Nightly" (`nightly.yml`, daily) publishes main CI's already-tested packages as a signed `vX.Y.Z-nightly.*`
+prerelease when `main` has changed and its CI is green. Nothing is tagged, pushed or published by local development.
+CI builds the Windows and macOS desktop apps and runs the Rust core tests on them; their installers run install,
+repair and uninstall smoke checks in disposable CI profiles. Interactive behavior on Windows and macOS has not been
+verified.
 
 ## Shared Link dependency
 
@@ -37,9 +46,9 @@ The iOS IPA remains a separate CI artifact, outside the desktop manager.
 
 Every desktop release includes `arcade-release.json` (schema 1, Link v1, channel,
 platform, architecture, installer kind, install arguments and SHA-256) and
-`SHA256SUMS.txt`. The manifest script is vendored unchanged from Link commit
-`76883b3`; provenance and its checksum are in `scripts/VENDORED`.
-`--windows-installer inno` selects the correct silent flags.
+`SHA256SUMS.txt`. Link's reusable publish (`app-publish.yml`) writes both from
+the built packages; `windows-installer: inno` gives the manifest Inno's silent
+switches, and promotion keeps the rc's installer kind.
 
 ## Local Linux packaging verification
 
@@ -47,10 +56,6 @@ platform, architecture, installer kind, install arguments and SHA-256) and
 CARGO_BUILD_JOBS=3 bash scripts/dev build-linux
 bash scripts/dev build-appimage --version 0.1.0
 python3 scripts/package-desktop.py --platform linux --version 0.1.0
-python3 scripts/arcade-release.py --id arcade.clipboard --version 0.1.0 \
-  --channel stable --windows-installer inno \
-  --notes https://github.com/qa-p1/Arcade-clipboard/releases/tag/v0.1.0 dist/packages
-(cd dist/packages && sha256sum -c SHA256SUMS.txt)
 ```
 
 Use the isolated ecosystem runner for any install/launch verification. Never run

@@ -95,7 +95,9 @@ jobs:
       - name: Prepare pinned isolated lifecycle runner
         run: |
           sudo apt-get install -y xdotool python3-dbus python3-gi dbus-x11 gnome-keyring
-          git -c advice.detachedHead=false clone -q --depth 1 --branch v0.3.0 https://github.com/qa-p1/Arcade-Link "$RUNNER_TEMP/link"
+          # The Link release Cargo.toml pins, so the isolated runner and the arcade-link peer match the app.
+          link_tag=$(sed -n 's/^arcade-link = .*tag = "\([^"]*\)".*/\1/p' Cargo.toml)
+          git -c advice.detachedHead=false clone -q --depth 1 --branch "$link_tag" https://github.com/qa-p1/Arcade-Link "$RUNNER_TEMP/link"
           cargo build --release --manifest-path "$RUNNER_TEMP/link/Cargo.toml" -p arcade-link-cli
       - name: AppImage install, repair and uninstall (isolated D-Bus and Xvfb)
         run: |

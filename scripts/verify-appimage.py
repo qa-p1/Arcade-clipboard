@@ -70,6 +70,18 @@ def main():
         assert cli.resolve() == installed
         assert "X-Arcade-Id=arcade.clipboard" in desktop.read_text(encoding="utf-8")
         assert run("arcade-clipboard", "--version").strip() == f"Arcade Clipboard {expected_version}"
+        # CB-5: --status answers from the core before GTK and the engine start, so it works without a display
+        # and prints nothing else.
+        headless = {key: value for key, value in env.items() if key not in ("DISPLAY", "WAYLAND_DISPLAY")}
+        answer = subprocess.run(
+            [str(cli), "--status"], env=headless, text=True, encoding="utf-8",
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60,
+        )
+        assert answer.returncode == 0 and answer.stderr == "", answer
+        assert answer.stdout.count("\n") == 1, answer.stdout
+        line = json.loads(answer.stdout)
+        assert line["app"] == "arcade.clipboard" and line["version"] == expected_version, line
+        assert line["running"] is False and line["link"] in ("on", "off", "unregistered"), line
         status = json.loads(run(cli, "--integration-status"))
         assert status["receipt"] == receipt and all(entry["exists"] for entry in status["entries"]), status
         desktop.unlink()

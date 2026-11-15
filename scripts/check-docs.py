@@ -61,8 +61,6 @@ def main():
             errors.append(f"{image.relative_to(ROOT)}: not a PNG")
     inventory = (ROOT / "scripts/VENDORED").read_text(encoding="utf-8")
     assets = re.findall(r"^  (\S+) SHA-256 ([0-9a-f]{64})$", inventory, re.M)
-    release_hash = re.search(r"^SHA-256: ([0-9a-f]{64})\.$", inventory, re.M).group(1)
-    assets.append(("scripts/arcade-release.py", release_hash))
     for name, expected in assets:
         if hashlib.sha256((ROOT / name).read_bytes()).hexdigest() != expected:
             errors.append(f"{name}: vendored checksum differs from scripts/VENDORED")

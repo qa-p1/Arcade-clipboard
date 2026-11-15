@@ -355,7 +355,7 @@ pub fn uninstall(remove_data: bool) -> Result<Value, String> {
     Ok(json!({"uninstalled": removed}))
 }
 
-/// "Just run it once": don't ask again for this copy's location.
+/// "Just run it": don't ask again for this copy's location.
 #[cfg(target_os = "macos")]
 pub fn dismiss() -> Result<Value, String> {
     let environment = Environment::discover().map_err(|e| e.to_string())?;

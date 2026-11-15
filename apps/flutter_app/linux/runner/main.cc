@@ -1,6 +1,7 @@
 #include "my_application.h"
 
 #include <dirent.h>
+#include <dlfcn.h>
 #include <fcntl.h>
 #include <unistd.h>
 
@@ -79,11 +80,43 @@ static void wait_for_predecessor() {
   }
 }
 
+// --status answers from the bundled Rust core before GTK and the engine
+// start (CB-5): the core sits in lib/ beside this executable, in the bundle
+// and in the AppImage. Returns the exit code, or -1 when the core can't be
+// loaded and the engine path answers instead, as before.
+static int print_status_from_core() {
+  char directory[4096];
+  const ssize_t length = readlink("/proc/self/exe", directory, sizeof directory - 1);
+  if (length <= 0) return -1;
+  directory[length] = '\0';
+  char* slash = strrchr(directory, '/');
+  if (slash == nullptr) return -1;
+  *slash = '\0';
+  g_autofree gchar* path = g_build_filename(directory, "lib", "libarcade_core.so", nullptr);
+  // Never dlclose()d: the core keeps thread-local state until exit.
+  void* core = dlopen(path, RTLD_NOW | RTLD_LOCAL);
+  if (core == nullptr) return -1;
+  using StatusLine = char* (*)();
+  using FreeString = void (*)(char*);
+  auto status_line = reinterpret_cast<StatusLine>(dlsym(core, "arcade_clipboard_status_line"));
+  auto free_string = reinterpret_cast<FreeString>(dlsym(core, "arcade_clipboard_free_string"));
+  if (status_line == nullptr || free_string == nullptr) return -1;
+  char* line = status_line();
+  if (line == nullptr) return -1;
+  const bool written = fputs(line, stdout) >= 0 && fputc('\n', stdout) != EOF && fflush(stdout) == 0;
+  free_string(line);
+  return written ? 0 : 1;
+}
+
 int main(int argc, char** argv) {
   // Answered here, before GTK and the engine print their warnings (CB-5).
   if (argc == 2 && strcmp(argv[1], "--version") == 0) {
     fputs("Arcade Clipboard " ARCADE_CLIPBOARD_VERSION "\n", stdout);
     return 0;
+  }
+  if (argc == 2 && strcmp(argv[1], "--status") == 0) {
+    const int answered = print_status_from_core();
+    if (answered >= 0) return answered;
   }
   for (int i = 1; i < argc; ++i) {
     if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {

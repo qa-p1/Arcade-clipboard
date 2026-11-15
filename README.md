@@ -25,7 +25,7 @@ Download the file for your system from [Releases](https://github.com/qa-p1/Arcad
 
 | Platform | File | How to install |
 |---|---|---|
-| Linux x64 | `Arcade-Clipboard-<version>-x86_64.AppImage` | Make it executable and run it. The first run asks **Install Arcade Clipboard?** and installs to `~/Applications/Arcade`, adds a menu entry, an `arcade-clipboard` command and an optional start at login. **Just run it once** leaves the download in place. |
+| Linux x64 | `Arcade-Clipboard-<version>-x86_64.AppImage` | Make it executable and run it. The first run asks **Install Arcade Clipboard?** and installs to `~/Applications/Arcade`, adds a menu entry, an `arcade-clipboard` command and an optional start at login. **Just run it** leaves the download in place. |
 | Linux x64 (transition release only) | `Arcade-Clipboard_<version>_linux_x64.tar.gz` | Extract it and run `bash install-linux.sh`; it copies the bundle into `~/.local/share/arcade-clipboard` and adds a per-user launcher entry. Planned to be removed after one release. |
 | Windows x64 | `Arcade-Clipboard_<version>_windows_x64-setup.exe` | Run Setup. Installs for your user without admin, adds a Start menu entry, optional desktop shortcut and start at login, and puts `arcade-clipboard` on PATH. |
 | macOS (universal) | `Arcade-Clipboard_<version>_macos_universal.dmg` | Open the dmg and drag Arcade Clipboard to Applications. Run from the dmg or Downloads, it offers to move itself to Applications. |

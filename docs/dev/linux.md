@@ -20,7 +20,7 @@ Download the Linux AppImage and run it. It uses the system GTK and Secret
 Service provider and carries the Flutter bundle, Rust core and keybinder
 library. On first run it offers to install itself: **Install** copies it into
 `~/Applications/Arcade`, adds the launcher entry and the `arcade-clipboard` CLI
-link, and lets you choose start at login; **Just run it once** leaves the
+link, and lets you choose start at login; **Just run it** leaves the
 download in place. For scripts use `--install --silent --no-launch`. `--repair`
 restores the integration, and `--uninstall` removes the app but keeps your data
 (add `--remove-data` to delete it too). An unlocked Secret Service keyring is
