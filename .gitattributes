@@ -6,7 +6,6 @@ tools/validate_shortcuts.py -text
 spec/shortcuts.schema.json -text
 spec/vectors/shortcuts.json -text
 assets/strings/install.json -text
-scripts/arcade-release.py -text
 # The design kit (scripts/sync-design.py), byte for byte on every OS.
 apps/flutter_app/lib/design/** -text
 apps/flutter_app/assets/arcade/** -text

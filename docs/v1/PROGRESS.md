@@ -4,6 +4,8 @@ Detail for `qa-p1/Arcade-catalog` › `dev/v1/PROGRESS.md`. Newest first.
 
 ## 2026-11-14 (cloud session)
 
+- **Untangle (step 2) started:** decisions in `docs/v1/DECISIONS.md`. D2: the vendored manifest script
+  `scripts/arcade-release.py` is removed; Link's reusable publish writes `arcade-release.json` since step 6.
 - **Step 6, release machinery (rule zero):** `release.yml` ran on every pushed `v*` tag and published it as the latest
   stable release, so a first `v1.0.0` tag would have reached users untested. It now has Tools' and Box's shape:
   "Tag a release" makes only `vX.Y.Z-rc.N` and starts "Desktop releases", which runs CI, builds every desktop

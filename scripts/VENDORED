@@ -1,8 +1,3 @@
-arcade-release.py is copied unchanged from Arcade-link commit
-76883b3899f2beb823de51c639387d466881d93b, tools/arcade-release.py.
-SHA-256: 8f360855419930730c486d0978acaecf7a8179cc063465c9f8324878dcf6c2fd.
-License: MIT. Protocol v1 and release manifest schema 1.
-
 Arcade Link shared installer and shortcut assets are copied unchanged from tag v1.0.8 (commit
 34f8030e494c0c662a5f95efd8e868c8536b9989); the files are the same as at 4c75f3a (v0.3.0 plus installer fixes):
   packaging/windows/arcade.iss SHA-256 fe152028ff674fdacdef4aed8970bb0a7afeb2dd67d2a3af075d7d95683bf96b
