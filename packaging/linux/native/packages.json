@@ -1,0 +1,8 @@
+{
+  "host": "Ubuntu 22.04",
+  "packages": {
+    "libkeybinder-3.0-0": {
+      "source": "keybinder-3.0"
+    }
+  }
+}
