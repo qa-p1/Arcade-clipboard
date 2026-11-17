@@ -85,6 +85,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: App dev/Arcade-clipboard -> target
+          # The job's own cache: compiled C code (SQLite) from the old 24.04 build needs glibc 2.38.
+          key: ubuntu-22.04
           # Saved only on main (Link spec §4): caches from pull requests crowded main's out of the 10 GB.
           save-if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
       - name: Dart format, flutter analyze and tests
