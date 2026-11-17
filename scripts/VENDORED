@@ -16,11 +16,11 @@ The Linux runner's memory trimmer is copied unchanged from Arcade Link tag v1.0.
 (RT-5; the file is identical at v1.0.7, v1.0.9 and Link main). License: MIT OR Apache-2.0.
   apps/flutter_app/linux/runner/arcade_trim.h SHA-256 9c1d65cac63d7aa59b705c442b8840a7f9576a9bfcbeaf39e5630bb303485131
 
-Arcade design kit files are copied unchanged from Arcade Link tag v1.0.8 (commit
-34f8030e494c0c662a5f95efd8e868c8536b9989) by scripts/sync-design.py; never edit them here.
+Arcade design kit files are copied unchanged from Arcade Link tag v1.0.13 (commit
+a24146fd87ff77ed362f518a414eaf266512f839) by scripts/sync-design.py; never edit them here.
 License: MIT OR Apache-2.0; Inter is under the SIL Open Font License 1.1.
   apps/flutter_app/lib/design/arcade_format.dart SHA-256 7ffd1b47823a51e50eee82099eca6a7989e36a5e7a2f8cd930226b7e60ff845e
-  apps/flutter_app/lib/design/arcade_icons.dart SHA-256 c1f7c05b7c4557b28403dbf35ced745d20e3aa028a8b2e576f4a78063f72d1f8
+  apps/flutter_app/lib/design/arcade_icons.dart SHA-256 67efdd923436accbe8894126aa8f490d06489a67b61fe75d7fd459089e954bc4
   apps/flutter_app/lib/design/arcade_theme.dart SHA-256 e15e9395f526ec54d4c1caa4057fba77666a47fd78a612a62e5a3d9decb5386a
   apps/flutter_app/lib/design/arcade_widgets.dart SHA-256 0c52d4d87f55f1d6b928fc3918c47eb2f7ad4467389eda0009f2adbf57524330
   apps/flutter_app/assets/fonts/InterVariable.ttf SHA-256 4989b125924991b90d05b2d16e0e388c48f7d5bb8b30539bbf9c755278d0ccaf
@@ -35,6 +35,7 @@ License: MIT OR Apache-2.0; Inter is under the SIL Open Font License 1.1.
   apps/flutter_app/assets/arcade/arcade.wheel.svg SHA-256 6718ccee834c345aac4b4a71ea83461412e5f4ae6f24179ab897192cf243ce63
   apps/flutter_app/assets/arcade/tokens.json SHA-256 11a9ea138ca77330c634d5d6400b08a504e2abfafc1362bb724f1e3663021557
   packaging/linux/dev.arcade.Clipboard.svg SHA-256 63fb05cc120d1fc08f9fec9df73c8cfe44362b48dfd9746f4bdb8f4b064ab265
+  packaging/linux/dev.arcade.Clipboard-symbolic.svg SHA-256 bbf1518dc224aa8f8df59f432cf5eb8b6e25b1f4a4e4676fe231d84770dac156
   apps/flutter_app/windows/runner/resources/app_icon.ico SHA-256 0f0d2bdfe58c0bbebf2fe1d61370d44015cd8ac131a64420392c102c8e52df2f
   assets/logo.png SHA-256 ecb43b61e6cf43bced2179a18d2c63111ebb56519ae6259cce049fe8062a8598
   apps/flutter_app/android/app/src/main/res/mipmap-mdpi/ic_launcher.png SHA-256 35cd0deadfe5e7b648ae5df4c417bdceb22c89d5d12401154134ee52c785f99e
