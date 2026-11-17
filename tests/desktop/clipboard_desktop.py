@@ -7,6 +7,8 @@ In a private profile, from the AppImage the way a user starts it (it hands over 
 unlocked Secret Service when the session has none (the history key lives there; a profile does not open without it):
 - ID-1: the window's class is `dev.arcade.Clipboard`; the picker is the same window under its own title.
 - A plain start maps the main window; --status reports the resident.
+- First-run setup by keyboard ("Start on this device" with the pre-filled name) creates the mesh: the picker only
+  opens once there is a history to pick from.
 - --overlay maps the picker floating, at its fixed size, with keyboard focus (Hyprland tiles new windows, so a
   runtime rule floats it).
 - Escape closes the picker and gives back the main window it borrowed.
@@ -103,6 +105,12 @@ def main_window():
                  and c.get("title", "").endswith(MAIN)), None)
 
 
+def press(address, key, times=1):
+    for _ in range(times):
+        d.send_shortcut(address, "", key)
+        time.sleep(0.3)
+
+
 def wait_for(probe, what, timeout=15):
     try:
         return d.wait(probe, timeout, what)
@@ -129,6 +137,21 @@ try:
     check("ID-1: the window's class is Clipboard's desktop id", main.get("class") == CLASS, main.get("class", ""))
     resident = wait_for(lambda: status() if status().get("running") else None, "--status", 15) or status()
     check("--status reports the running Clipboard", bool(resident.get("running")), json.dumps(resident))
+
+    # --- first-run setup --------------------------------------------------------------------------------------------
+    # Tab reaches the "Start on this device" card; in its form the name is pre-filled, and five Tabs (the name, the
+    # copy switch's row and switch, Back) reach the "Start on this device" button. A mesh changes the window title to
+    # "<page> — Arcade Clipboard".
+    d.focus(main["address"])
+    time.sleep(0.5)
+    press(main["address"], "Tab")
+    press(main["address"], "Return")
+    time.sleep(1)
+    press(main["address"], "Tab", 5)
+    press(main["address"], "Return")
+    check("setup by keyboard creates the mesh",
+          wait_for(lambda: (main_window() or {}).get("title", MAIN) != MAIN, "the mesh", 20) is not None,
+          (main_window() or {}).get("title", "no main window"))
 
     # --- the picker ----------------------------------------------------------------------------------------------
     d.clipboard_set("Arcade desktop test clip")
