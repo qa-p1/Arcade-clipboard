@@ -154,6 +154,25 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  # Tier 1: the main window and the picker on headless Hyprland (Link's desktop harness), from the AppImage built
+  # above; Tier 2: start, --status, tray and quit on sway, KWin, Mutter and X11.
+  desktop:
+    needs: linux
+    uses: qa-p1/Arcade-Link/.github/workflows/desktop-e2e.yml@v1.0.13
+    with:
+      name: clipboard
+      test: tests/desktop/clipboard_desktop.py
+      args: '"$APP"'
+      artifact: Arcade-Clipboard-linux-x64
+      link-ref: v1.0.13
+  desktop-tier2:
+    needs: linux
+    uses: qa-p1/Arcade-Link/.github/workflows/desktop-tier2.yml@v1.0.13
+    with:
+      artifact: Arcade-Clipboard-linux-x64
+      show: --show
+      link-ref: v1.0.13
+
   android:
     name: Android release build and signing check
     runs-on: ubuntu-24.04
