@@ -443,6 +443,18 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       if (_openSettingsOnStart) settingsRequests.value++;
     } catch (exception) {
       _setError(exception, source: 'startup');
+      if (desktopAvailable && !_desktopReady) {
+        // The profile did not open (most often a locked or missing keyring),
+        // so there is no tray and no Link. The error needs the user (unlock,
+        // then Try again): show it even after a --background start, and keep
+        // a second launch and --quit working.
+        _desktop.listenForRelaunches();
+        try {
+          await _desktop.showMainWindow();
+        } catch (_) {
+          // No window manager plugin (tests); the page still shows the error.
+        }
+      }
     } finally {
       _loading = false;
       _notifyListeners();

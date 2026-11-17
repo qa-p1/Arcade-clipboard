@@ -10,6 +10,9 @@ and versions follow [Semantic Versioning](https://semver.org/).
 ### Fixed
 - `--status` and `--hide`, run from a downloaded AppImage while another copy is installed, no longer wait on the
   install dialog: they answer (or do nothing) at once, like `--quit`.
+- When the keyring is locked or missing at a background start (for example at login), Clipboard now shows its window
+  with the error and **Try again**. Before, it stayed hidden with no tray icon, and starting it again or `--quit` did
+  not reach it.
 
 ### Changed
 - **Less memory in the background (Linux).** Clipboard now gives back memory it no longer needs a few seconds after

@@ -22,10 +22,12 @@ void main() {
         await Directory.systemTemp.createTemp('arcade-start-test-');
     final core = FakeCoreApi(hasMesh: false);
     core.failures['initialize'] = Exception('Secure identity unavailable');
+    final desktop = _TestDesktopAdapter();
     final controller = AppController(
       core: core,
-      desktop: _TestDesktopAdapter(),
+      desktop: desktop,
       dataDirectory: directory,
+      startInBackground: true,
     );
     addTearDown(() async {
       controller.dispose();
@@ -34,6 +36,10 @@ void main() {
     await controller.start();
     final startupError = controller.error;
     expect(controller.ready, isFalse);
+    // Even after a --background start: the error needs the user, and a second
+    // launch or --quit must still reach this instance.
+    expect(desktop.shown, 1);
+    expect(desktop.listening, isTrue);
     await controller.createMesh('Laptop');
     await controller.joinMesh(invite: 'invite', deviceName: 'Laptop');
     expect(
@@ -456,6 +462,15 @@ class _Fixture {
 }
 
 class _TestDesktopAdapter extends DesktopAdapter {
+  var shown = 0;
+  var listening = false;
+
+  @override
+  Future<void> showMainWindow() async => shown++;
+
+  @override
+  void listenForRelaunches() => listening = true;
+
   Future<void> Function(Map<String, Object?>, {required bool initial})?
       richCapture;
 

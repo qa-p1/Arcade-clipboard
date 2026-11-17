@@ -167,6 +167,30 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
     await windowManager.focus();
   }
 
+  /// Linux: a second launch (`--show`, `--quit`, a plain start...) forwards
+  /// here from the native runner's single instance. Also called when the
+  /// profile could not open, so that instance can still be shown and quit.
+  void listenForRelaunches() {
+    if (!Platform.isLinux) return;
+    const MethodChannel('arcade_clipboard/instance')
+        .setMethodCallHandler((call) async {
+      if (call.method == 'overlay') {
+        await _requestOverlay();
+      } else if (call.method == 'show') {
+        await showMainWindow();
+      } else if (call.method == 'hide') {
+        await hideMainWindow();
+      } else if (call.method == 'toggle') {
+        await toggleMainWindow();
+      } else if (call.method == 'settings') {
+        await showMainWindow();
+        onOpenSettings?.call();
+      } else if (call.method == 'quit') {
+        await _quit();
+      }
+    });
+  }
+
   /// `--toggle`: hides a visible window, shows a hidden one.
   Future<void> toggleMainWindow() async {
     if (await windowManager.isVisible()) {
@@ -395,26 +419,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
         _exitSignals.add(signal.watch().listen((_) => unawaited(_quit())));
       }
     }
-    if (Platform.isLinux) {
-      // Relaunches forward here from the native runner (single instance).
-      const MethodChannel('arcade_clipboard/instance')
-          .setMethodCallHandler((call) async {
-        if (call.method == 'overlay') {
-          await _requestOverlay();
-        } else if (call.method == 'show') {
-          await showMainWindow();
-        } else if (call.method == 'hide') {
-          await hideMainWindow();
-        } else if (call.method == 'toggle') {
-          await toggleMainWindow();
-        } else if (call.method == 'settings') {
-          await showMainWindow();
-          onOpenSettings?.call();
-        } else if (call.method == 'quit') {
-          await _quit();
-        }
-      });
-    }
+    listenForRelaunches();
     _bridge.setLifecycleHandler((action) async {
       if (action == 'showMainWindow') {
         await windowManager.show();
