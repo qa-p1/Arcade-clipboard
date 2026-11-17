@@ -6,7 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 /// A stand-in for wl-paste: `--list-types` prints [types]; reading a type
 /// prints "clip text" and records that it was read in [log].
-Future<(String, File)> _fakeWlPaste(Directory folder, List<String> types) async {
+Future<(String, File)> _fakeWlPaste(
+    Directory folder, List<String> types) async {
   final log = File('${folder.path}/reads.log');
   final script = File('${folder.path}/wl-paste');
   await script.writeAsString('''#!/bin/sh
@@ -43,8 +44,7 @@ void main() {
     }
   });
 
-  test('an ordinary selection is read, and is not marked sensitive',
-      () async {
+  test('an ordinary selection is read, and is not marked sensitive', () async {
     final folder = await Directory.systemTemp.createTemp('wl-paste-test');
     addTearDown(() => folder.delete(recursive: true));
     final (wlPaste, _) =

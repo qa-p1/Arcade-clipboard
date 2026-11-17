@@ -2,6 +2,7 @@
 packaging/windows/arcade.iss -text
 packaging/windows/arcade.nsh -text
 packaging/windows/arcade-integration.ps1 -text
+apps/flutter_app/linux/runner/arcade_trim.h -text
 tools/validate_shortcuts.py -text
 spec/shortcuts.schema.json -text
 spec/vectors/shortcuts.json -text

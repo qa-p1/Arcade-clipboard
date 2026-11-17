@@ -11,9 +11,9 @@ assets/strings/install.json is copied unchanged from Arcade Link tag v1.0.8 (com
 34f8030e494c0c662a5f95efd8e868c8536b9989), the wording Link's installer shows:
   assets/strings/install.json SHA-256 2567789e4eba440240fcf4de8c1e43f126b0eb0aadc6306d743e299cb4c80407
 
-The Linux runner's memory trimmer is copied unchanged from Arcade Link tag v1.0.8 (commit
-34f8030e494c0c662a5f95efd8e868c8536b9989), `qt/arcade_trim.h`, the C twin of `arcade_link::runtime::trim`
-(RT-5; the file is identical at v1.0.7, v1.0.9 and Link main). License: MIT OR Apache-2.0.
+The Linux runner's memory trimmer is copied unchanged from Arcade Link tag v1.0.13 (commit
+a24146fd87ff77ed362f518a414eaf266512f839), `qt/arcade_trim.h`, the C twin of `arcade_link::runtime::trim`
+(RT-5; the file is identical from v1.0.7 to v1.0.13). License: MIT OR Apache-2.0.
   apps/flutter_app/linux/runner/arcade_trim.h SHA-256 9c1d65cac63d7aa59b705c442b8840a7f9576a9bfcbeaf39e5630bb303485131
 
 Arcade design kit files are copied unchanged from Arcade Link tag v1.0.13 (commit
