@@ -7,6 +7,10 @@ and versions follow [Semantic Versioning](https://semver.org/).
 
 ## [1.0.0] - 2026-11-17
 
+### Fixed
+- `--status` and `--hide`, run from a downloaded AppImage while another copy is installed, no longer wait on the
+  install dialog: they answer (or do nothing) at once, like `--quit`.
+
 ### Changed
 - **Less memory in the background (Linux).** Clipboard now gives back memory it no longer needs a few seconds after
   it starts and two seconds after you close its window, and the AppImage runs from a copy of itself in your user
