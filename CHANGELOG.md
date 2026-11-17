@@ -5,6 +5,8 @@ and versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-17
+
 ### Changed
 - **Less memory in the background (Linux).** Clipboard now gives back memory it no longer needs a few seconds after
   it starts and two seconds after you close its window, and the AppImage runs from a copy of itself in your user
@@ -12,6 +14,20 @@ and versions follow [Semantic Versioning](https://semver.org/).
   only asks something (`--status`, `--version`, `--restart`) does not make one.
 - `arcade-clipboard --restart` answers at once without starting the app's window code, like `--status`.
 - Pictures in the history use at most 24 MiB of memory for their previews (Flutter's default is 100 MiB).
+- The Linux AppImage is built on Ubuntu 22.04, so it starts on distributions with an older C library (glibc 2.35
+  and later); 0.3.2 needed glibc 2.39.
+- The AppImage also installs Clipboard's monochrome icon under its desktop id (`dev.arcade.Clipboard-symbolic`).
+- `SECURITY.md` describes what Clipboard guards and how; `THIRD_PARTY_NOTICES.md` lists every third-party part the
+  packages ship, with its licence, and travels in the AppImage.
+- Arcade Link 1.0.13 and its design kit.
+
+### Security
+- A copied file is read only when it is a regular file, and only up to the size that was checked: a copied device
+  or pipe (such as `/dev/zero`) could make Clipboard read without end.
+- A file clip you copy or paste is written in the clear to `clipboard-files` so other apps can paste it. Now only
+  the one copied last is kept there; it is removed when you delete the clip or clear the whole history.
+- On Linux and macOS, Clipboard's data folder (history, settings, logs) and that file folder are readable by you
+  alone (mode 0700).
 
 ## [0.3.2] - 2026-11-06
 

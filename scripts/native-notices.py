@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Record the Ubuntu packages whose files the Linux AppImage bundles, for THIRD_PARTY_NOTICES.md.
 
-  scripts/native-notices.py Arcade-Clipboard-0.3.2-x86_64.AppImage           # rewrite packaging/linux/native/
-  scripts/native-notices.py --check Arcade-Clipboard-0.3.2-x86_64.AppImage   # fail if the record or the image is wrong
+  scripts/native-notices.py Arcade-Clipboard-1.0.0-x86_64.AppImage           # rewrite packaging/linux/native/
+  scripts/native-notices.py --check Arcade-Clipboard-1.0.0-x86_64.AppImage   # fail if the record or the image is wrong
 
 Runs on the build host (Ubuntu 22.04 in CI, the oldest supported), where scripts/dev build-linux copied the one system library the bundle
 carries (libkeybinder) from. Every ELF file in the image is mapped to the Debian package that installed it
