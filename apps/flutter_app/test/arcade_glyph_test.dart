@@ -28,13 +28,11 @@ void main() {
   testWidgets('Shelf and Find glyphs paint in their accents', (tester) async {
     await tester.pumpWidget(MaterialApp(
         theme: arcadeTheme(Brightness.light, 'arcade.clipboard'),
-        home: const Row(children: [
-          ArcadeGlyph('arcade.shelf'),
-          ArcadeGlyph('arcade.find')
-        ])));
-    expect(find.byType(ArcadeGlyph), findsNWidgets(2));
-    final context = tester.element(find.byType(ArcadeGlyph).first);
-    expect(ArcadeGlyph.accentOf(context, 'arcade.shelf'),
+        home: const Row(
+            children: [PeerGlyph('arcade.shelf'), PeerGlyph('arcade.find')])));
+    expect(find.byType(PeerGlyph), findsNWidgets(2));
+    final context = tester.element(find.byType(PeerGlyph).first);
+    expect(PeerGlyph.accentOf(context, 'arcade.shelf'),
         arcadeAccents['arcade.shelf']!.light);
     expect(tester.takeException(), isNull);
   });
