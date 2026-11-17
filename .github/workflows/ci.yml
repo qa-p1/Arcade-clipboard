@@ -26,6 +26,17 @@ defaults:
     working-directory: App dev/Arcade-clipboard
 
 jobs:
+  deny:
+    name: cargo deny (advisories, licences, bans, sources)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check
+          arguments: --workspace --all-features
+
   rust:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -51,7 +62,9 @@ jobs:
         run: python3 scripts/verify-identity-migration.py --debug
   linux:
     name: Linux build and AppImage smoke
-    runs-on: ubuntu-24.04
+    # The AppImage carries programs built here: 0.3.2 was built on 24.04 and needs glibc 2.39, so it does not start
+    # on 22.04, where Link's gates run the published AppImage. Built on 22.04, it starts there and on every later one.
+    runs-on: ubuntu-22.04
     timeout-minutes: 45
     env:
       RUSTUP_TOOLCHAIN: '1.98.1'
