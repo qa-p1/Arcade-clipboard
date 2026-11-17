@@ -348,10 +348,17 @@ MyApplication* my_application_new() {
 
   // One instance per user. Development profiles (ARCADE_DATA_DIR) may run
   // side by side, e.g. to pair two local clients.
+  // G_APPLICATION_DEFAULT_FLAGS is GLib 2.74; Ubuntu 22.04 (the build host) has 2.72, where the same value is
+  // G_APPLICATION_FLAGS_NONE, which newer GLib deprecates.
+#if GLIB_CHECK_VERSION(2, 74, 0)
+  const GApplicationFlags default_flags = G_APPLICATION_DEFAULT_FLAGS;
+#else
+  const GApplicationFlags default_flags = G_APPLICATION_FLAGS_NONE;
+#endif
   const gchar* data_dir = g_getenv("ARCADE_DATA_DIR");
   const GApplicationFlags flags = data_dir != nullptr && *data_dir != '\0'
                                       ? G_APPLICATION_NON_UNIQUE
-                                      : G_APPLICATION_DEFAULT_FLAGS;
+                                      : default_flags;
   return MY_APPLICATION(g_object_new(my_application_get_type(),
                                      "application-id", APPLICATION_ID, "flags",
                                      flags, nullptr));
