@@ -4,7 +4,7 @@
   scripts/native-notices.py Arcade-Clipboard-0.3.2-x86_64.AppImage           # rewrite packaging/linux/native/
   scripts/native-notices.py --check Arcade-Clipboard-0.3.2-x86_64.AppImage   # fail if the record or the image is wrong
 
-Runs on the build host (Ubuntu 24.04 in CI), where scripts/dev build-linux copied the one system library the bundle
+Runs on the build host (Ubuntu 22.04 in CI, the oldest supported), where scripts/dev build-linux copied the one system library the bundle
 carries (libkeybinder) from. Every ELF file in the image is mapped to the Debian package that installed it
 (`dpkg -S`); each package's `copyright` file is kept under packaging/linux/native/copyright/, and packages.json
 names its source package. Versions are not recorded, so an Ubuntu security update does not change the result. An
@@ -149,8 +149,14 @@ def write(packages, into):
         bare, source, text = package_info(package)
         record[bare] = {"source": source}
         (into / "copyright" / f"{bare}.txt").write_text(text, encoding="utf-8")
-    (into / "packages.json").write_text(json.dumps({"host": "Ubuntu 24.04", "packages": record}, indent=2) + "\n",
+    (into / "packages.json").write_text(json.dumps({"host": host(), "packages": record}, indent=2) + "\n",
                                         encoding="utf-8")
+
+
+def host():
+    """The build host's distribution, e.g. "Ubuntu 22.04": the record is only valid for the host it came from."""
+    fields = dict(line.split("=", 1) for line in Path("/etc/os-release").read_text().splitlines() if "=" in line)
+    return f"{fields.get('NAME', '').strip(chr(34))} {fields.get('VERSION_ID', '').strip(chr(34))}".strip()
 
 
 def snapshot(folder):

@@ -256,7 +256,7 @@ def flutter_component(flutter):
 def link_vendored(meta):
     """The Arcade Link files copied into this repository, with the version scripts/VENDORED records."""
     record = (ROOT / "scripts" / "VENDORED").read_text(encoding="utf-8")
-    versions = set(re.findall(r"tag (v\d+\.\d+\.\d+) \(commit ([0-9a-f]{40})\)", record))
+    versions = set(re.findall(r"tag (v\d+\.\d+\.\d+) \(commit\s+([0-9a-f]{40})\)", record))
     if len(versions) != 1:
         sys.exit(f"notices: scripts/VENDORED names more than one Arcade Link version: {sorted(versions)}")
     tag, commit = versions.pop()

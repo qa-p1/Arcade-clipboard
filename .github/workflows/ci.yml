@@ -96,6 +96,20 @@ jobs:
           release_version="$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)"
           bash scripts/dev build-appimage --version "$release_version"
           sha256sum "dist/Arcade-Clipboard-$release_version-x86_64.AppImage" > "dist/Arcade-Clipboard-$release_version-x86_64.AppImage.sha256"
+      # THIRD_PARTY_NOTICES.md must match the dependency graph (scripts/notices.py), and packaging/linux/native/
+      # the libraries this AppImage bundles from this host; on a mismatch the regenerated record is uploaded.
+      - name: Third-party notices (repository and AppImage)
+        run: |
+          release_version="$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)"
+          python3 scripts/notices.py --check
+          python3 scripts/native-notices.py --check "dist/Arcade-Clipboard-$release_version-x86_64.AppImage"
+      - name: Upload the regenerated native notices
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: native-notices
+          path: App dev/Arcade-clipboard/packaging/linux/native
+          if-no-files-found: ignore
       - name: Smoke test AppImage CLI under Xvfb
         run: |
           release_version="$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)"

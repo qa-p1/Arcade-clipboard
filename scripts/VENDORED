@@ -1,5 +1,5 @@
-Arcade Link shared installer and shortcut assets are copied unchanged from tag v1.0.8 (commit
-34f8030e494c0c662a5f95efd8e868c8536b9989); the files are the same as at 4c75f3a (v0.3.0 plus installer fixes):
+Arcade Link shared installer and shortcut assets are copied unchanged from tag v1.0.13 (commit
+a24146fd87ff77ed362f518a414eaf266512f839); the files are the same from v1.0.8 to v1.0.13:
   packaging/windows/arcade.iss SHA-256 fe152028ff674fdacdef4aed8970bb0a7afeb2dd67d2a3af075d7d95683bf96b
   packaging/windows/arcade.nsh SHA-256 1f548b420bc08b479d6c65801a208aa67dc80fef851b5e2a49696d307562831e
   packaging/windows/arcade-integration.ps1 SHA-256 2b2a8b699dc1e6c81c02bb9ad9be1ddf2f8a5447541eb1dfe886056aa5dc4fd6
@@ -7,8 +7,8 @@ Arcade Link shared installer and shortcut assets are copied unchanged from tag v
   spec/shortcuts.schema.json SHA-256 68e8ed4c5adae97895b215813f5a528b53f2b720bb428112e94ab35489269a1a
   spec/vectors/shortcuts.json SHA-256 2691d5b60314b7060bac5c219ada25edbfdc30829ea8a22d7496714afe2d4cc5
 
-assets/strings/install.json is copied unchanged from Arcade Link tag v1.0.8 (commit
-34f8030e494c0c662a5f95efd8e868c8536b9989), the wording Link's installer shows:
+assets/strings/install.json is copied unchanged from Arcade Link tag v1.0.13 (commit
+a24146fd87ff77ed362f518a414eaf266512f839), the wording Link's installer shows:
   assets/strings/install.json SHA-256 2567789e4eba440240fcf4de8c1e43f126b0eb0aadc6306d743e299cb4c80407
 
 The Linux runner's memory trimmer is copied unchanged from Arcade Link tag v1.0.13 (commit
