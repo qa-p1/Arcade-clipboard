@@ -384,7 +384,7 @@ class _OverlayLinkAction extends StatelessWidget {
             padding: const EdgeInsets.symmetric(
                 horizontal: ArcadeTokens.space8, vertical: ArcadeTokens.space4),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
-              ArcadeGlyph(action.peer, size: ArcadeTokens.iconSize),
+              PeerGlyph(action.peer, size: ArcadeTokens.iconSize),
               const SizedBox(width: ArcadeTokens.space6),
               Text(action.title,
                   style: ArcadeTokens.textControl.copyWith(color: c.text)),

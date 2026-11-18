@@ -167,6 +167,30 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
     await windowManager.focus();
   }
 
+  /// Linux: a second launch (`--show`, `--quit`, a plain start...) forwards
+  /// here from the native runner's single instance. Also called when the
+  /// profile could not open, so that instance can still be shown and quit.
+  void listenForRelaunches() {
+    if (!Platform.isLinux) return;
+    const MethodChannel('arcade_clipboard/instance')
+        .setMethodCallHandler((call) async {
+      if (call.method == 'overlay') {
+        await _requestOverlay();
+      } else if (call.method == 'show') {
+        await showMainWindow();
+      } else if (call.method == 'hide') {
+        await hideMainWindow();
+      } else if (call.method == 'toggle') {
+        await toggleMainWindow();
+      } else if (call.method == 'settings') {
+        await showMainWindow();
+        onOpenSettings?.call();
+      } else if (call.method == 'quit') {
+        await _quit();
+      }
+    });
+  }
+
   /// `--toggle`: hides a visible window, shows a hidden one.
   Future<void> toggleMainWindow() async {
     if (await windowManager.isVisible()) {
@@ -198,13 +222,35 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
         Platform.environment, Platform.resolvedExecutable, File.new);
     try {
       await Process.start(executable, ['--background'],
-          environment: {restartEnvironment: '$pid'},
+          environment: successorEnvironment(
+              Platform.environment, Platform.resolvedExecutable, pid),
+          includeParentEnvironment: false,
           mode: ProcessStartMode.detached);
     } catch (error) {
       Diagnostics.log('lifecycle', 'restart failed: $error');
       return;
     }
     await _quit();
+  }
+
+  /// The environment of the process [restart] starts: this one's, plus the old
+  /// process id the successor waits for. A resident running from its unpacked
+  /// copy (`<data>/arcade/runtime/clipboard-<version>-<key>/`, Link U1) has
+  /// `ARCADE_UNPACKED` set, which would make the successor's own launcher
+  /// believe it already is the copy and keep it on the AppImage mount; it is
+  /// dropped so the successor unpacks (or reuses) the copy as a fresh start
+  /// does. Anywhere else (a test harness that sets it on purpose) it stays.
+  @visibleForTesting
+  static Map<String, String> successorEnvironment(
+      Map<String, String> environment, String resolvedExecutable, int pid) {
+    final fromCopy = RegExp(r'/arcade/runtime/clipboard-[^/]+/')
+        .hasMatch(resolvedExecutable);
+    return {
+      for (final entry in environment.entries)
+        if (!(fromCopy && entry.key == 'ARCADE_UNPACKED'))
+          entry.key: entry.value,
+      restartEnvironment: '$pid',
+    };
   }
 
   /// The program a restart starts. Inside an AppImage
@@ -373,26 +419,7 @@ class DesktopAdapter with WidgetsBindingObserver, WindowListener {
         _exitSignals.add(signal.watch().listen((_) => unawaited(_quit())));
       }
     }
-    if (Platform.isLinux) {
-      // Relaunches forward here from the native runner (single instance).
-      const MethodChannel('arcade_clipboard/instance')
-          .setMethodCallHandler((call) async {
-        if (call.method == 'overlay') {
-          await _requestOverlay();
-        } else if (call.method == 'show') {
-          await showMainWindow();
-        } else if (call.method == 'hide') {
-          await hideMainWindow();
-        } else if (call.method == 'toggle') {
-          await toggleMainWindow();
-        } else if (call.method == 'settings') {
-          await showMainWindow();
-          onOpenSettings?.call();
-        } else if (call.method == 'quit') {
-          await _quit();
-        }
-      });
-    }
+    listenForRelaunches();
     _bridge.setLifecycleHandler((action) async {
       if (action == 'showMainWindow') {
         await windowManager.show();

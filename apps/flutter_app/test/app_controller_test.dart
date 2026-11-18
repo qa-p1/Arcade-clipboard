@@ -22,10 +22,12 @@ void main() {
         await Directory.systemTemp.createTemp('arcade-start-test-');
     final core = FakeCoreApi(hasMesh: false);
     core.failures['initialize'] = Exception('Secure identity unavailable');
+    final desktop = _TestDesktopAdapter();
     final controller = AppController(
       core: core,
-      desktop: _TestDesktopAdapter(),
+      desktop: desktop,
       dataDirectory: directory,
+      startInBackground: true,
     );
     addTearDown(() async {
       controller.dispose();
@@ -34,6 +36,10 @@ void main() {
     await controller.start();
     final startupError = controller.error;
     expect(controller.ready, isFalse);
+    // Even after a --background start: the error needs the user, and a second
+    // launch or --quit must still reach this instance.
+    expect(desktop.shown, 1);
+    expect(desktop.listening, isTrue);
     await controller.createMesh('Laptop');
     await controller.joinMesh(invite: 'invite', deviceName: 'Laptop');
     expect(
@@ -380,6 +386,24 @@ void main() {
     expect(mimes, contains('text/html'));
   });
 
+  test('a copy marked sensitive by a password manager is never stored',
+      () async {
+    final fixture = await _Fixture.create(hasMesh: true);
+    addTearDown(fixture.dispose);
+    await fixture.desktop.richCapture!({
+      'sensitive': true,
+      'formats': [
+        {
+          'mimeType': 'text/plain',
+          'bytes': Uint8List.fromList(utf8.encode('hunter2'))
+        }
+      ],
+      'files': <Object?>[],
+    }, initial: false);
+    expect(fixture.core.calls.where((call) => call.operation == 'capture'),
+        isEmpty);
+  });
+
   test('CB-2: an oversize copy shows a notice instead of vanishing', () async {
     final fixture = await _Fixture.create(hasMesh: true);
     addTearDown(fixture.dispose);
@@ -438,6 +462,15 @@ class _Fixture {
 }
 
 class _TestDesktopAdapter extends DesktopAdapter {
+  var shown = 0;
+  var listening = false;
+
+  @override
+  Future<void> showMainWindow() async => shown++;
+
+  @override
+  void listenForRelaunches() => listening = true;
+
   Future<void> Function(Map<String, Object?>, {required bool initial})?
       richCapture;
 

@@ -185,6 +185,10 @@ pub fn automatic_prompt(
         "--integration-status",
         "--quit",
         "--restart",
+        // Questions and closing commands never prompt: a hidden window waiting on the install dialog left
+        // `--status` hanging (Link's Tier 2 smoke timed out on it).
+        "--status",
+        "--hide",
         "--overlay",
         "--help",
         "-h",
@@ -630,6 +634,44 @@ mod tests {
             None
         );
         assert_eq!(dialog_state(&detection(State::DevBuild), "0.2.0"), None);
+    }
+
+    #[test]
+    fn questions_and_hide_never_prompt() {
+        let root = std::env::temp_dir().join(format!(
+            "clipboard-prompt-{}",
+            arcade_link::endpoint::new_token().unwrap()
+        ));
+        let env = Environment::under(&root.join("home"));
+        let appdir = root.join("mount");
+        let exe = appdir.join("usr/lib/arcade-clipboard/arcade-clipboard-launcher");
+        let image = root.join("Downloads/Arcade-Clipboard.AppImage");
+        fs::create_dir_all(exe.parent().unwrap()).unwrap();
+        fs::create_dir_all(image.parent().unwrap()).unwrap();
+        fs::write(&exe, b"test binary").unwrap();
+        fs::write(&image, b"test appimage").unwrap();
+        let runtime = Runtime {
+            executable: exe,
+            appimage: Some(image),
+            appdir: Some(appdir),
+            dev_build: false,
+        };
+        for command in ["--status", "--hide"] {
+            let args = ["clipboard", command].map(String::from);
+            assert!(
+                automatic_prompt(&args, &env, &runtime).unwrap().is_none(),
+                "{command} prompted"
+            );
+        }
+        // A plain start of a download that is not installed still asks.
+        if std::env::var_os("ARCADE_NO_INSTALL_PROMPT").is_none() {
+            let args = ["clipboard"].map(String::from);
+            assert!(matches!(
+                automatic_prompt(&args, &env, &runtime).unwrap(),
+                Some((_, DialogState::Install))
+            ));
+        }
+        fs::remove_dir_all(&root).unwrap();
     }
 
     #[test]

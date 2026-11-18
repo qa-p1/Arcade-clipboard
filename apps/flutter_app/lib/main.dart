@@ -11,9 +11,11 @@ import 'services/app_controller.dart';
 import 'services/app_settings.dart';
 import 'services/core_api.dart';
 import 'services/desktop_commands.dart';
+import 'services/image_cache_limit.dart';
 
 void main(List<String> arguments) async {
   WidgetsFlutterBinding.ensureInitialized();
+  limitImageCache();
   await _waitForPredecessor();
   // The standard Arcade flags answer and exit without opening any UI.
   if (isHeadlessCommand(arguments, isMacOS: Platform.isMacOS)) {

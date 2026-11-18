@@ -296,6 +296,9 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
               ? Directory(configuredDataDir)
               : await getApplicationSupportDirectory());
       await support.create(recursive: true);
+      // History, settings and logs: headers, device names and the relay
+      // address are not encrypted, so the folder is the user's alone.
+      await _makePrivate(support);
       _supportDirectory = support;
       // Recent diagnostics lines for Tools' "Report a problem" (manifest `logs`).
       unawaited(Diagnostics.configure(support).then((_) {
@@ -440,6 +443,18 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       if (_openSettingsOnStart) settingsRequests.value++;
     } catch (exception) {
       _setError(exception, source: 'startup');
+      if (desktopAvailable && !_desktopReady) {
+        // The profile did not open (most often a locked or missing keyring),
+        // so there is no tray and no Link. The error needs the user (unlock,
+        // then Try again): show it even after a --background start, and keep
+        // a second launch and --quit working.
+        _desktop.listenForRelaunches();
+        try {
+          await _desktop.showMainWindow();
+        } catch (_) {
+          // No window manager plugin (tests); the page still shows the error.
+        }
+      }
     } finally {
       _loading = false;
       _notifyListeners();
@@ -836,6 +851,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> deleteItem(ClipboardItem item) async => _perform(() async {
         await _core.invoke('delete', {'id': item.id});
+        await _removeFileExports(only: item);
         await refreshHistory(query: _query);
       });
 
@@ -1005,6 +1021,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> clearHistory({bool includePinned = false}) => _perform(() async {
         await _core.invoke('clear_history', {'include_pinned': includePinned});
+        if (includePinned) await _removeFileExports();
         await refreshHistory(query: _query);
         _notice =
             includePinned ? 'History cleared.' : 'Unpinned history cleared.';
@@ -1359,6 +1376,41 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     _notifyListeners();
   }
 
+  /// Removes the clear copies of exported file clips: [only]'s, or all.
+  Future<void> _removeFileExports({ClipboardItem? only}) async {
+    final support = _supportDirectory;
+    if (support == null) return;
+    final root = '${support.path}/clipboard-files';
+    final target = Directory(only == null
+        ? root
+        : '$root/${only.id.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_')}');
+    try {
+      if (await target.exists()) await target.delete(recursive: true);
+    } on FileSystemException {
+      // In use by an app still reading a paste; removed with the next export.
+    }
+  }
+
+  /// The folder a file clip is written to so the system clipboard can offer
+  /// it as files. Only the clip copied last is kept there in the clear: the
+  /// clipboard holds one copy at a time, so earlier exports are removed, and
+  /// the folder is private to the user (0700, [_makePrivate]).
+  Future<Directory> _fileExportDirectory(ClipboardItem item) async {
+    final root = Directory('${_supportDirectory!.path}/clipboard-files');
+    final id = item.id.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+    await root.create(recursive: true);
+    await _makePrivate(root);
+    await for (final entry in root.list(followLinks: false)) {
+      if (entry.uri.pathSegments.lastWhere((s) => s.isNotEmpty) == id) continue;
+      try {
+        await entry.delete(recursive: true);
+      } on FileSystemException {
+        // In use by an app still reading an earlier paste; removed next time.
+      }
+    }
+    return Directory('${root.path}/$id').create();
+  }
+
   Future<void> _copyOrPaste(ClipboardItem item,
       {required bool paste, bool plainText = false}) async {
     final payload = await loadPayload(item);
@@ -1378,13 +1430,12 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     final formats = <Map<String, Object?>>[];
     final files = <String>[];
     final names = <String>{};
+    final isFiles = payload.kind == 'file' || payload.kind == 'files';
+    final directory = isFiles ? await _fileExportDirectory(item) : null;
     for (final representation in payload.representations) {
       final bytes = representation.bytes;
       if (bytes == null) continue;
-      if (payload.kind == 'file' || payload.kind == 'files') {
-        final directory = Directory(
-            '${_supportDirectory!.path}/clipboard-files/${item.id.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_')}');
-        await directory.create(recursive: true);
+      if (directory != null) {
         var name = (representation.name ?? 'Shared file')
             .replaceAll(RegExp(r'[/\\<>:"|?*\x00-\x1f]'), '_')
             .replaceAll(RegExp(r'[. ]+$'), '');
@@ -1762,4 +1813,18 @@ int? _latestInt(int? first, int? second) {
   if (first == null) return second;
   if (second == null) return first;
   return first > second ? first : second;
+}
+
+/// Mode 0700 on [directory] where the system has modes (Linux, macOS); the
+/// Windows and mobile app folders are per-user already.
+Future<void> _makePrivate(Directory directory) async {
+  if (!Platform.isLinux && !Platform.isMacOS) return;
+  try {
+    final result = await Process.run('chmod', ['700', directory.path]);
+    if (result.exitCode != 0) {
+      Diagnostics.log('folders', 'could not make a folder private');
+    }
+  } on ProcessException {
+    Diagnostics.log('folders', 'could not make a folder private');
+  }
 }

@@ -44,6 +44,8 @@ FILES = [
     ("design/glyphs/", APP + "assets/arcade/"),
     ("design/tokens.json", APP + "assets/arcade/tokens.json"),
     (ICONS + "icon.svg", "packaging/linux/dev.arcade.Clipboard.svg"),
+    # The symbolic tray icon under the desktop id, which Link's conformance (ID-3) looks for and the AppImage installs.
+    ("design/glyphs/arcade.clipboard.svg", "packaging/linux/dev.arcade.Clipboard-symbolic.svg"),
     (ICONS + "clipboard.ico", APP + "windows/runner/resources/app_icon.ico"),
     (ICONS + "png/256.png", "assets/logo.png"),
     *[(f"{ICONS}android/mipmap-{d}/", f"{APP}android/app/src/main/res/mipmap-{d}/")

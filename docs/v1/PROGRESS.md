@@ -2,6 +2,41 @@
 
 Detail for `qa-p1/Arcade-catalog` › `dev/v1/PROGRESS.md`. Newest first.
 
+## 2026-11-15 (cloud session) - step 5
+
+- **Memory (step 5):** decisions in `docs/v1/DECISIONS.md` (D8). U1: the AppImage launcher moves a resident start to
+  the unpacked copy (`<data>/arcade/runtime/clipboard-<version>-<key>/`) and exits; one-shot commands stay on the
+  mount; a restart keeps the copy. W0/CB1a: the runner trims 5 s after the first frame and 2 s after each hide (Link's
+  `arcade_trim.h`, vendored). CB2: `--restart` is answered by the runner through the core without starting the engine
+  (`--version` and `--status` already were); `--arcade-manifest` still starts it (see D8). CB4: image cache 24 MiB.
+  Not done: CB1b, CB3, retention, W1/W3b/OPEN1 (WebKit only). **Link stays at v1.0.8**: the tag v1.0.10 did not exist
+  when this was written, so the dependency bump (and the uninstall that removes the copies) is still to do.
+- **Tested locally** (Flutter 3.47.2 from the CI pin, Rust 1.98.1, Xvfb; Linux x86_64):
+  - `python3 scripts/check-docs.py`: passed (71 local links, 63 vendored checksums).
+  - `cargo +1.98.1 fmt --all --check`: clean.
+  - `cargo +1.98.1 clippy --workspace --all-targets --locked -- -D warnings`: clean.
+  - `cargo +1.98.1 clippy -p arcade_core --lib --locked --target x86_64-pc-windows-gnu -- -D warnings` and the same for
+    `-p arcade-clipboard-launcher`: clean.
+  - `cargo +1.98.1 test --workspace --locked`: all pass (launcher 7, core 88 passed and 1 ignored, relay 6 and 4).
+  - `scripts/check flutter` (dart format, `flutter analyze`, `flutter test`): exit 0, 50 tests passed (3 new).
+  - `scripts/dev build-linux`: built; `scripts/dev build-appimage --version 0.3.2`: built.
+  - CI's AppImage smoke (`--version`, `--arcade-manifest` id): passed.
+  - `scripts/verify-appimage.py` through Link v1.0.8's `tools/e2e.py run -- xvfb-run`: passed, including the new resident
+    check (copy, launcher exit 0, no mount mappings, `--status`, `--restart`, `--quit`).
+  - `tests/folder-migration.py` on the new bundle through the e2e runner: passed.
+  - Trim by hand on the bundle under Xvfb (isolated Secret Service): RSS 302 to 169 MB at the startup trim, 251 to 180
+    MB 2 s after a hide; a hide followed by a show 0.4 s later did not trim; `strace` counted two reads of
+    `/proc/self/smaps` in that run. `--restart` without and with a resident: exit 1 with the old message, exit 0 and a
+    new process, each in 20 ms with no display.
+  - The new tests fail without their change: `starts_resident` always true (launcher test fails), the C ABI returning 0
+    (core test fails), the cap at 100 MiB and the marker kept (Dart tests fail), the launcher's relaunch disabled
+    (`verify-appimage.py` fails, "launcher must hand over ... and exit 0"). Without the restart-environment change the
+    first run of `verify-appimage.py` failed at "the restarted resident to run from the unpacked copy"; that fix was made
+    after seeing it, so it has no separate revert run beyond the Dart test.
+- **Not run:** `tests/tray-registration.py` and `lifecycle_bridge_test.cc` (the tray test fails to start here:
+  `ModuleNotFoundError: No module named '_dbus_bindings'` under `/usr/bin/python3`, which is 3.13; not diagnosed further); the Windows, macOS, Android and iOS
+  jobs; the trim on a real GPU or Wayland desktop; Link v1.0.10 (tag missing); the runner without the trim, to compare.
+
 ## 2026-11-15 (cloud session) - step 4
 
 - **Dead code (step 4):** decisions in `docs/v1/DECISIONS.md` (D7). Removed `Core::capture` (Rust), six unused Dart

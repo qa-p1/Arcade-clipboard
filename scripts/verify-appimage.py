@@ -3,10 +3,96 @@
 import json
 import os
 from pathlib import Path
+import re
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
+import time
+
+
+def resident_processes(runtime):
+    """Processes running Clipboard's Flutter runner from an unpacked copy under `runtime` (Link U1), by pid and
+    the copy's folder."""
+    pattern = re.compile(re.escape(str(runtime)) + r"/(clipboard-[0-9][^/]*-[0-9a-f]{16})/usr/lib/arcade-clipboard/clipboard$")
+    found = {}
+    for proc in Path("/proc").iterdir():
+        if not proc.name.isdigit():
+            continue
+        try:
+            match = pattern.match(os.readlink(proc / "exe"))
+        except OSError:
+            continue
+        if match:
+            found[int(proc.name)] = match.group(1)
+    return found
+
+
+def wait_for(condition, what, seconds=60):
+    deadline = time.monotonic() + seconds
+    while time.monotonic() < deadline:
+        value = condition()
+        if value:
+            return value
+        time.sleep(0.2)
+    raise AssertionError(f"Timed out waiting for {what}")
+
+
+def resident_runs_from_copy(installed, cli, env, runtime, version):
+    """U1 (D8): a resident start copies the image once to <data>/arcade/runtime/clipboard-<version>-<key>/, runs the
+    Flutter runner from there and the launcher that started it exits 0, so no AppImage runtime or mount stays
+    behind. One-shot commands and --restart's successor follow the same rule. The resident is stopped at the end."""
+    with tempfile.TemporaryFile() as log:
+        launcher = subprocess.Popen(
+            [str(installed), "--background"], env=env, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
+            start_new_session=True,
+        )
+        started = {}
+        try:
+            try:
+                code = launcher.wait(timeout=120)
+            except subprocess.TimeoutExpired:
+                code = None
+            assert code == 0, f"The launcher must hand over to the unpacked copy and exit 0 (it {'is still running' if code is None else f'exited {code}'})"
+            started = wait_for(lambda: resident_processes(runtime), "the resident to run from the unpacked copy")
+            assert len(started) == 1, started
+            ((pid, copy),) = started.items()
+            assert copy.startswith(f"clipboard-{version}-"), copy
+            assert (runtime / copy / ".complete").is_file(), "The unpacked copy is not complete"
+            # Nothing the resident maps comes from the image's mount or extraction folder.
+            maps = Path(f"/proc/{pid}/maps").read_text(encoding="utf-8")
+            assert ".mount_" not in maps and "appimage_extracted_" not in maps, "The resident still maps the AppImage"
+            # It answers on the Link, and a Restart replaces it by another resident from the same copy.
+            def status():
+                answer = subprocess.run([str(cli), "--status"], env=env, text=True, encoding="utf-8",
+                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60)
+                return answer.returncode == 0 and json.loads(answer.stdout)["running"] is True
+            wait_for(status, "the resident to answer --status")
+            restart = subprocess.run([str(cli), "--restart"], env=env, text=True, encoding="utf-8",
+                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60)
+            assert restart.returncode == 0 and restart.stderr == "", restart
+            successor = wait_for(lambda: {p: c for p, c in resident_processes(runtime).items() if p != pid} or None,
+                                 "the restarted resident to run from the unpacked copy")
+            assert set(successor.values()) == {copy}, successor
+            wait_for(lambda: not Path(f"/proc/{pid}").exists(), "the first resident to exit")
+            wait_for(status, "the restarted resident to answer --status")
+            quit_ = subprocess.run([str(cli), "--quit"], env=env, text=True, encoding="utf-8",
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60)
+            assert quit_.returncode == 0, quit_
+            wait_for(lambda: not resident_processes(runtime), "the resident to quit", seconds=30)
+        except BaseException:
+            log.seek(0)
+            print(log.read().decode(errors="replace")[-4000:], file=sys.stderr)
+            raise
+        finally:
+            for pid in resident_processes(runtime):
+                os.kill(pid, signal.SIGKILL)
+            try:
+                os.killpg(launcher.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            launcher.wait()
 
 
 def main():
@@ -18,7 +104,7 @@ def main():
         root = Path(temporary).resolve()
         assert all(not (parent / ".git").exists() for parent in (root, *root.parents))
         env = os.environ.copy()
-        for key in ("APPIMAGE", "APPDIR", "ARCADE_DEV_BUILD", "LD_LIBRARY_PATH"):
+        for key in ("APPIMAGE", "APPDIR", "ARCADE_DEV_BUILD", "ARCADE_UNPACKED", "LD_LIBRARY_PATH"):
             env.pop(key, None)
         for key, directory in (
             ("HOME", "home"), ("XDG_CONFIG_HOME", "config"), ("XDG_DATA_HOME", "data"),
@@ -82,6 +168,7 @@ def main():
         line = json.loads(answer.stdout)
         assert line["app"] == "arcade.clipboard" and line["version"] == expected_version, line
         assert line["running"] is False and line["link"] in ("on", "off", "unregistered"), line
+        resident_runs_from_copy(installed, cli, env, Path(env["XDG_DATA_HOME"]) / "arcade/runtime", expected_version)
         status = json.loads(run(cli, "--integration-status"))
         assert status["receipt"] == receipt and all(entry["exists"] for entry in status["entries"]), status
         desktop.unlink()
@@ -100,7 +187,7 @@ def main():
         for profile_home in (Path(env["HOME"]), install_home):
             for name in (".profile", ".bash_profile", ".bashrc", ".zprofile", ".zshrc"):
                 assert not (profile_home / name).exists(), f"Installer created {name}"
-        print("Clipboard AppImage install, channel, receipt, launcher, icons, CLI, repair and uninstall passed (isolated CI smoke)")
+        print("Clipboard AppImage install, channel, receipt, launcher, icons, CLI, resident from the unpacked copy, repair and uninstall passed (isolated CI smoke)")
 
 
 if __name__ == "__main__":

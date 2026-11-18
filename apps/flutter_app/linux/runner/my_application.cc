@@ -8,6 +8,7 @@
 #include <gdk/gdkx.h>
 #endif
 
+#include "arcade_trim.h"
 #include "flutter/generated_plugin_registrant.h"
 
 struct _MyApplication {
@@ -19,7 +20,44 @@ struct _MyApplication {
   // logging was moved to stderr, and the channel Dart writes the answer on.
   int answer_fd;
   FlMethodChannel* answer_channel;
+  // Pending memory trims (W0, CB1a): once after the first frame, and after
+  // each hide of the main window until the window is shown again.
+  guint startup_trim_source;
+  guint hide_trim_source;
 };
+
+// Trimming gives freed heap and the pages of read-only file mappings back;
+// they refault from the page cache, so it costs nothing visible. It runs once
+// after startup and once after each hide, never on a timer while hidden.
+static const guint kTrimAfterFirstFrameMs = 5000;
+static const guint kTrimAfterHideMs = 2000;
+
+static gboolean trim_startup(gpointer data) {
+  MY_APPLICATION(data)->startup_trim_source = 0;
+  arcade_trim();
+  return G_SOURCE_REMOVE;
+}
+
+static gboolean trim_after_hide(gpointer data) {
+  MY_APPLICATION(data)->hide_trim_source = 0;
+  arcade_trim();
+  return G_SOURCE_REMOVE;
+}
+
+static void cancel_trim(guint* source) {
+  if (*source != 0) g_source_remove(*source);
+  *source = 0;
+}
+
+// Every hide of the main window (the close button, the tray, --hide, the
+// picker closing) is a gtk_widget_hide, which unmaps the window.
+static void window_unmapped(MyApplication* self) {
+  cancel_trim(&self->hide_trim_source);
+  self->hide_trim_source = g_timeout_add(kTrimAfterHideMs, trim_after_hide, self);
+}
+
+// A show cancels the trim that a hide scheduled.
+static void window_mapped(MyApplication* self) { cancel_trim(&self->hide_trim_source); }
 
 // A second launch forwards to the running instance through these actions:
 // `clipboard` (or `--show`) shows the main window, `--hide` hides it,
@@ -64,6 +102,11 @@ static void answer_method(FlMethodChannel*, FlMethodCall* call, gpointer user_da
 // Called when first Flutter frame received.
 static void first_frame_cb(MyApplication* self, FlView* view) {
   GtkWidget* window = gtk_widget_get_toplevel(GTK_WIDGET(view));
+  // A few seconds on, once the first frame's startup work has settled; a
+  // login start that never maps the window is trimmed here too.
+  if (self->startup_trim_source == 0) {
+    self->startup_trim_source = g_timeout_add(kTrimAfterFirstFrameMs, trim_startup, self);
+  }
   // Login starts stay in the tray. The window is realized (so the engine has
   // a rendering surface) but never mapped until the user opens it.
   if (self->start_hidden) {
@@ -120,6 +163,8 @@ static void my_application_activate(GApplication* application) {
   }
 
   gtk_window_set_default_size(window, 1040, 740);
+  g_signal_connect_swapped(window, "map", G_CALLBACK(window_mapped), self);
+  g_signal_connect_swapped(window, "unmap", G_CALLBACK(window_unmapped), self);
 
   g_autoptr(FlDartProject) project = fl_dart_project_new();
   fl_dart_project_set_dart_entrypoint_arguments(
@@ -275,6 +320,8 @@ static void my_application_shutdown(GApplication* application) {
 // Implements GObject::dispose.
 static void my_application_dispose(GObject* object) {
   MyApplication* self = MY_APPLICATION(object);
+  cancel_trim(&self->startup_trim_source);
+  cancel_trim(&self->hide_trim_source);
   g_clear_pointer(&self->dart_entrypoint_arguments, g_strfreev);
   g_clear_object(&self->instance_channel);
   g_clear_object(&self->answer_channel);
@@ -301,10 +348,17 @@ MyApplication* my_application_new() {
 
   // One instance per user. Development profiles (ARCADE_DATA_DIR) may run
   // side by side, e.g. to pair two local clients.
+  // G_APPLICATION_DEFAULT_FLAGS is GLib 2.74; Ubuntu 22.04 (the build host) has 2.72, where the same value is
+  // G_APPLICATION_FLAGS_NONE, which newer GLib deprecates.
+#if GLIB_CHECK_VERSION(2, 74, 0)
+  const GApplicationFlags default_flags = G_APPLICATION_DEFAULT_FLAGS;
+#else
+  const GApplicationFlags default_flags = G_APPLICATION_FLAGS_NONE;
+#endif
   const gchar* data_dir = g_getenv("ARCADE_DATA_DIR");
   const GApplicationFlags flags = data_dir != nullptr && *data_dir != '\0'
                                       ? G_APPLICATION_NON_UNIQUE
-                                      : G_APPLICATION_DEFAULT_FLAGS;
+                                      : default_flags;
   return MY_APPLICATION(g_object_new(my_application_get_type(),
                                      "application-id", APPLICATION_ID, "flags",
                                      flags, nullptr));

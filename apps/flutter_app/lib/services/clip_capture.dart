@@ -92,11 +92,14 @@ Future<CapturedCopy> captureCopy(Map<String, Object?> clipboard) async {
         continue;
       }
       final file = File(path);
-      if (!await file.exists()) {
-        Diagnostics.log('capture', 'skipped a copied path: not found');
+      // Only regular files: a device or pipe (file:///dev/zero, a FIFO)
+      // reports length 0 and never ends.
+      if (await FileSystemEntity.type(path) != FileSystemEntityType.file) {
+        Diagnostics.log('capture', 'skipped a copied path: not a regular file');
         continue;
       }
-      size += await file.length();
+      final length = await file.length();
+      size += length;
       if (size > maxClipBytes) {
         Diagnostics.log('capture',
             'skipped a copy: over ${maxClipBytes ~/ (1024 * 1024)} MB');
@@ -109,7 +112,7 @@ Future<CapturedCopy> captureCopy(Map<String, Object?> clipboard) async {
       representations.add(ClipRepresentation(
           mimeType: 'application/octet-stream',
           name: name,
-          bytes: await file.readAsBytes()));
+          bytes: await _readAtMost(file, length)));
     }
   } else {
     final formats = clipboard['formats'] as List<dynamic>? ?? const [];
@@ -198,4 +201,14 @@ String _boundedText(String text) {
     size += length;
   }
   return buffer.toString();
+}
+
+/// The first [length] bytes of [file]: a file that grows after its size was
+/// checked is not read past it.
+Future<Uint8List> _readAtMost(File file, int length) async {
+  final builder = BytesBuilder(copy: false);
+  await for (final chunk in file.openRead(0, length)) {
+    builder.add(chunk);
+  }
+  return builder.takeBytes();
 }

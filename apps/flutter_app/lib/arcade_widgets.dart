@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 
+import 'design/arcade_icons.dart';
 import 'design/arcade_theme.dart';
 import 'design/arcade_widgets.dart';
 import 'models.dart';
 import 'services/app_controller.dart';
 import 'services/link_service.dart';
 
-/// Canvas copies of the shared 16px SVG paths, bundled in assets/arcade.
-/// No asset reads occur when a menu opens.
-class ArcadeGlyph extends StatelessWidget {
-  const ArcadeGlyph(this.peer, {super.key, this.color, this.size = 16});
+/// An Arcade app's mark from the design kit, painted in that app's accent
+/// (the kit's [ArcadeGlyph] defaults to the ambient icon colour instead).
+class PeerGlyph extends StatelessWidget {
+  const PeerGlyph(this.peer, {super.key, this.color, this.size = 16});
   final String peer;
   final Color? color;
   final double size;
@@ -24,99 +25,8 @@ class ArcadeGlyph extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-      width: size,
-      height: size,
-      child: CustomPaint(
-          painter: _GlyphPainter(peer, color ?? accentOf(context, peer))));
-}
-
-class _GlyphPainter extends CustomPainter {
-  _GlyphPainter(this.peer, this.color);
-  final String peer;
-  final Color color;
-  @override
-  void paint(Canvas canvas, Size size) {
-    canvas.scale(size.width / 16, size.height / 16);
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5
-      ..strokeJoin = StrokeJoin.round
-      ..strokeCap = StrokeCap.round;
-    final p = Path();
-    switch (peer) {
-      case 'arcade.box':
-        p.moveTo(8, 1.75);
-        p.lineTo(14, 4.75);
-        p.lineTo(14, 11.25);
-        p.lineTo(8, 14.25);
-        p.lineTo(2, 11.25);
-        p.lineTo(2, 4.75);
-        p.close();
-        p.moveTo(2, 4.75);
-        p.lineTo(8, 7.75);
-        p.lineTo(14, 4.75);
-        p.moveTo(8, 7.75);
-        p.lineTo(8, 14.25);
-      case 'arcade.look':
-        p.moveTo(1.25, 8);
-        p.cubicTo(3.75, 3.25, 8, 0, 14.75, 8);
-        p.cubicTo(12.25, 12.75, 8, 16, 1.25, 8);
-        p.close();
-        canvas.drawCircle(const Offset(8, 8), 2, paint);
-      case 'arcade.lens':
-        for (var i = 0; i < 4; i++) {
-          canvas.save();
-          canvas.translate(8, 8);
-          canvas.rotate(i * 1.57079632679);
-          canvas.translate(-8, -8);
-          canvas.drawPath(
-              Path()
-                ..moveTo(1.75, 5)
-                ..lineTo(1.75, 2.75)
-                ..quadraticBezierTo(1.75, 1.75, 2.75, 1.75)
-                ..lineTo(5, 1.75),
-              paint);
-          canvas.restore();
-        }
-        canvas.drawCircle(const Offset(8, 8), 2.25, paint);
-      case 'arcade.tools':
-        canvas.drawCircle(const Offset(8, 8), 5.25, paint);
-        p.moveTo(5, 8);
-        p.lineTo(11, 8);
-        p.moveTo(8, 5);
-        p.lineTo(8, 11);
-      case 'arcade.wheel':
-        canvas.drawCircle(const Offset(8, 8), 6.25, paint);
-        canvas.drawCircle(const Offset(8, 8), 1.75, paint);
-        p.moveTo(8, 1.75);
-        p.lineTo(8, 6.25);
-        p.moveTo(8, 9.75);
-        p.lineTo(8, 14.25);
-        p.moveTo(1.75, 8);
-        p.lineTo(6.25, 8);
-        p.moveTo(9.75, 8);
-        p.lineTo(14.25, 8);
-      case 'arcade.shelf':
-        p.moveTo(1.75, 10.75);
-        p.lineTo(14.25, 10.75);
-        p.lineTo(14.25, 14.25);
-        p.lineTo(1.75, 14.25);
-        p.close();
-        p.addRRect(const RRect.fromLTRBXY(3.25, 4.75, 6.75, 8.75, 0.75, 0.75));
-        p.addRRect(const RRect.fromLTRBXY(8.75, 2, 12.75, 8.75, 0.75, 0.75));
-      case 'arcade.find':
-        canvas.drawCircle(const Offset(7, 7), 4.75, paint);
-        p.moveTo(10.5, 10.5);
-        p.lineTo(14.25, 14.25);
-    }
-    canvas.drawPath(p, paint);
-  }
-
-  @override
-  bool shouldRepaint(_GlyphPainter old) =>
-      peer != old.peer || color != old.color;
+  Widget build(BuildContext context) =>
+      ArcadeGlyph(peer, size: size, color: color ?? accentOf(context, peer));
 }
 
 class LinkActionLabel extends StatelessWidget {
@@ -127,7 +37,7 @@ class LinkActionLabel extends StatelessWidget {
   Widget build(BuildContext context) => SizedBox(
       width: 310,
       child: Row(children: [
-        ArcadeGlyph(action.peer),
+        PeerGlyph(action.peer),
         const SizedBox(width: 10),
         Expanded(
             child: Column(
@@ -270,7 +180,7 @@ class ConnectedAppsSection extends StatelessWidget {
                   'Version $version',
                 _ => null,
               },
-              leading: ArcadeGlyphTile(child: ArcadeGlyph(id)),
+              leading: ArcadeGlyphTile(child: PeerGlyph(id)),
               trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                 ArcadeBadge(label, tone: tone, dot: tone == ArcadeTone.ok),
                 const SizedBox(width: ArcadeTokens.space8),

@@ -74,6 +74,26 @@ void main() {
         Uri.file(folder.path).toString());
   });
 
+  test('a device or pipe among copied paths is skipped, not read', () async {
+    final folder = await Directory.systemTemp.createTemp('clip capture');
+    addTearDown(() => folder.delete(recursive: true));
+    final note = File('${folder.path}/note.txt')..writeAsStringSync('kept');
+    // /dev/zero reports length 0 and never ends; a read would not return.
+    final copy = await captureCopy({
+      'formats': <Object?>[],
+      'files': ['/dev/zero', note.path],
+    }).timeout(const Duration(seconds: 10));
+    final clip = copy as ClipToCapture;
+    expect(clip.representations.single.name, 'note.txt');
+    expect(utf8.decode(clip.representations.single.bytes!), 'kept');
+    expect(
+        await captureCopy({
+          'formats': <Object?>[],
+          'files': ['/dev/zero'],
+        }).timeout(const Duration(seconds: 10)),
+        isA<NothingToCapture>());
+  }, skip: Platform.isWindows ? 'no /dev/zero on Windows' : null);
+
   test('the text field is cut on a character boundary at 32 KiB', () async {
     // 3-byte characters: 10923 of them is 32769 bytes, one over the limit.
     final text = '€' * 10923;

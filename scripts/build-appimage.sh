@@ -50,6 +50,7 @@ mkdir -p \
   "$appdir/usr/lib/arcade-clipboard" \
   "$appdir/usr/share/applications" \
   "$appdir/usr/share/icons/hicolor/scalable/apps" \
+  "$appdir/usr/share/icons/hicolor/symbolic/apps" \
   "$appdir/usr/share/doc/arcade-clipboard"
 cp -a "$bundle/." "$appdir/usr/lib/arcade-clipboard/"
 # The self-installer and --install/--uninstall/--repair entry point.
@@ -60,6 +61,8 @@ install -m 644 packaging/linux/dev.arcade.Clipboard.desktop "$appdir/usr/share/a
 
 icon="$arcade_root/packaging/linux/dev.arcade.Clipboard.svg"
 install -m 644 "$icon" "$appdir/usr/share/icons/hicolor/scalable/apps/dev.arcade.Clipboard.svg"
+install -m 644 "$arcade_root/packaging/linux/dev.arcade.Clipboard-symbolic.svg" \
+  "$appdir/usr/share/icons/hicolor/symbolic/apps/dev.arcade.Clipboard-symbolic.svg"
 for size in 16 24 32 48 64 128 256 512; do
   icon_dir="$appdir/usr/share/icons/hicolor/${size}x${size}/apps"
   mkdir -p "$icon_dir"

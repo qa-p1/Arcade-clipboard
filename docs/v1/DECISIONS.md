@@ -90,3 +90,78 @@ Checked and kept:
     `Health`) that only the crate itself uses; they could be `pub(crate)`, which is a visibility change, not a removal.
   - The bridge function `api::call` is the only bridged function and is used; nothing bridged was touched, so no
     bindings were regenerated.
+
+## D8. Memory (step 5)
+Source: the memory audit (`dev/v1/AUDIT/memory.md`: U1, W0, CB1a, CB2, CB4). Done on Linux only; Windows, macOS and
+Android code paths are unchanged.
+
+Done:
+- **U1, unpacked runtime.** The AppImage launcher (`platform/linux/launcher/src/main.rs`) now calls
+  `arcade_link::runtime::relaunch_unpacked("arcade.clipboard", installer::VERSION, false)` after the integration
+  commands and the first-run prompt, and exits with its code. The image is copied once to
+  `<XDG_DATA_HOME>/arcade/runtime/clipboard-<version>-<key>/`, `AppRun` runs from there with `ARCADE_UNPACKED=1`, and
+  the launcher that started it exits 0, so no FUSE helper or mount stays behind. The version is
+  `installer::VERSION`, the release version that also names the receipt; `release.yml` refuses a tag unless
+  `Cargo.toml` and `pubspec.yaml` agree and passes the same value as `ARCADE_RELEASE_VERSION`, so the core, the
+  launcher, the runner (`--version`) and the Flutter app all report the same version. `starts_resident` (pure, with
+  tests) decides which starts keep a resident: `--version`, `--help`/`-h`, `--status`, `--arcade-manifest`,
+  `--restart`, `--quit`, `--hide` and `--integration-status` do not and run from the mount (so a status poll never
+  triggers the first extraction); a plain start, `--background`, `--show`, `--toggle`, `--overlay` and `--settings`
+  do. In the copy the launcher skips the first-run prompt when `ARCADE_UNPACKED` is set (the launcher that handed over
+  has already asked, as in Look), and `installer::bundled_app()` finds the Flutter bundle because it resolves
+  `arcade-clipboard` beside `current_exe()`, which is the copy's own launcher.
+- **Runner in the copy.** `release_mount_handles()` closes inherited handles that point into `$APPDIR` or a
+  `.mount_*` path. Link detaches every descriptor above stdio from the copy (`detach_from_image`), so there is
+  nothing left to release from the old mount; in the copy `$APPDIR` is the copy, and the function still marks any file
+  the app itself holds there close-on-exec for the programs it starts, which is what it was for. It needs no change.
+  `wait_for_predecessor()` reads `ARCADE_CLIPBOARD_RESTART_AFTER`, which passes through the launcher and the copy
+  unchanged, so a restarted successor still waits for the old process before claiming the single instance.
+- **Restart keeps the copy.** The tray's Restart (and `--restart`) starts `$APPIMAGE` with the environment of the old
+  process. A resident in the copy has `ARCADE_UNPACKED=1`, which made the successor's launcher believe it already was
+  the copy, so the successor ran from the mount for good; the packaged check below caught it. `DesktopAdapter`
+  now drops the marker from the successor's environment only when the running executable is inside
+  `arcade/runtime/clipboard-*` (`successorEnvironment`, tested). A harness that sets the marker on purpose (Link's e2e
+  runner) keeps it.
+- **W0 / CB1a, trim.** `apps/flutter_app/linux/runner/arcade_trim.h` is Link's `qt/arcade_trim.h` (v1.0.8, identical at
+  v1.0.7, v1.0.9 and main), recorded with its SHA-256 in `scripts/VENDORED`, which `check-docs.py` verifies.
+  `my_application.cc` calls `arcade_trim()` once 5 s after the first frame and 2 s after each hide of the main window,
+  and a show cancels the hide's timer; nothing runs while hidden otherwise. The hook is the GTK window's `unmap` and
+  `map` signals, not a Dart call through the bridge: every hide (the close button, the tray, `--hide`, the picker
+  closing through `windowManager.hide()`) ends in `gtk_widget_hide`, which unmaps the window, so one place sees them
+  all, with no new method channel call and no way for Dart to forget. A login start never maps the window, so the
+  startup trim covers it. Minimizing (`gtk_window_iconify`, used only while no tray host exists) does not unmap the
+  widget and is not trimmed. Measured on the Linux bundle under Xvfb (software GL, so absolute numbers are larger than
+  on a real GPU): RSS 302 MB before the startup trim, 169 MB after; 251 MB at a hide, 180 MB 2 s later (it then
+  grows again with the app's own work, e.g. 188 MB 8 s on). `strace` showed exactly two reads of `/proc/self/smaps` in a run with a hide that a show cancelled (the
+  startup trim and the one after the last hide).
+- **CB2, one-shot commands.** The audit's list was already half done: `--version` and `--status` answer in the
+  runner's `main()` before GTK and the engine (CB-5). `--restart` is added the same way: the core exports
+  `arcade_clipboard_restart_running` (the `link::call_running("app.restart")` the Dart path used), the runner loads
+  `lib/libarcade_core.so` and answers in 20 ms without a display. Exit codes and the "isn't running" text are as before,
+  and it falls back to the engine path if the core can't be loaded. These commands are answered by the runner rather
+  than the Rust launcher on purpose: the launcher exists only in the AppImage, the runner answers in the bundle, the
+  tarball and the AppImage alike, and the launcher is not linked with the core. Left as it was: `--arcade-manifest`
+  (the engine starts). It reads the saved Link settings (`link_enabled`, disabled peers, the shortcut) from Flutter's
+  shared preferences and first runs the data folder move, which needs the Dart settings code and the migration;
+  answering it natively means re-implementing both in Rust, a larger refactor than this step.
+- **CB4, image cache.** `main()` caps Flutter's image cache at 24 MiB (`lib/services/image_cache_limit.dart`); the
+  history shows images through `Image.memory`.
+
+Checked and not done:
+- CB1b (the capture and store in a small resident daemon, with the Flutter UI started on demand) is the owner's call
+  and a large change; nothing was started. CB3 (list rows without full text, windowing the list) and the retention
+  change are not part of this step.
+- W1, W3b and OPEN1 release WebKit's helper processes; Clipboard has none.
+- Link stays at v1.0.8. `install::uninstall` only removes the app's own `arcade/runtime/clipboard-*` copies from Link
+  v1.0.10, whose tag did not exist yet; until the bump, uninstall leaves the copy in the user's data folder.
+  `verify-appimage.py` should assert that no `clipboard-*` copy is left after `--uninstall` once the dependency moves.
+- Other apps that start Clipboard with their own `ARCADE_UNPACKED=1` in the environment (a Link client spawn from an app
+  that runs from its copy) would keep Clipboard on the mount, because Link's `childenv::sanitize` does not drop that
+  marker. That is Link's to fix; not touched here.
+- Packaged check: `scripts/verify-appimage.py` had no resident start at all (every command in it is one-shot). It now
+  starts the installed AppImage with `--background` and requires that the launcher exits 0, that exactly one runner
+  runs from `<data>/arcade/runtime/clipboard-<version>-<16 hex>/usr/lib/arcade-clipboard/clipboard` with a
+  `.complete` marker and no mapping from the mount or extraction folder, that `--status` reports it running, that
+  `--restart` replaces it with another runner from the same copy, and that `--quit` ends it. It also removes
+  `ARCADE_UNPACKED` from the environment it builds, so the check does not depend on the caller. Link's e2e harness
+  sets that marker only for the apps it starts itself.

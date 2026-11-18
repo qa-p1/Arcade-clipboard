@@ -80,21 +80,27 @@ static void wait_for_predecessor() {
   }
 }
 
-// --status answers from the bundled Rust core before GTK and the engine
-// start (CB-5): the core sits in lib/ beside this executable, in the bundle
-// and in the AppImage. Returns the exit code, or -1 when the core can't be
-// loaded and the engine path answers instead, as before.
-static int print_status_from_core() {
+// Loads the bundled Rust core for the commands answered before GTK and the
+// engine start (CB-5, CB2): it sits in lib/ beside this executable, in the
+// bundle and in the AppImage. Null when it can't be loaded; the engine path
+// then answers as before.
+static void* load_core() {
   char directory[4096];
   const ssize_t length = readlink("/proc/self/exe", directory, sizeof directory - 1);
-  if (length <= 0) return -1;
+  if (length <= 0) return nullptr;
   directory[length] = '\0';
   char* slash = strrchr(directory, '/');
-  if (slash == nullptr) return -1;
+  if (slash == nullptr) return nullptr;
   *slash = '\0';
   g_autofree gchar* path = g_build_filename(directory, "lib", "libarcade_core.so", nullptr);
   // Never dlclose()d: the core keeps thread-local state until exit.
-  void* core = dlopen(path, RTLD_NOW | RTLD_LOCAL);
+  return dlopen(path, RTLD_NOW | RTLD_LOCAL);
+}
+
+// --status answers from the bundled Rust core. Returns the exit code, or -1
+// when the core can't be loaded and the engine path answers instead.
+static int print_status_from_core() {
+  void* core = load_core();
   if (core == nullptr) return -1;
   using StatusLine = char* (*)();
   using FreeString = void (*)(char*);
@@ -108,6 +114,22 @@ static int print_status_from_core() {
   return written ? 0 : 1;
 }
 
+// --restart asks the running instance over the Arcade Link, from the same
+// core. Returns the exit code, or -1 when the core can't answer and the
+// engine path does, as before. The message is the one Dart printed.
+static int restart_from_core() {
+  void* core = load_core();
+  if (core == nullptr) return -1;
+  using RestartRunning = int (*)();
+  auto restart_running = reinterpret_cast<RestartRunning>(dlsym(core, "arcade_clipboard_restart_running"));
+  if (restart_running == nullptr) return -1;
+  const int answered = restart_running();
+  if (answered < 0) return -1;
+  if (answered == 0) return 0;
+  fputs("Arcade Clipboard: Bad state: Arcade Clipboard isn't running.\n", stderr);
+  return 1;
+}
+
 int main(int argc, char** argv) {
   // Answered here, before GTK and the engine print their warnings (CB-5).
   if (argc == 2 && strcmp(argv[1], "--version") == 0) {
@@ -116,6 +138,10 @@ int main(int argc, char** argv) {
   }
   if (argc == 2 && strcmp(argv[1], "--status") == 0) {
     const int answered = print_status_from_core();
+    if (answered >= 0) return answered;
+  }
+  if (argc == 2 && strcmp(argv[1], "--restart") == 0) {
+    const int answered = restart_from_core();
     if (answered >= 0) return answered;
   }
   for (int i = 1; i < argc; ++i) {

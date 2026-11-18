@@ -22,4 +22,30 @@ void main() {
             {'APPIMAGE': '${dir.path}/missing'}, mounted, File.new),
         mounted);
   });
+
+  test('restart from the unpacked copy starts the successor as a fresh start',
+      () {
+    const copy =
+        '/home/u/.local/share/arcade/runtime/clipboard-0.3.2-0123456789abcdef/usr/lib/arcade-clipboard/clipboard';
+    const mounted = '/tmp/.mount_abc/usr/lib/arcade-clipboard/clipboard';
+    final parent = {
+      'HOME': '/home/u',
+      'APPIMAGE': '/home/u/Applications/Arcade/Arcade-Clipboard.AppImage',
+      'ARCADE_UNPACKED': '1',
+    };
+    // In the copy the marker is dropped (the successor must unpack again) and
+    // the old process id is added; nothing else changes.
+    expect(DesktopAdapter.successorEnvironment(parent, copy, 42), {
+      'HOME': '/home/u',
+      'APPIMAGE': '/home/u/Applications/Arcade/Arcade-Clipboard.AppImage',
+      DesktopAdapter.restartEnvironment: '42',
+    });
+    // Anywhere else (the mount, a bundle, a harness that set it) it stays.
+    expect(
+        DesktopAdapter.successorEnvironment(
+            parent, mounted, 42)['ARCADE_UNPACKED'],
+        '1');
+    expect(DesktopAdapter.successorEnvironment({'A': 'b'}, copy, 7),
+        {'A': 'b', DesktopAdapter.restartEnvironment: '7'});
+  });
 }

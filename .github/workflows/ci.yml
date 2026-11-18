@@ -26,6 +26,17 @@ defaults:
     working-directory: App dev/Arcade-clipboard
 
 jobs:
+  deny:
+    name: cargo deny (advisories, licences, bans, sources)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check
+          arguments: --workspace --all-features
+
   rust:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -51,7 +62,9 @@ jobs:
         run: python3 scripts/verify-identity-migration.py --debug
   linux:
     name: Linux build and AppImage smoke
-    runs-on: ubuntu-24.04
+    # The AppImage carries programs built here: 0.3.2 was built on 24.04 and needs glibc 2.39, so it does not start
+    # on 22.04, where Link's gates run the published AppImage. Built on 22.04, it starts there and on every later one.
+    runs-on: ubuntu-22.04
     timeout-minutes: 45
     env:
       RUSTUP_TOOLCHAIN: '1.98.1'
@@ -72,6 +85,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: App dev/Arcade-clipboard -> target
+          # The job's own cache: compiled C code (SQLite) from the old 24.04 build needs glibc 2.38.
+          key: ubuntu-22.04
           # Saved only on main (Link spec §4): caches from pull requests crowded main's out of the 10 GB.
           save-if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
       - name: Dart format, flutter analyze and tests
@@ -80,12 +95,26 @@ jobs:
         run: bash scripts/dev build-linux
       - name: Build pinned AppImage
         run: |
-          release_version="$(python3 -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("Cargo.toml").read_text())["workspace"]["package"]["version"])')"
+          release_version="$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)"
           bash scripts/dev build-appimage --version "$release_version"
           sha256sum "dist/Arcade-Clipboard-$release_version-x86_64.AppImage" > "dist/Arcade-Clipboard-$release_version-x86_64.AppImage.sha256"
+      # THIRD_PARTY_NOTICES.md must match the dependency graph (scripts/notices.py), and packaging/linux/native/
+      # the libraries this AppImage bundles from this host; on a mismatch the regenerated record is uploaded.
+      - name: Third-party notices (repository and AppImage)
+        run: |
+          release_version="$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)"
+          python3 scripts/notices.py --check
+          python3 scripts/native-notices.py --check "dist/Arcade-Clipboard-$release_version-x86_64.AppImage"
+      - name: Upload the regenerated native notices
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: native-notices
+          path: App dev/Arcade-clipboard/packaging/linux/native
+          if-no-files-found: ignore
       - name: Smoke test AppImage CLI under Xvfb
         run: |
-          release_version="$(python3 -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("Cargo.toml").read_text())["workspace"]["package"]["version"])')"
+          release_version="$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)"
           appimage="$PWD/dist/Arcade-Clipboard-$release_version-x86_64.AppImage"
           env -u LD_LIBRARY_PATH xvfb-run -a env APPIMAGE_EXTRACT_AND_RUN=1 "$appimage" --version
           # xvfb-run appends 2>&1, so keep the answer on its own file.
@@ -101,7 +130,7 @@ jobs:
           cargo build --release --manifest-path "$RUNNER_TEMP/link/Cargo.toml" -p arcade-link-cli
       - name: AppImage install, repair and uninstall (isolated D-Bus and Xvfb)
         run: |
-          release_version="$(python3 -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("Cargo.toml").read_text())["workspace"]["package"]["version"])')"
+          release_version="$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)"
           /usr/bin/python3 "$RUNNER_TEMP/link/tools/e2e.py" run -- xvfb-run -a /usr/bin/python3 scripts/verify-appimage.py \
             "$PWD/dist/Arcade-Clipboard-$release_version-x86_64.AppImage" "$release_version"
       - name: Tray icon registration (real StatusNotifierWatcher, isolated)
@@ -126,6 +155,24 @@ jobs:
             App dev/Arcade-clipboard/dist/Arcade-Clipboard-*.AppImage.sha256
           if-no-files-found: error
           retention-days: 14
+
+  # Tier 1: the main window and the picker on headless Hyprland (Link's desktop harness), from the AppImage built
+  # above; Tier 2: start, --status, tray and quit on sway, KWin, Mutter and X11.
+  desktop:
+    needs: linux
+    uses: qa-p1/Arcade-Link/.github/workflows/desktop-e2e.yml@v1.0.13
+    with:
+      name: clipboard
+      test: tests/desktop/clipboard_desktop.py
+      args: '"$APP"'
+      artifact: Arcade-Clipboard-linux-x64
+      link-ref: v1.0.13
+  desktop-tier2:
+    needs: linux
+    uses: qa-p1/Arcade-Link/.github/workflows/desktop-tier2.yml@v1.0.14
+    with:
+      artifact: Arcade-Clipboard-linux-x64
+      link-ref: v1.0.14
 
   android:
     name: Android release build and signing check
