@@ -85,9 +85,9 @@ jobs:
               libxcb-xfixes0 && break
             sleep $((i * 10))
           done
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with: { name: gate-rc, path: rc }
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with: { name: gate-previous, path: previous }
       - name: Upgrade the previous release to the rc
         run: |
