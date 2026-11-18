@@ -113,7 +113,7 @@ jobs:
         run: |
           bundle_version="$(python3 -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("Cargo.toml").read_text())["workspace"]["package"]["version"])')"
           bash scripts/verify-dmg.sh "dist/packages/Arcade-Clipboard_${RELEASE_VERSION}_macos_universal.dmg" "$bundle_version" "$RELEASE_VERSION"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: release-${{ matrix.platform }}
           path: App dev/Arcade-clipboard/dist/packages/*
