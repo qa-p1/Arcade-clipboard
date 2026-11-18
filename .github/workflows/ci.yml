@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
           command: check
@@ -43,7 +43,7 @@ jobs:
     env:
       RUSTUP_TOOLCHAIN: '1.98.1'
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: App dev/Arcade-clipboard
       - name: Install Rust and native dependencies
@@ -69,7 +69,7 @@ jobs:
     env:
       RUSTUP_TOOLCHAIN: '1.98.1'
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: App dev/Arcade-clipboard
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
@@ -182,7 +182,7 @@ jobs:
       RUSTUP_TOOLCHAIN: '1.98.1'
       ANDROID_NDK_VERSION: '28.2.13676358'
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: App dev/Arcade-clipboard
       - uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
@@ -250,7 +250,7 @@ jobs:
     env:
       RUSTUP_TOOLCHAIN: '1.98.1'
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: App dev/Arcade-clipboard
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
@@ -307,7 +307,7 @@ jobs:
     env:
       RUSTUP_TOOLCHAIN: '1.98.1'
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: App dev/Arcade-clipboard
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
