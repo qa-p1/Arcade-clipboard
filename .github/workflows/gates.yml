@@ -1,0 +1,113 @@
+name: Gates
+
+# PLAN "Release" step 2: every exit gate against the published files of a release candidate, never a local build.
+# Run it on the rc tag ("Use workflow from: v1.0.0-rc.N") once "Release" has published it; "Promote" only after a
+# green run on the rc it promotes. The shared gates (published files and manifest, conformance, N-1, budgets, the
+# delta through Tools' updater, Windows and macOS smoke) are Link's app-gates.yml; Clipboard adds its own Linux check
+# on the published AppImage, the upgrade from the previous release with the user's history and both desktop suites.
+on:
+  workflow_dispatch:
+    inputs:
+      previous:
+        description: The previous stable release (upgrade test, and the delta "from the previous release")
+        default: v0.3.2
+
+permissions:
+  contents: read
+
+concurrency:
+  group: clipboard-gates-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  gates:
+    uses: qa-p1/Arcade-Link/.github/workflows/app-gates.yml@v1.0.13
+    with:
+      app: arcade.clipboard
+      name: clipboard
+      previous: ${{ inputs.previous }}
+      link-ref: v1.0.13
+      # Every library the AppImage takes from the system (`readelf -d` over every ELF of the 1.0.0 image minus what it
+      # bundles: GTK 3 and its stack, X11, atk, cairo, pango, epoxy, fontconfig, harfbuzz, glib; glibc, libstdc++ and
+      # libgcc are on the runner), what libepoxy and GTK load when the app runs (the GL/EGL stack and Mesa's software
+      # renderer for Xvfb, libgbm, libdrm, Wayland, the X extensions GTK maps, the AT-SPI bridge), gnome-keyring for
+      # the Secret Service (the history key lives there), python3-dbus for verify-appimage.py and xauth for xvfb-run.
+      # The hosted runner image is not a desktop. Ubuntu 22.04 names, checked against its package index.
+      linux-packages: >-
+        xauth gnome-keyring python3-dbus libgl1-mesa-dri libegl1 libegl-mesa0 libgl1 libglx0 libglx-mesa0 libglvnd0
+        libgles2 libgbm1 libdrm2 libwayland-client0 libwayland-cursor0 libwayland-egl1 libgtk-3-0 libglib2.0-0
+        libgdk-pixbuf-2.0-0 libcairo2 libcairo-gobject2 libpango-1.0-0 libpangocairo-1.0-0 libatk1.0-0
+        libatk-bridge2.0-0 libepoxy0 libfontconfig1 libfreetype6 libharfbuzz0b libdbus-1-3 zlib1g libx11-6
+        libx11-xcb1 libxext6 libxfixes3 libxi6 libxinerama1 libxrender1 libxrandr2 libxcursor1 libxcomposite1
+        libxdamage1 libxkbcommon0 libxcb1 libxcb-glx0 libxcb-randr0 libxcb-render0 libxcb-shm0 libxcb-sync1
+        libxcb-xfixes0
+      # The packaged install, repair and uninstall lifecycle on the published AppImage (the tray and the folder
+      # move run in CI against the bundle). The installers' files carry the version without the rc suffix.
+      linux-checks: |
+        v="${GITHUB_REF_NAME#v}"; v="${v%-rc.*}"
+        python3 ../Arcade-Link/tools/e2e.py run -- xvfb-run -a /usr/bin/python3 scripts/verify-appimage.py "$RC" "$v"
+      windows-check: >-
+        v="${GITHUB_REF_NAME#v}"; v="${v%-rc.*}";
+        mkdir -p dist/packages && cp rc/Arcade-Clipboard_${v}_windows_x64-setup.exe dist/packages/ &&
+        pwsh -NoProfile -File scripts/test-windows-installer.ps1 -Version "$v"
+      macos-check: |
+        v="${GITHUB_REF_NAME#v}"; v="${v%-rc.*}"
+        bundle="$(python3 -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("Cargo.toml").read_text())["workspace"]["package"]["version"])')"
+        bash scripts/verify-dmg.sh "rc/Arcade-Clipboard_${v}_macos_universal.dmg" "$bundle" "$v"
+
+  # The upgrade with a user's history from the previous release. Not in the gates' Linux job: that runs on Ubuntu
+  # 22.04 (the oldest supported), and 0.3.2 was built on 24.04 and needs glibc 2.39, so it cannot start there. The
+  # files are the ones the gates downloaded and checked against SHA256SUMS.txt.
+  upgrade:
+    name: Upgrade from the previous release with the user's data
+    needs: gates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      # Every system library the previous release's AppImage and the rc's take from the desktop (readelf over both,
+      # minus what they bundle, and what the running app maps), Ubuntu 24.04 names (t64 where it renamed them; checked
+      # against its package index). The previous release (0.3.2) also needs zlib; the rc's list is the gates' above.
+      # The test itself needs the Secret Service (gnome-keyring, secret-tool), xdotool and xclip for the user's
+      # copies and clicks, and Xvfb.
+      - name: Linux packages
+        timeout-minutes: 15
+        run: |
+          for i in 1 2 3; do
+            sudo apt-get update -o Acquire::Retries=3 && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+              --no-install-recommends xvfb xauth dbus-x11 desktop-file-utils libfuse2t64 gnome-keyring libsecret-tools \
+              xdotool xclip libgl1-mesa-dri libegl1 libegl-mesa0 libgl1 libglx0 libglx-mesa0 libglvnd0 libgles2 \
+              libgbm1 libdrm2 libwayland-client0 libwayland-cursor0 libwayland-egl1 libgtk-3-0t64 libglib2.0-0t64 \
+              libgdk-pixbuf-2.0-0 libcairo2 libcairo-gobject2 libpango-1.0-0 libpangocairo-1.0-0 libatk1.0-0t64 \
+              libatk-bridge2.0-0t64 libepoxy0 libfontconfig1 libfreetype6 libharfbuzz0b libdbus-1-3 zlib1g libx11-6 \
+              libx11-xcb1 libxext6 libxfixes3 libxi6 libxinerama1 libxrender1 libxrandr2 libxcursor1 libxcomposite1 \
+              libxdamage1 libxkbcommon0 libxcb1 libxcb-glx0 libxcb-randr0 libxcb-render0 libxcb-shm0 libxcb-sync1 \
+              libxcb-xfixes0 && break
+            sleep $((i * 10))
+          done
+      - uses: actions/download-artifact@v4
+        with: { name: gate-rc, path: rc }
+      - uses: actions/download-artifact@v4
+        with: { name: gate-previous, path: previous }
+      - name: Upgrade the previous release to the rc
+        run: |
+          chmod +x rc/*.AppImage previous/*.AppImage
+          dbus-run-session -- xvfb-run -a -s "-screen 0 1280x800x24" python3 scripts/verify-upgrade.py \
+            "$PWD/$(ls previous/*.AppImage)" "$PWD/$(ls rc/*.AppImage)"
+
+  # Tier 1 (headless Hyprland) blocks on any failure; Tier 2 (sway, KWin, Mutter, X11) on a crash or data loss.
+  desktop:
+    needs: gates
+    uses: qa-p1/Arcade-Link/.github/workflows/desktop-e2e.yml@v1.0.13
+    with:
+      name: clipboard
+      test: tests/desktop/clipboard_desktop.py
+      args: '"$APP"'
+      artifact: gate-appimage
+      link-ref: v1.0.13
+  desktop-tier2:
+    needs: gates
+    uses: qa-p1/Arcade-Link/.github/workflows/desktop-tier2.yml@v1.0.14
+    with:
+      artifact: gate-appimage
+      link-ref: v1.0.14

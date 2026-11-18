@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Upgrade from a published Clipboard release to a new one, keeping the user's data (PLAN exit gate "Upgrade test").
 
-    dbus-run-session -- xvfb-run -a python3 scripts/verify-upgrade.py OLD.AppImage NEW.AppImage
+    dbus-run-session -- xvfb-run -a -s "-screen 0 1280x800x24" python3 scripts/verify-upgrade.py OLD.AppImage NEW.AppImage
 
 OLD is the previous release's published file (check it against its SHA256SUMS.txt first), NEW the candidate's. Needs
 gnome-keyring, xdotool, xclip and libsecret-tools (`secret-tool`) next to the D-Bus session and X display it runs in.
@@ -169,10 +169,13 @@ def main():
     if not SAME_VERSION:
         check(digest(old_image) != digest(new_image), "OLD and NEW are the same file")
     check(os.environ.get("DBUS_SESSION_BUS_ADDRESS"),
-          "Run this inside `dbus-run-session -- xvfb-run -a python3 scripts/verify-upgrade.py OLD NEW`: no D-Bus session")
+          "Run this inside `dbus-run-session -- xvfb-run -a -s \"-screen 0 1280x800x24\" python3 scripts/verify-upgrade.py OLD NEW`: no D-Bus session")
     check(os.environ.get("DISPLAY"), "Run this inside xvfb-run: no X display")
     for tool in ("gnome-keyring-daemon", "gdbus", "xdotool", "xclip", "secret-tool"):
         check(shutil.which(tool), f"{tool} is not installed (gnome-keyring, libglib2.0-bin, xdotool, xclip, libsecret-tools)")
+    size = subprocess.run(["xdotool", "getdisplaygeometry"], capture_output=True, text=True).stdout.split()
+    check(len(size) == 2 and int(size[0]) >= 1100 and int(size[1]) >= 780,
+          f"The X screen is {'x'.join(size)}: the window (1040x740) must fit; use xvfb-run -s \"-screen 0 1280x800x24\"")
     check(not session_has_secret_service(),
           "This D-Bus session already has a Secret Service (a real keyring?): run under dbus-run-session")
     with tempfile.TemporaryDirectory(prefix="clipboard-upgrade-", dir=os.environ.get("RUNNER_TEMP")) as directory:
