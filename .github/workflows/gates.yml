@@ -64,7 +64,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # Every system library the previous release's AppImage and the rc's take from the desktop (readelf over both,
       # minus what they bundle, and what the running app maps), Ubuntu 24.04 names (t64 where it renamed them; checked
       # against its package index). The previous release (0.3.2) also needs zlib; the rc's list is the gates' above.
