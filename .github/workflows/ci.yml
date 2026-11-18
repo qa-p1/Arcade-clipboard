@@ -169,10 +169,10 @@ jobs:
       link-ref: v1.0.13
   desktop-tier2:
     needs: linux
-    uses: qa-p1/Arcade-Link/.github/workflows/desktop-tier2.yml@v1.0.13
+    uses: qa-p1/Arcade-Link/.github/workflows/desktop-tier2.yml@v1.0.14
     with:
       artifact: Arcade-Clipboard-linux-x64
-      link-ref: v1.0.13
+      link-ref: v1.0.14
 
   android:
     name: Android release build and signing check
