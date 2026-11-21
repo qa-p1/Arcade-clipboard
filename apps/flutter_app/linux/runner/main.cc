@@ -114,6 +114,24 @@ static int print_status_from_core() {
   return written ? 0 : 1;
 }
 
+// --arcade-manifest prints the manifest from the bundled Rust core, so it
+// needs no display (Link conformance CLI-4). Returns the exit code, or -1
+// when the core has no answer and the engine path answers instead.
+static int print_manifest_from_core() {
+  void* core = load_core();
+  if (core == nullptr) return -1;
+  using ManifestJson = char* (*)();
+  using FreeString = void (*)(char*);
+  auto manifest_json = reinterpret_cast<ManifestJson>(dlsym(core, "arcade_clipboard_manifest_json"));
+  auto free_string = reinterpret_cast<FreeString>(dlsym(core, "arcade_clipboard_free_string"));
+  if (manifest_json == nullptr || free_string == nullptr) return -1;
+  char* text = manifest_json();
+  if (text == nullptr) return -1;
+  const bool written = fputs(text, stdout) >= 0 && fputc('\n', stdout) != EOF && fflush(stdout) == 0;
+  free_string(text);
+  return written ? 0 : 1;
+}
+
 // --restart asks the running instance over the Arcade Link, from the same
 // core. Returns the exit code, or -1 when the core can't answer and the
 // engine path does, as before. The message is the one Dart printed.
@@ -138,6 +156,10 @@ int main(int argc, char** argv) {
   }
   if (argc == 2 && strcmp(argv[1], "--status") == 0) {
     const int answered = print_status_from_core();
+    if (answered >= 0) return answered;
+  }
+  if (argc == 2 && strcmp(argv[1], "--arcade-manifest") == 0) {
+    const int answered = print_manifest_from_core();
     if (answered >= 0) return answered;
   }
   if (argc == 2 && strcmp(argv[1], "--restart") == 0) {

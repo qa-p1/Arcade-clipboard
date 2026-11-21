@@ -1140,7 +1140,56 @@ pub extern "C" fn arcade_clipboard_restart_running() -> std::ffi::c_int {
         .map_or(-1, |answered| i32::from(!answered))
 }
 
-/// Frees a string returned by `arcade_clipboard_status_line`.
+/// `--arcade-manifest` for the Linux runner's `main()`, answered before GTK and the Flutter engine start, so it
+/// works without a display (Link conformance CLI-4: rc.2 exited 1 with no output there). The Link settings come from
+/// the saved `settings.json` the app keeps (`ARCADE_DATA_DIR` when set, else Link's config folder), with the app's
+/// defaults for anything unset. `None` when a profile from 0.3 has not been moved yet (the engine path moves it and
+/// answers) or the settings can't be read.
+pub fn printed_manifest_text() -> Option<String> {
+    let dirs = arcade_link::paths::app_dirs(ids::CLIPBOARD);
+    let file = match std::env::var("ARCADE_DATA_DIR")
+        .ok()
+        .map(|dir| dir.trim().to_owned())
+        .filter(|dir| !dir.is_empty())
+    {
+        Some(dir) => std::path::PathBuf::from(dir).join("settings.json"),
+        None => dirs.config.join("settings.json"),
+    };
+    let saved: Value = match std::fs::read(&file) {
+        Ok(bytes) => serde_json::from_slice(&bytes).ok()?,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            if dirs.data.join("shared_preferences.json").exists() {
+                return None;
+            }
+            json!({})
+        }
+        Err(_) => return None,
+    };
+    // The keys and defaults the Dart side passes to `link_manifest` (main.dart, DesktopAdapter.defaultShortcut).
+    let request = json!({
+        "enabled": saved.get("link_enabled").and_then(Value::as_bool).unwrap_or(true),
+        "disabled_peers": saved.get("link_disabled_peers").cloned().unwrap_or_else(|| json!([])),
+        "shortcut": saved.get("mesh_shortcut").and_then(Value::as_str).unwrap_or("CTRL+ALT+V"),
+    });
+    serde_json::to_string_pretty(&printed_document(&LinkSettings::from_request(Some(
+        &request,
+    ))))
+    .ok()
+}
+
+/// The runner's `--arcade-manifest`: the text `printed_manifest_text` returns, for `arcade_clipboard_free_string`;
+/// null when it has no answer and the engine path answers instead.
+#[cfg(target_os = "linux")]
+#[unsafe(no_mangle)]
+pub extern "C" fn arcade_clipboard_manifest_json() -> *mut std::ffi::c_char {
+    std::panic::catch_unwind(printed_manifest_text)
+        .ok()
+        .flatten()
+        .and_then(|text| std::ffi::CString::new(text).ok())
+        .map_or(std::ptr::null_mut(), std::ffi::CString::into_raw)
+}
+
+/// Frees a string returned by `arcade_clipboard_status_line` or `arcade_clipboard_manifest_json`.
 ///
 /// # Safety
 ///
@@ -1157,6 +1206,27 @@ pub unsafe extern "C" fn arcade_clipboard_free_string(line: *mut std::ffi::c_cha
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn the_runner_prints_the_saved_link_settings_without_the_engine() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("settings.json"),
+            r#"{"link_enabled": false, "link_disabled_peers": ["arcade.find"], "mesh_shortcut": "CTRL+SHIFT+V"}"#,
+        )
+        .unwrap();
+        // SAFETY: tests in this module that read ARCADE_DATA_DIR run only here.
+        unsafe { std::env::set_var("ARCADE_DATA_DIR", dir.path()) };
+        let text = printed_manifest_text();
+        unsafe { std::env::remove_var("ARCADE_DATA_DIR") };
+        let expected = serde_json::to_string_pretty(&printed_document(&LinkSettings::from_request(Some(
+            &json!({"enabled": false, "disabled_peers": ["arcade.find"], "shortcut": "CTRL+SHIFT+V"}),
+        ))))
+        .unwrap();
+        assert_eq!(text.as_deref(), Some(expected.as_str()));
+        let printed: Value = serde_json::from_str(&expected).unwrap();
+        assert_eq!(printed["id"], ids::CLIPBOARD);
+    }
 
     #[test]
     fn the_printed_manifest_says_how_clipboard_is_installed() {

@@ -36,6 +36,13 @@ fn main() {
             }
         }
     }
+    // An unknown option exits 2 with the usage, as every Arcade app does (Link conformance CLI-2), before the
+    // install prompt or the window could start: rc.2 opened the install prompt, or failed on a missing display.
+    if let Some(option) = unknown_option(&argv[1..]) {
+        eprintln!("arcade-clipboard: unknown option {option:?}");
+        eprintln!("Usage: arcade-clipboard [OPTION]. Run arcade-clipboard --help for the options.");
+        std::process::exit(2);
+    }
     // The AppImage's launcher already asked (and was told to continue): the
     // unpacked copy it started must not ask a second time.
     if std::env::var_os(arcade_link::runtime::UNPACKED_ENV).is_none()
@@ -85,6 +92,48 @@ fn starts_resident(args: &[String]) -> bool {
     !args.iter().any(|arg| ONE_SHOT.contains(&arg.as_str()))
 }
 
+/// The first argument that is not one of Clipboard's options (`--help` lists them; `--arcade-invoke` is Link's
+/// one-shot mode), or `None`. `--channel` takes the next argument as its value.
+#[cfg(target_os = "linux")]
+fn unknown_option(args: &[String]) -> Option<&str> {
+    const KNOWN: &[&str] = &[
+        "--show",
+        "--hide",
+        "--toggle",
+        "--background",
+        "--overlay",
+        "--settings",
+        "--status",
+        "--restart",
+        "--quit",
+        "--version",
+        "-V",
+        "--help",
+        "-h",
+        "--install",
+        "--uninstall",
+        "--repair",
+        "--integration-status",
+        "--arcade-manifest",
+        "--arcade-invoke",
+        "--silent",
+        "--no-launch",
+        "--keep-download",
+        "--remove-data",
+    ];
+    let mut it = args.iter();
+    while let Some(arg) = it.next() {
+        match arg.as_str() {
+            "--channel" => {
+                it.next();
+            }
+            known if KNOWN.contains(&known) => {}
+            other => return Some(other),
+        }
+    }
+    None
+}
+
 #[cfg(target_os = "linux")]
 fn integration_command(args: &[String]) -> Result<String, String> {
     let action = args[0].as_str();
@@ -130,7 +179,7 @@ fn integration_command(args: &[String]) -> Result<String, String> {
 
 #[cfg(all(test, target_os = "linux"))]
 mod tests {
-    use super::starts_resident;
+    use super::{starts_resident, unknown_option};
 
     fn args(list: &[&str]) -> Vec<String> {
         list.iter().map(ToString::to_string).collect()
@@ -148,6 +197,37 @@ mod tests {
             &["--background", "--overlay"],
         ] {
             assert!(starts_resident(&args(list)), "{list:?} keeps a resident");
+        }
+    }
+
+    #[test]
+    fn unknown_options_are_named_and_known_ones_pass() {
+        assert_eq!(
+            unknown_option(&args(&["--arcade-conformance-unknown-flag"])),
+            Some("--arcade-conformance-unknown-flag")
+        );
+        assert_eq!(
+            unknown_option(&args(&["--background", "--bogus"])),
+            Some("--bogus")
+        );
+        assert_eq!(unknown_option(&args(&["stray"])), Some("stray"));
+        for list in [
+            &[][..],
+            &["--settings"],
+            &["--background", "--overlay"],
+            &[
+                "--install",
+                "--silent",
+                "--no-launch",
+                "--channel",
+                "nightly",
+            ],
+            &["--uninstall", "--silent", "--remove-data"],
+            &["--arcade-manifest"],
+            &["--arcade-invoke"],
+            &["-h"],
+        ] {
+            assert_eq!(unknown_option(&args(list)), None, "{list:?} is known");
         }
     }
 
