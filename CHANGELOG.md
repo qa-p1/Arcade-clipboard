@@ -8,6 +8,9 @@ and versions follow [Semantic Versioning](https://semver.org/).
 ## [1.0.0] - 2026-11-17
 
 ### Fixed
+- An unknown command-line option now exits with code 2 and names the option, as every Arcade app does. On Linux it
+  opened the install dialog, or failed without a display.
+- `--arcade-manifest` works on Linux without a display (from a terminal over SSH, or for Arcade Tools reading it).
 - `--status` and `--hide`, run from a downloaded AppImage while another copy is installed, no longer wait on the
   install dialog: they answer (or do nothing) at once, like `--quit`.
 - When the keyring is locked or missing at a background start (for example at login), Clipboard now shows its window

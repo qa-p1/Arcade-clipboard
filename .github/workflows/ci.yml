@@ -121,6 +121,19 @@ jobs:
           env -u LD_LIBRARY_PATH xvfb-run -a sh -c 'APPIMAGE_EXTRACT_AND_RUN=1 "$0" --arcade-manifest > "$1"' "$appimage" "$RUNNER_TEMP/manifest.json"
           manifest="$(cat "$RUNNER_TEMP/manifest.json")"
           printf '%s' "$manifest" | python3 -c 'import json,sys; assert json.load(sys.stdin)["id"] == "arcade.clipboard"' || { printf 'stdout was:\n%s\n' "$manifest" | cat -A | head -40; exit 1; }
+      # Link's gates run these with no display (conformance CLI-2, CLI-4); rc.2 failed both there while the Xvfb
+      # smoke above passed.
+      - name: The CLI answers without a display (unknown option, manifest)
+        run: |
+          release_version="$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)"
+          appimage="$PWD/dist/Arcade-Clipboard-$release_version-x86_64.AppImage"
+          home="$(mktemp -d)"
+          headless() { env -i HOME="$home" PATH=/usr/bin:/bin ARCADE_HOME="$home/arcade" XDG_RUNTIME_DIR="$home" APPIMAGE_EXTRACT_AND_RUN=1 "$appimage" "$@"; }
+          code=0
+          headless --arcade-conformance-unknown-flag > /dev/null 2> "$home/err" || code=$?
+          if [ "$code" != 2 ] || [ ! -s "$home/err" ]; then echo "an unknown option exited $code (want 2 with the usage on stderr)"; cat "$home/err"; exit 1; fi
+          headless --arcade-manifest > "$home/manifest.json"
+          python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["id"] == "arcade.clipboard"' "$home/manifest.json"
       - name: Prepare pinned isolated lifecycle runner
         run: |
           sudo apt-get install -y xdotool python3-dbus python3-gi dbus-x11 gnome-keyring

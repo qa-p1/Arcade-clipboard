@@ -2,6 +2,28 @@
 
 Detail for `qa-p1/Arcade-catalog` › `dev/v1/PROGRESS.md`. Newest first.
 
+## 2026-11-18 (cloud session) - release candidates 1 and 2 (not promoted)
+
+- #22 (e5ec844): `gates.yml` on Link `app-gates.yml@v1.0.13` (previous default v0.3.2), Tier 2 on Link 1.0.14 with
+  an unlocked gnome-keyring, and `scripts/verify-upgrade.py` (0.3.2 → 1.0.0 keeps the history and the keyring item;
+  passed locally against the published 0.3.2 and a CI AppImage; fails as it should when the history database or the
+  keyring is missing).
+- `v1.0.0-rc.1` (e5ec844) [Gates](https://github.com/qa-p1/Arcade-clipboard/actions/runs/44226756864): CLI-1 to
+  CLI-4 failed with `GLIBC_2.3x not found`. `release.yml` built the Linux packages on ubuntu-24.04, while CI's Linux
+  job and the 1.0.0 changelog say 22.04. #34 (163f958) builds them on 22.04.
+- `v1.0.0-rc.2` (163f958) [Gates](https://github.com/qa-p1/Arcade-clipboard/actions/runs/44232113005): published
+  files, N-1, budgets, Windows and macOS smoke passed. Failed:
+  - Linux conformance CLI-2: `--arcade-conformance-unknown-flag` exits 0 with empty stderr (must exit 2 with the
+    usage). CLI-4: `--arcade-manifest` exits 1 with empty stdout and stderr (must print the manifest and exit 0).
+    CI's smoke runs `--arcade-manifest` under `xvfb-run` and passes, so the suspected cause is that conformance has
+    no display and the answer comes from the Flutter side; the launcher should answer these itself. Not yet
+    reproduced.
+  - Tools' delta gate: the delta from 0.3.2 fetched 7,908,165 of 15,751,672 bytes (50.2%); the gate requires less
+    than half. The update itself verified. To be aligned with Tools' own delta rule in Tools 1.0.1.
+  - Upgrade, Tier 1 and Tier 2 were skipped (they wait on the Linux job): still never run on a published rc.
+- Next: fix both, rc.3, Gates (previous v0.3.2), Promote only if every job is green. Detail in the catalog's
+  `dev/v1/HANDOFF.md`.
+
 ## 2026-11-15 (cloud session) - step 5
 
 - **Memory (step 5):** decisions in `docs/v1/DECISIONS.md` (D8). U1: the AppImage launcher moves a resident start to
