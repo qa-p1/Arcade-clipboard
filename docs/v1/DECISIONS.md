@@ -174,7 +174,8 @@ Checked and not done:
 - **Decision:** the AppImage launcher rejects any option `--help` doesn't list (plus Link's `--arcade-invoke`) with
   exit 2 and the usage, before the install prompt. The Linux runner answers `--arcade-manifest` from the Rust core
   before GTK, as it already did `--status`: the Link settings come from the saved `settings.json` (or
-  `ARCADE_DATA_DIR`), with the app's defaults for unset keys. A 0.3 profile whose settings haven't been moved yet
-  still goes through the engine, which moves them. CI now runs both commands with no display.
+  `ARCADE_DATA_DIR`), with the app's defaults for unset keys. A profile with 0.2's folders still waiting to
+  move (or Flutter's old preferences file) still goes through the engine, which moves them first
+  (`tests/folder-migration.py` caught the first version of this, which printed the defaults). CI now runs both commands with no display.
 - Tests: `unknown_options_are_named_and_known_ones_pass` (launcher), `the_runner_prints_the_saved_link_settings_without_the_engine`
   (core); the new CI step fails on the rc.2 AppImage, as Gates did.

@@ -1143,10 +1143,21 @@ pub extern "C" fn arcade_clipboard_restart_running() -> std::ffi::c_int {
 /// `--arcade-manifest` for the Linux runner's `main()`, answered before GTK and the Flutter engine start, so it
 /// works without a display (Link conformance CLI-4: rc.2 exited 1 with no output there). The Link settings come from
 /// the saved `settings.json` the app keeps (`ARCADE_DATA_DIR` when set, else Link's config folder), with the app's
-/// defaults for anything unset. `None` when a profile from 0.3 has not been moved yet (the engine path moves it and
+/// defaults for anything unset. `None` when an older profile has not been moved yet (the engine path moves it and
 /// answers) or the settings can't be read.
 pub fn printed_manifest_text() -> Option<String> {
     let dirs = arcade_link::paths::app_dirs(ids::CLIPBOARD);
+    let override_dir = std::env::var("ARCADE_DATA_DIR")
+        .map(|dir| !dir.trim().is_empty())
+        .unwrap_or(false);
+    // Folders from 0.2 still waiting to move: the engine path moves them and their settings first (folder-migration.py).
+    if !override_dir
+        && arcade_link::paths::legacy_dirs(ids::CLIPBOARD)
+            .iter()
+            .any(|dir| dir.path.exists())
+    {
+        return None;
+    }
     let file = match std::env::var("ARCADE_DATA_DIR")
         .ok()
         .map(|dir| dir.trim().to_owned())
