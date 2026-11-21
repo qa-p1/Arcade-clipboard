@@ -5,7 +5,7 @@ and versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-## [1.0.0] - 2026-11-17
+## [1.0.0] - 2026-11-21
 
 ### Fixed
 - An unknown command-line option now exits with code 2 and names the option, as every Arcade app does. On Linux it

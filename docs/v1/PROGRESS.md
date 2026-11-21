@@ -2,6 +2,19 @@
 
 Detail for `qa-p1/Arcade-catalog` › `dev/v1/PROGRESS.md`. Newest first.
 
+## 2026-11-21 (cloud session) - 1.0.0 released
+
+- #35 (5218265): the launcher answers an unknown option with exit 2 and the usage, and `--arcade-manifest` without
+  a display (D9). Tools 1.0.1's delta gate follows Tools' delta rule (Tools D25).
+- `v1.0.0-rc.3` (5218265) [Gates](https://github.com/qa-p1/Arcade-clipboard/actions/runs/44948481242): all 13 jobs
+  passed on the published files, `previous: v0.3.2`: published files and manifest, Linux conformance and the app's
+  own checks, budgets, Windows and macOS smoke, the delta from 0.3.2 with signature and tampered chunk, N-1, **the
+  upgrade from 0.3.2 with the user's history and keyring item**, Tier 1 Hyprland and Tier 2 KWin, Mutter, sway, X11.
+- [Promote](https://github.com/qa-p1/Arcade-clipboard/actions/runs/44949154720) made `v1.0.0` from rc.3. Verified:
+  the AppImage, tar.gz, dmg, Windows installer and SHA256SUMS.txt are byte for byte rc.3's (same SHA-256); only
+  `manifest.json` and `arcade-release.json` differ (signed for stable), and `manifest.json.sig` is added. `v1.0.0`
+  is the latest release and not a prerelease.
+
 ## 2026-11-18 (cloud session) - release candidates 1 and 2 (not promoted)
 
 - #22 (e5ec844): `gates.yml` on Link `app-gates.yml@v1.0.13` (previous default v0.3.2), Tier 2 on Link 1.0.14 with
