@@ -3,7 +3,10 @@
 
 use crate::link::{self, LinkSettings};
 use crate::Core;
+use arcade_link::catalog::Catalog;
 use arcade_link::client::{self, AppState};
+use arcade_link::manifest::surface;
+use arcade_link::offers::{Item, Prefs};
 use arcade_link::wire::{JobDone, JobProgress, LineReader, Message};
 use arcade_link::{
     ids, Action, Client, Content, ErrorCode, Handoff, InvokeRequest, InvokeResult, LinkError,
@@ -103,24 +106,18 @@ fn snapshot() -> Result<(arcade_link::Registry, LinkSettings), LinkError> {
         .ok_or_else(|| LinkError::unavailable("connections are starting"))
 }
 
-/// Only the requested Clipboard integrations. Box keeps ownership of presets.
-fn item_action(peer: &str, action: &Action) -> Option<(&'static str, bool, &'static str)> {
-    match (peer, action.id.as_str()) {
-        (ids::TOOLS, "tools.install") => Some(("Get", false, "")),
-        (ids::LOOK, "look.preview") => Some(("Quick Look", false, "Q")),
-        (ids::LENS, "lens.analyze") => Some(("Analyze with Lens", false, "A")),
-        (ids::LENS, "lens.pin") => Some(("Pin", false, "P")),
-        (ids::LENS, "lens.recognize") => Some(("Extract text", true, "E")),
-        (ids::BOX, "box:arcade.image.convert#png") => Some(("Convert to PNG", true, "N")),
-        (ids::BOX, "box:arcade.image.compress#web-200kb") => Some(("Compress", true, "C")),
-        (ids::BOX, "box:arcade.text.structured#format-json") => Some(("Format JSON", true, "J")),
-        (ids::BOX, "box:arcade.text.clean#clean") => Some(("Clean text", true, "T")),
-        // Shelf keeps the clip: text inline, images and files as this
-        // request's handoff copies, which Shelf copies before it answers.
-        (ids::SHELF, "shelf.add") => Some(("Add to Shelf", false, "H")),
-        _ => None,
-    }
-}
+/// At most this many entries from one app on a clip's menu, the app's own order (Link's `offers`) deciding which.
+const PER_APP: usize = 4;
+
+/// The Ctrl+Alt letters Clipboard has always used for these actions, so people keep their habits. Any other entry
+/// takes the first free letter of its title. This only names keys: which actions show is Link's answer.
+const LETTERS: &[(&str, &str, char)] = &[
+    (ids::LOOK, "look.preview", 'Q'),
+    (ids::LENS, "lens.analyze", 'A'),
+    (ids::LENS, "lens.pin", 'P'),
+    (ids::LENS, "lens.recognize:core.ocr", 'E'),
+    (ids::SHELF, "shelf.add", 'H'),
+];
 
 fn clip_type(kind: &str) -> &'static str {
     match kind {
@@ -133,63 +130,149 @@ fn clip_type(kind: &str) -> &'static str {
     }
 }
 
-fn offers(registry: &arcade_link::Registry, settings: &LinkSettings, kind: &str) -> Vec<Value> {
+/// Where a clip of this kind sits among Link's surfaces: a picture or a file is what a file manager menu shows, a
+/// link what a browser shows on links, text what it shows on a selection.
+fn clip_surface(kind: &str) -> &'static str {
+    match kind {
+        "image" | "file" | "files" => surface::FILE_MENU,
+        "url" => surface::BROWSER_LINK,
+        _ => surface::BROWSER_SELECTION,
+    }
+}
+
+/// Whether the action's result comes back into Clipboard's history: it hands back text, a file or a JSON document
+/// and runs without a window of its own. Showing something (Quick Look, Pin) or keeping it (Shelf) doesn't.
+fn imports_result(action: &Action) -> bool {
+    !action.interactive
+        && action.produces.iter().any(|t| {
+            let family = arcade_link::content::family(t);
+            family == "text" || family == "file" || t == "structured/json"
+        })
+}
+
+/// Another app's action that Clipboard can run on a clip.
+fn item_action(peer: &Manifest, action: &Action) -> bool {
+    // Tools installs apps and Clipboard doesn't call itself; Box before 1.0 lists its pipelines through a generic
+    // runner that needs a pipeline Clipboard doesn't pick (from 1.0 each saved pipeline is an action of its own).
+    !(peer.id == ids::TOOLS
+        || peer.id == ids::CLIPBOARD
+        || (peer.id == ids::BOX
+            && matches!(action.id.as_str(), "box.pipelines" | "box.pipeline.run")))
+}
+
+fn offers(
+    locations: &Locations,
+    registry: &arcade_link::Registry,
+    settings: &LinkSettings,
+    kind: &str,
+) -> Vec<Value> {
     if !settings.enabled {
         return Vec::new();
     }
-    let input = Content {
-        kind: clip_type(kind).into(),
-        ..Default::default()
-    };
-    let mut values = Vec::new();
-    for peer in registry.peers(ids::CLIPBOARD) {
-        if !peer.settings.link_enabled || settings.disabled_peers.contains(&peer.id) {
+    let peers: Vec<Manifest> = registry
+        .peers(ids::CLIPBOARD)
+        .filter(|peer| !settings.disabled_peers.contains(&peer.id))
+        .cloned()
+        .collect();
+    let rules = Catalog::load(locations).rules;
+    let prefs = Prefs::load(locations);
+    let item = Item::new(clip_type(kind));
+    let mut values: Vec<Value> = Vec::new();
+    let mut per_app: HashMap<String, usize> = HashMap::new();
+    let mut used: Vec<char> = Vec::new();
+    for offer in arcade_link::offers::offers(&[item], clip_surface(kind), &peers, &rules, &prefs) {
+        // An action that needs an engine installed first: Clipboard doesn't install engines.
+        if offer.install.is_some() {
             continue;
         }
-        for action in &peer.actions {
-            // Tools' install action is how "Get" reaches Tools for a missing
-            // app; it is nothing to do with a clip.
-            if peer.id == ids::TOOLS {
-                continue;
-            }
-            let Some((title, import, shortcut)) = item_action(&peer.id, action) else {
-                continue;
-            };
-            if !action.available
-                || !action.on_this_platform()
-                || !arcade_link::content::accepts_content(&action.accepts, &input)
-            {
-                continue;
-            }
-            // Recognition of text belongs to Lens, but Clipboard's Extract text
-            // entry specifically works on a photo, not a text history item.
-            if action.id == "lens.recognize" && kind != "image" {
-                continue;
-            }
-            let limit_reason = action
-                .max_bytes
-                .map(|limit| LinkError::too_large(limit).user_message(&peer.name));
-            values.push(
-                json!({"peer": peer.id, "action": action.id, "version": action.version,
-                "title": title, "import": import, "shortcut": shortcut,
-                "available": true, "reason": Value::Null,
-                "max_bytes": action.max_bytes, "limit_reason": limit_reason,
-                "effects": action.effects, "privacy": action.privacy}),
-            );
+        let Some(peer) = peers.iter().find(|p| p.id == offer.app) else {
+            continue;
+        };
+        let Some(action) = peer.action(&offer.action) else {
+            continue;
+        };
+        if !item_action(peer, action) {
+            continue;
         }
+        let shown = per_app.entry(offer.app.clone()).or_default();
+        if *shown >= PER_APP {
+            continue;
+        }
+        *shown += 1;
+        let letter = LETTERS
+            .iter()
+            .find(|(app, id, _)| *app == offer.app && *id == offer.action)
+            .map(|(_, _, l)| *l)
+            .filter(|l| !used.contains(l))
+            .or_else(|| {
+                offer
+                    .title
+                    .chars()
+                    .filter(char::is_ascii_alphabetic)
+                    .map(|c| c.to_ascii_uppercase())
+                    .find(|c| !used.contains(c) && !LETTERS.iter().any(|(_, _, l)| l == c))
+            });
+        if let Some(l) = letter {
+            used.push(l);
+        }
+        let limit_reason = action
+            .max_bytes
+            .map(|limit| LinkError::too_large(limit).user_message(&peer.name));
+        values.push(
+            json!({"peer": offer.app, "action": offer.action, "version": action.version,
+            "title": offer.title, "import": imports_result(action),
+            "shortcut": letter.map(String::from).unwrap_or_default(),
+            "available": true, "reason": offer.reason,
+            "max_bytes": action.max_bytes, "limit_reason": limit_reason,
+            "effects": action.effects, "privacy": action.privacy}),
+        );
     }
     values
+}
+
+/// Box's "compress to 200 KB" preset, the one action Clipboard offers for a copied photo too large to sync (16 to
+/// 32 MiB): Clipboard's own feature, so it names the action instead of taking a menu entry by its title.
+const COMPRESS: &str = "box:arcade.image.compress#web-200kb";
+
+fn compress_offer(registry: &arcade_link::Registry, settings: &LinkSettings) -> Option<Value> {
+    if !settings.enabled || settings.disabled_peers.iter().any(|p| p == ids::BOX) {
+        return None;
+    }
+    let peer = registry.get(ids::BOX).filter(|p| p.settings.link_enabled)?;
+    let photo = Content {
+        kind: "file/image".into(),
+        ..Default::default()
+    };
+    let action = peer.action(COMPRESS).filter(|a| a.offer_for(&photo))?;
+    Some(
+        json!({"peer": ids::BOX, "action": COMPRESS, "version": action.version,
+        "title": "Compress", "import": imports_result(action), "shortcut": "",
+        "available": true, "reason": Value::Null, "max_bytes": action.max_bytes, "limit_reason": Value::Null,
+        "effects": action.effects, "privacy": action.privacy}),
+    )
 }
 
 pub(crate) fn all_offers() -> Value {
     let Ok((registry, settings)) = snapshot() else {
         return json!({"offers": {}});
     };
-    let by_kind: serde_json::Map<String, Value> =
+    let locations = Locations::discover();
+    let mut by_kind: serde_json::Map<String, Value> =
         ["text", "url", "rich_text", "image", "file", "files"]
             .into_iter()
-            .map(|kind| (kind.into(), json!(offers(&registry, &settings, kind))))
+            .map(|kind| {
+                (
+                    kind.into(),
+                    json!(offers(&locations, &registry, &settings, kind)),
+                )
+            })
             .collect();
+    by_kind.insert(
+        "compress".into(),
+        json!(compress_offer(&registry, &settings)
+            .into_iter()
+            .collect::<Vec<_>>()),
+    );
     json!({"offers": by_kind})
 }
 
@@ -198,17 +281,25 @@ pub(crate) fn peers() -> Value {
     let Ok((registry, settings)) = snapshot() else {
         return json!({"peers": []});
     };
-    let rows: Vec<Value> = ids::APPS.into_iter().filter(|id| *id != ids::CLIPBOARD).map(|id| {
-        let (state, version) = match client::app_state(&locations, &registry, id, &me()) {
-            AppState::Running { version } => ("Running", version),
-            AppState::Installed { version } => ("Installed", version),
-            AppState::NotInstalled => ("Not installed", String::new()),
-        };
-        json!({"id": id, "name": arcade_link::manifest::app_name(id), "state": state,
-            "version": version, "enabled": !settings.disabled_peers.iter().any(|p| p == id),
-            "link_enabled": registry.get(id).is_none_or(|p| p.settings.link_enabled),
-            "pitch": arcade_link::manifest::app_pitch(id), "url": arcade_link::manifest::releases_url(id)})
-    }).collect();
+    // The apps in Arcade Tools' shared app list (the built-in list without it), so a new Arcade app appears here
+    // without a Clipboard update.
+    let catalog = Catalog::load(&locations);
+    let rows: Vec<Value> = catalog
+        .app_ids()
+        .into_iter()
+        .filter(|id| id != ids::CLIPBOARD)
+        .map(|id| {
+            let (state, version) = match client::app_state(&locations, &registry, &id, &me()) {
+                AppState::Running { version } => ("Running", version),
+                AppState::Installed { version } => ("Installed", version),
+                AppState::NotInstalled => ("Not installed", String::new()),
+            };
+            json!({"id": id, "name": catalog.name(&id), "state": state,
+            "version": version, "enabled": !settings.disabled_peers.contains(&id),
+            "link_enabled": registry.get(&id).is_none_or(|p| p.settings.link_enabled),
+            "pitch": catalog.pair(ids::CLIPBOARD, &id), "url": catalog.releases_url(&id)})
+        })
+        .collect();
     let shortcuts: Vec<Value> = registry
         .shortcuts(ids::CLIPBOARD)
         .map(|(name, _, accelerator)| json!({"name": name, "accelerator": accelerator}))
@@ -314,7 +405,7 @@ pub(crate) fn begin(core: Arc<Core>, value: Value) -> Value {
         let event = match result {
             Ok(result) => json!({"kind": "invoke_done", "request": id, "result": result}),
             Err(e) => json!({"kind": "invoke_done", "request": id, "error": e,
-                "message": e.user_message(if e.reason.as_deref() == Some("private_mode") { "Arcade Clipboard" } else { arcade_link::manifest::app_name(&peer) })}),
+                "message": e.user_message(&if e.reason.as_deref() == Some("private_mode") { "Arcade Clipboard".to_string() } else { Catalog::load(&Locations::discover()).name(&peer) })}),
         };
         link::push_event(event);
     });
@@ -364,8 +455,10 @@ async fn run(
             .action(&action_id)
             .ok_or_else(|| LinkError::unavailable("action is no longer available"))?
             .clone();
-        let (_, import, _) = item_action(&peer, &action)
-            .ok_or_else(|| LinkError::unsupported("not an item action"))?;
+        if !install && !item_action(&manifest, &action) {
+            return Err(LinkError::unsupported("not an item action"));
+        }
+        let import = !install && imports_result(&action);
         if !action.available {
             return Err(LinkError::unavailable(
                 action.reason.clone().unwrap_or_default(),
@@ -375,7 +468,7 @@ async fn run(
             .map_err(|e| LinkError::internal(e.to_string()))?;
         let (input, stage_guard) = if install {
             let app = value["options"]["app"].as_str().unwrap_or_default();
-            if !ids::APPS.contains(&app) || app == ids::CLIPBOARD {
+            if !known_app(app) {
                 return Err(LinkError::unsupported("unknown app"));
             }
             (Content::default(), None)
@@ -442,10 +535,10 @@ async fn run(
                 .clamp(100, 300_000),
         );
         let mut result = invoke_bounded(&manifest, &request, id, &cancel, timeout)?;
-        // Box's JSON formatter returns structured/json with the formatted
-        // string inline. Clipboard stores that specific transform as text.
-        // Other structured results (including Lens findings) stay structured.
-        if peer == ids::BOX && action_id == "box:arcade.text.structured#format-json" {
+        // A JSON document handed back inline (Box's JSON formatter) joins the
+        // history as its text. Other structured results (Lens findings) stay
+        // structured and aren't imported.
+        if import {
             for output in &mut result.outputs {
                 if output.kind == "structured/json" && output.text.is_some() {
                     output.kind = "text/plain".into();
@@ -483,9 +576,16 @@ async fn run(
             .find(|c| c.kind.starts_with("text/") || c.kind.starts_with("file/"))
         {
             let output = output.clone();
-            let clip = tokio::task::spawn_blocking(move || link::clip_for(&output))
+            let clip = match tokio::task::spawn_blocking(move || link::clip_for(&output))
                 .await
-                .map_err(|_| LinkError::internal("couldn't import result"))??;
+                .map_err(|_| LinkError::internal("couldn't import result"))?
+            {
+                Ok(clip) => clip,
+                // The app did its work and kept the result where it saves
+                // results; it is only too big to become a clip.
+                Err(e) if e.code == ErrorCode::TooLarge => return Ok(result),
+                Err(e) => return Err(e),
+            };
             core.request(json!({"op": "capture", "text": clip.text, "kind": clip.kind, "representations": clip.representations}))
                 .await.map_err(|e| if e.contains("paused") { LinkError::denied("private_mode") } else { LinkError::unavailable(e) })?;
         }
@@ -676,12 +776,22 @@ fn one_shot(
     result
 }
 
+/// Another Arcade app Clipboard may ask Tools to install or link to: one in the shared app list.
+fn known_app(app: &str) -> bool {
+    app != ids::CLIPBOARD
+        && Catalog::load(&Locations::discover())
+            .app_ids()
+            .iter()
+            .any(|id| id == app)
+}
+
 /// Opens only the canonical release page for a known Arcade app.
 pub(crate) fn open_releases(app: &str) -> Result<Value, LinkError> {
-    if !ids::APPS.contains(&app) || app == ids::CLIPBOARD {
+    if !known_app(app) {
         return Err(LinkError::unsupported("unknown app"));
     }
-    let url = arcade_link::manifest::releases_url(app);
+    let url = Catalog::load(&Locations::discover()).releases_url(app);
+    let url = url.as_str();
     #[cfg(target_os = "linux")]
     let child = Command::new("xdg-open").arg(url).spawn();
     #[cfg(target_os = "macos")]
@@ -713,7 +823,7 @@ mod tests {
         };
         let settings = LinkSettings::from_request(None);
         let mut registry = arcade_link::Registry::load(&locations);
-        assert!(offers(&registry, &settings, "image").is_empty());
+        assert!(offers(&locations, &registry, &settings, "image").is_empty());
         let mut lens = Manifest::new(
             ids::LENS,
             "1.0.0",
@@ -721,26 +831,205 @@ mod tests {
         );
         lens.actions = vec![
             Action::new("lens.recognize", "OCR", "recognize")
-                .accepts(&["file/image", "text/plain"]),
+                .accepts(&["file/image", "text/plain"])
+                .produces(&["structured/findings", "text/plain"]),
             Action::new("lens.pin", "Pin", "pin")
                 .accepts(&["file/image"])
                 .unavailable("off"),
         ];
         arcade_link::manifest::write_manifest(&locations, &lens).unwrap();
         registry.refresh();
-        let photo = offers(&registry, &settings, "image");
+        let photo = offers(&locations, &registry, &settings, "image");
         assert_eq!(photo.len(), 1);
-        assert_eq!(photo[0]["title"], "Extract text");
-        assert!(offers(&registry, &settings, "text").is_empty());
-        assert!(offers(&registry, &settings, "file").is_empty());
+        // The card's own title, and its text result joins the history.
+        assert_eq!(photo[0]["title"], "OCR");
+        assert_eq!(photo[0]["import"], true);
+        // Lens's card says it reads text too, so a text clip offers it as well.
+        assert_eq!(offers(&locations, &registry, &settings, "text").len(), 1);
+        assert!(offers(&locations, &registry, &settings, "file").is_empty());
         let off = LinkSettings::from_request(Some(&json!({"disabled_peers": [ids::LENS]})));
-        assert!(offers(&registry, &off, "image").is_empty());
+        assert!(offers(&locations, &registry, &off, "image").is_empty());
         let off = LinkSettings::from_request(Some(&json!({"enabled": false})));
-        assert!(offers(&registry, &off, "image").is_empty());
+        assert!(offers(&locations, &registry, &off, "image").is_empty());
         lens.settings.link_enabled = false;
         arcade_link::manifest::write_manifest(&locations, &lens).unwrap();
         registry.refresh();
-        assert!(offers(&registry, &settings, "image").is_empty());
+        assert!(offers(&locations, &registry, &settings, "image").is_empty());
+    }
+
+    fn card(id: &str, actions: Vec<Action>) -> Manifest {
+        let mut m = Manifest::new(
+            id,
+            "1.1.0",
+            &std::env::current_exe().unwrap().to_string_lossy(),
+        );
+        m.actions = actions;
+        m
+    }
+
+    fn ranked(id: &str, title: &str, rank: u8) -> Action {
+        let mut a = Action::new(id, title, "convert")
+            .accepts(&["file/image"])
+            .produces(&["file/image"]);
+        a.rank = [("file/image".to_string(), rank)].into();
+        a
+    }
+
+    #[test]
+    fn the_menu_is_links_answer_with_the_catalog_rules_and_the_users_choices() {
+        let dir = tempfile::tempdir().unwrap();
+        let locations = Locations::under(dir.path());
+        let settings = LinkSettings::from_request(None);
+        let mut preview = Action::new("look.preview", "Quick Look", "preview")
+            .accepts(&["file/*", "text/url"])
+            .interactive(true);
+        preview.rank = [("*".to_string(), 30)].into();
+        let mut inspect =
+            Action::new("look.inspect", "Inspect file", "inspect").accepts(&["file/*"]);
+        inspect.surfaces = vec!["internal".into()];
+        let mut boxed: Vec<Action> = (0..6)
+            .map(|i| {
+                ranked(
+                    &format!("box:arcade.image.t{i}"),
+                    &format!("Tool {i}"),
+                    40 + i * 5,
+                )
+            })
+            .collect();
+        boxed
+            .push(Action::new("box.pipelines", "Saved pipelines", "list").accepts(&["file/image"]));
+        boxed.push(
+            Action::new("box.pipeline.run", "Run a pipeline", "run").accepts(&["file/image"]),
+        );
+        boxed.push(ranked("box:arcade.image.web", "Web export", 90));
+        for m in [
+            card(ids::LOOK, vec![preview, inspect]),
+            card(ids::BOX, boxed),
+            card(
+                ids::TOOLS,
+                vec![
+                    Action::new("tools.install", "Install an Arcade app", "install")
+                        .accepts(&["file/image"]),
+                ],
+            ),
+            card(
+                ids::LENS,
+                vec![
+                    Action::new("lens.recognize:core.ocr", "Read text", "recognize")
+                        .accepts(&["file/image"])
+                        .produces(&["text/plain"]),
+                ],
+            ),
+        ] {
+            arcade_link::manifest::write_manifest(&locations, &m).unwrap();
+        }
+        let registry = arcade_link::Registry::load(&locations);
+
+        let image = offers(&locations, &registry, &settings, "image");
+        let refs: Vec<String> = image
+            .iter()
+            .map(|o| {
+                format!(
+                    "{}/{}",
+                    o["peer"].as_str().unwrap(),
+                    o["action"].as_str().unwrap()
+                )
+            })
+            .collect();
+        // Box: its four highest-ranked tools, not its generic pipeline runner; Tools and Look's internal action: never.
+        let from_box: Vec<&String> = refs.iter().filter(|r| r.starts_with(ids::BOX)).collect();
+        assert_eq!(from_box.len(), PER_APP, "{refs:?}");
+        assert_eq!(from_box[0], &format!("{}/box:arcade.image.web", ids::BOX));
+        assert!(!refs.iter().any(|r| r.contains("box.pipeline")
+            || r.starts_with(ids::TOOLS)
+            || r.contains("inspect")));
+        assert!(refs.contains(&format!("{}/look.preview", ids::LOOK)));
+        // Keys: Clipboard's usual letters where it has one, the first free letter of the title otherwise, each once.
+        let letter = |action: &str| {
+            image.iter().find(|o| o["action"] == action).unwrap()["shortcut"].clone()
+        };
+        assert_eq!(letter("look.preview"), "Q");
+        assert_eq!(letter("lens.recognize:core.ocr"), "E");
+        let mut keys: Vec<&str> = image
+            .iter()
+            .filter_map(|o| o["shortcut"].as_str())
+            .collect();
+        let count = keys.len();
+        keys.sort_unstable();
+        keys.dedup();
+        assert_eq!(keys.len(), count);
+        // A result that is a file or text joins the history; Quick Look shows the clip.
+        assert_eq!(
+            image
+                .iter()
+                .find(|o| o["action"] == "box:arcade.image.web")
+                .unwrap()["import"],
+            true
+        );
+        assert_eq!(letter("look.preview"), "Q");
+        assert_eq!(
+            image
+                .iter()
+                .find(|o| o["action"] == "look.preview")
+                .unwrap()["import"],
+            false
+        );
+        // A link clip: Quick Look takes links; Box's image tools don't.
+        let url = offers(&locations, &registry, &settings, "url");
+        assert_eq!(url.len(), 1);
+        assert_eq!(url[0]["action"], "look.preview");
+
+        // The catalog renames and hides; the user hides.
+        arcade_link::catalog::write_shared(
+            &locations,
+            &json!({"apps": [{"id": ids::BOX, "name": "Arcade Box"}], "rules": {
+                "rename": {format!("{}/box:arcade.image.web", ids::BOX): "Make it web-ready"},
+                "hide": [format!("{}/look.preview", ids::LOOK)]}})
+            .to_string(),
+        )
+        .unwrap();
+        Prefs {
+            hidden: vec![format!("{}/lens.recognize:core.ocr", ids::LENS)],
+            ..Prefs::default()
+        }
+        .save(&locations)
+        .unwrap();
+        let image = offers(&locations, &registry, &settings, "image");
+        assert_eq!(image[0]["title"], "Make it web-ready");
+        assert!(image
+            .iter()
+            .all(|o| o["action"] != "look.preview" && o["action"] != "lens.recognize:core.ocr"));
+    }
+
+    #[test]
+    fn a_photo_too_large_to_sync_is_offered_boxs_compressor_alone() {
+        let dir = tempfile::tempdir().unwrap();
+        let locations = Locations::under(dir.path());
+        let settings = LinkSettings::from_request(None);
+        let mut registry = arcade_link::Registry::load(&locations);
+        assert!(compress_offer(&registry, &settings).is_none());
+        let mut compress = ranked(COMPRESS, "Compress image", 70);
+        compress.preset = Some("web-200kb".into());
+        let mut boxed = card(
+            ids::BOX,
+            vec![compress, ranked("box:arcade.image.web", "Web export", 90)],
+        );
+        arcade_link::manifest::write_manifest(&locations, &boxed).unwrap();
+        registry.refresh();
+        let offer = compress_offer(&registry, &settings).unwrap();
+        assert_eq!(
+            (offer["action"].as_str(), offer["title"].as_str()),
+            (Some(COMPRESS), Some("Compress"))
+        );
+        assert_eq!(offer["import"], true);
+        let off = LinkSettings::from_request(Some(&json!({"disabled_peers": [ids::BOX]})));
+        assert!(compress_offer(&registry, &off).is_none());
+        boxed.actions[0] = boxed.actions[0]
+            .clone()
+            .unavailable("FFmpeg isn't installed");
+        arcade_link::manifest::write_manifest(&locations, &boxed).unwrap();
+        registry.refresh();
+        assert!(compress_offer(&registry, &settings).is_none());
     }
 
     fn shelf(enabled: bool, available: bool) -> Manifest {
@@ -788,7 +1077,7 @@ mod tests {
         let settings = LinkSettings::from_request(None);
         for kind in ["text", "url", "rich_text", "image", "file", "files"] {
             assert!(
-                offers(&registry, &settings, kind)
+                offers(&locations, &registry, &settings, kind)
                     .iter()
                     .all(|o| o["peer"] != ids::TOOLS),
                 "{kind}"
@@ -804,7 +1093,7 @@ mod tests {
         let mut registry = arcade_link::Registry::load(&locations);
         let kinds = ["text", "url", "rich_text", "image", "file", "files"];
         let shelf_offers = |registry: &arcade_link::Registry, settings: &LinkSettings, kind| {
-            offers(registry, settings, kind)
+            offers(&locations, registry, settings, kind)
                 .into_iter()
                 .filter(|o| o["peer"] == ids::SHELF)
                 .collect::<Vec<_>>()

@@ -172,11 +172,8 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   int? _photoStage;
   Map<String, Object?>? _photoInput;
 
-  List<LinkItemAction> linkActions(ClipboardItem item) => _link
-      .actionsFor(item, private: _status?.paused == true)
-      .where(
-          (action) => item.id != 'waiting-photo' || action.title == 'Compress')
-      .toList(growable: false);
+  List<LinkItemAction> linkActions(ClipboardItem item) =>
+      _link.actionsFor(item, private: _status?.paused == true);
 
   Future<void> invokeItemAction(
       ClipboardItem item, LinkItemAction action) async {
@@ -1531,7 +1528,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       return; // Native clipboard reads have the same cap.
     }
     final photo = ClipboardItem(
-        id: 'waiting-photo',
+        id: waitingPhotoId,
         originDevice: _status?.deviceId ?? '',
         sourceName: 'This device',
         createdAt: DateTime.now(),
@@ -1540,8 +1537,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         pinned: false,
         size: count,
         previewText: 'Image too large to sync');
-    final compress =
-        linkActions(photo).where((a) => a.title == 'Compress' && a.enabled);
+    final compress = linkActions(photo).where((a) => a.enabled);
     if (compress.isEmpty) {
       return; // Standalone capture retains its existing limit.
     }

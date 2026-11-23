@@ -288,7 +288,7 @@ impl Store {
         };
         let ciphertext = cipher
             .encrypt(
-                XNonce::from_slice(&nonce),
+                &XNonce::from(nonce),
                 Payload {
                     msg: &stored_payload,
                     aad: &aad,
@@ -315,7 +315,7 @@ impl Store {
         OsRng.fill_bytes(&mut preview_nonce);
         let preview_ciphertext = cipher
             .encrypt(
-                XNonce::from_slice(&preview_nonce),
+                &XNonce::from(preview_nonce),
                 Payload {
                     msg: &preview_bytes,
                     aad: &preview_aad,
@@ -613,7 +613,7 @@ impl Store {
         OsRng.fill_bytes(&mut nonce);
         let ciphertext = cipher
             .encrypt(
-                XNonce::from_slice(&nonce),
+                &XNonce::from(nonce),
                 Payload {
                     msg: &bytes,
                     aad: &aad,
@@ -1345,10 +1345,7 @@ fn append_aad_field(aad: &mut Vec<u8>, field: &[u8]) {
 }
 
 fn checked_nonce(nonce: &[u8]) -> Result<&XNonce, String> {
-    if nonce.len() != 24 {
-        return Err("Stored clipboard encryption nonce is malformed".into());
-    }
-    Ok(XNonce::from_slice(nonce))
+    <&XNonce>::try_from(nonce).map_err(|_| "Stored clipboard encryption nonce is malformed".into())
 }
 
 fn migrate_aad_v1_to_v2(conn: &mut Connection, key: &[u8; 32]) -> Result<(), String> {
@@ -1431,7 +1428,7 @@ fn migrate_aad_v1_to_v2(conn: &mut Connection, key: &[u8; 32]) -> Result<(), Str
         );
         let new_ciphertext = cipher
             .encrypt(
-                XNonce::from_slice(&new_nonce),
+                &XNonce::from(new_nonce),
                 Payload {
                     msg: &plaintext,
                     aad: &new_aad,
@@ -1550,7 +1547,7 @@ fn migrate_hashes_v2_to_v3(conn: &mut Connection, key: &[u8; 32]) -> Result<(), 
         );
         let new_ciphertext = cipher
             .encrypt(
-                XNonce::from_slice(&new_nonce),
+                &XNonce::from(new_nonce),
                 Payload {
                     msg: &plaintext,
                     aad: &new_aad,
@@ -1813,6 +1810,36 @@ fn db_error(error: rusqlite::Error) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A history item sealed by 1.0.0 (chacha20poly1305 0.10.1) opens with this version's library, and sealing gives
+    /// the same bytes, so an upgraded database reads as before.
+    #[test]
+    fn a_1_0_0_sealed_item_opens_and_seals_the_same() {
+        let hex = "59d413b5548717c0fe193b7c7fb6b0c31e33cc080ee267296cc3a33cc07e666aa0d426ce17e37c769ce00233abc63a82cab436";
+        let sealed: Vec<u8> = (0..hex.len())
+            .step_by(2)
+            .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).unwrap())
+            .collect();
+        let cipher = XChaCha20Poly1305::new((&[0x33u8; 32]).into());
+        let (msg, aad) = (
+            &b"Arcade Clipboard 1.0.0 history item"[..],
+            &b"arcade:aad:v3"[..],
+        );
+        let nonce = checked_nonce(&[0x44u8; 24]).unwrap();
+        assert_eq!(
+            cipher
+                .decrypt(nonce, Payload { msg: &sealed, aad })
+                .unwrap(),
+            msg
+        );
+        assert_eq!(
+            cipher
+                .encrypt(&XNonce::from([0x44u8; 24]), Payload { msg, aad })
+                .unwrap(),
+            sealed
+        );
+        assert!(checked_nonce(&[0u8; 23]).is_err());
+    }
     use crate::model::MAX_TEXT_BYTES;
     use crate::model::{MemberCertificate, SignedMemberCertificate};
     use tempfile::tempdir;
@@ -2297,7 +2324,7 @@ mod tests {
             );
             let ciphertext = cipher
                 .encrypt(
-                    XNonce::from_slice(&nonce),
+                    &XNonce::from(nonce),
                     Payload {
                         msg: item.text.as_bytes(),
                         aad: &aad,

@@ -39,6 +39,43 @@ void main() {
         'background');
   });
   testWidgets(
+      'a photo too large to sync gets the compressor; other clips the menu',
+      (tester) async {
+    final core = FakeCoreApi(hasMesh: true);
+    final service = LinkService(core);
+    addTearDown(service.close);
+    await service.load();
+    service.listen();
+    await tester.pumpAndSettle();
+    core.linkOffers = {
+      'image': [offer()],
+      'compress': [
+        {
+          'peer': 'arcade.box',
+          'action': 'box:arcade.image.compress#web-200kb',
+          'title': 'Compress',
+          'import': true,
+          'shortcut': '',
+          'available': true,
+        }
+      ],
+    };
+    await service.refresh();
+    final waiting = ClipboardItem(
+        id: waitingPhotoId,
+        originDevice: 'pc',
+        sourceName: 'This device',
+        createdAt: DateTime.now(),
+        text: '',
+        kind: 'image',
+        pinned: false,
+        size: 20 * 1024 * 1024);
+    final compress = service.actionsFor(waiting).single;
+    expect((compress.title, compress.importsResult, compress.enabled),
+        ('Compress', true, true));
+    expect(service.actionsFor(photo()).single.title, 'Quick Look');
+  });
+  testWidgets(
       'late peers update cached actions; absent, toggled and limited entries stay safe',
       (tester) async {
     final core = FakeCoreApi(hasMesh: true);

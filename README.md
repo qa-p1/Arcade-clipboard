@@ -57,7 +57,7 @@ Clipboard works on its own. On Linux, Windows and macOS it connects to other ins
 
 | App | What it adds to Clipboard or receives from it |
 |---|---|
-| Arcade Box | Format JSON, Clean text and Convert to PNG. Box results can become new clips. Oversized images can be compressed through Box (opt-in). |
+| Arcade Box | Its tools for the clip (convert, compress, clean, format…). Box results can become new clips. Oversized images can be compressed through Box (opt-in). |
 | Arcade Lens | Analyze an image, extract text or pin an image. Lens results can become new clips. |
 | Arcade Look | Quick Look a supported image or file. |
 | Arcade Shelf | Add a clip to Shelf: text, links, rich text, images and files. |

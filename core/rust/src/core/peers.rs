@@ -1045,6 +1045,40 @@ impl Core {
 #[cfg(test)]
 mod relay_route_tests {
     use super::*;
+
+    fn unhex(s: &str) -> Vec<u8> {
+        (0..s.len())
+            .step_by(2)
+            .map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap())
+            .collect()
+    }
+
+    /// Bytes from 1.0.0's code with its crypto libraries (x25519-dalek 2.0.1, base64 0.22.1, blake3 1.8.7). Devices
+    /// pair and sync across versions, so this version must give a 1.0.0 peer the same identity and relay route.
+    #[test]
+    fn identity_and_relay_route_match_1_0_0_peers() {
+        let (a, b) = ([0x11u8; 32], [0x22u8; 32]);
+        let public_a = unhex("7b4e909bbe7ffe44c465a220037d608ee35897d31ef972f07f74892cb0f73f13");
+        let public_b = unhex("0faa684ed28867b97f4a6a2dee5df8ce974e76b7018e3f22a1c4cf2678570f20");
+        let WireMessage::Hello { static_public, .. } =
+            hello_message("mesh-1", "device-a", "A", &a, "")
+        else {
+            panic!("not a hello");
+        };
+        assert_eq!(crypto::decode(&static_public).unwrap(), public_a);
+        let expected = (
+            "22a8eba6f487ac1bf700eb60dc71ec33200953145bbccb88a2138c525dda2342".to_string(),
+            "JwUALS_ak9RqiJ2UgT1m4cq4aKFnGAFo_kLwgUVxZsE".to_string(),
+        );
+        assert_eq!(
+            relay_capability("mesh-1", "device-a", "device-b", &a, &public_b).unwrap(),
+            expected
+        );
+        assert_eq!(
+            relay_capability("mesh-1", "device-b", "device-a", &b, &public_a).unwrap(),
+            expected
+        );
+    }
     #[test]
     fn relay_routes_are_pairwise_secret_and_symmetric() {
         let a = IdentityMaterial::generate().unwrap();

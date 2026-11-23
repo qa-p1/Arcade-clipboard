@@ -42,7 +42,7 @@ On iPhone and iPad, use the share extension or clipboard keyboard to add or choo
 
 ## Open and use clips with other apps
 
-When enabled, the picker and clip menus offer actions such as **Quick Look** with Look, **Analyze with Lens**, **Extract text**, and **Pin** with Lens, **Format JSON**, **Clean text**, and **Convert to PNG** with Box, and **Add to Shelf**. Results imported from these actions become new history clips and can sync to your devices. They do not change the system clipboard.
+When enabled, the picker and clip menus offer what the other Arcade apps can do with the selected clip, for example **Quick Look** with Look, **Read text**, **Analyze with Lens** and **Pin** with Lens, Box's tools for that kind of clip, and **Add to Shelf**. The list comes from the apps themselves: an app that gains an action shows it here without a Clipboard update, and at most four entries come from one app. Actions you hide in another Arcade menu are hidden here too. Each entry shows its Ctrl+Alt key in the picker. Results that are text or a file become new history clips and can sync to your devices. They do not change the system clipboard.
 
 If an image is too large for normal sync, Clipboard may offer an opt-in compression through Box. The original oversized image is not inserted into history or sent uncompressed.
 

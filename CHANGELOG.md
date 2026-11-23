@@ -5,6 +5,26 @@ and versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **Send to my devices** is offered everywhere Arcade offers actions: the file manager's Arcade menu, the browser
+  extension (on images, links, selections, pages and finished downloads) and searchable lists. Its card states its
+  limits, 16 MB per clip and 32 files, so a larger item shows greyed out with the reason instead of failing.
+
+### Changed
+- The clip menus and the picker show what the other Arcade apps say they can do with the clip (Arcade Link 1.1):
+  an app's new actions appear without a Clipboard update, at most four per app, with the actions the Arcade catalog
+  renames or hides and the ones you hid in another Arcade menu. Lens's **Read text** replaces **Extract text**
+  (still Ctrl+Alt+E); Box shows the tools it ranks first for the clip instead of a fixed four.
+- Settings › Connected apps lists the apps in Arcade Tools' shared app list, so a new Arcade app appears without a
+  Clipboard update.
+- A result too large to become a clip no longer turns a finished action into an error; the result stays where the
+  app saved it.
+- Arcade Link 1.1.1 (from 1.0.13); `url` 2.5.9 (RUSTSEC-2026-0592); chacha20poly1305 0.11, x25519-dalek 3 and
+  base64 0.23, with tests that the identity, relay route, stored clips and key encoding match 1.0.0's bytes, so 1.0.0
+  and 1.1.0 devices keep syncing; flutter_lints 6; image 4.13, mobile_scanner 7.5, shared_preferences 2.5.6,
+  crypto 3.0.8; tokio 1.54, serde_json 1.0.154, uuid 1.29, mdns-sd 0.21.7, tracing 0.1.44; the pinned Actions
+  (checkout 7.0.1, upload-artifact 7.0.2, download-artifact 8.0.2).
+
 ## [1.0.0] - 2026-11-21
 
 ### Fixed

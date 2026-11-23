@@ -14,26 +14,31 @@ window later does not change how Tools relaunches this instance.
 
 ## Actions on your clips
 
-Desktop history menus and the picker offer these actions when the peer is
-installed and enabled. The picker uses Ctrl+Alt plus the letter shown below.
-Every entry shows the peer's glyph, ↗, and a preview of the selected clip.
+Desktop history menus and the picker show Arcade Link's answer for the clip
+(`arcade_link::offers`, Link 1.1): every installed, enabled app's actions that
+take the clip's type on the matching surface (a picture or a file: the file
+menu; a link: browser links; text: a browser selection), ranked by each card,
+with the catalog's `rules` (renames, hidden actions) and the user's
+`offers.json` (hidden, pinned, a default per job) applied. Clipboard keeps no
+list of other apps' actions. It leaves out Tools (installing is "Get"), Box's
+generic pre-1.0 pipeline list and runner, and entries that need an engine
+installed first, and shows at most four entries per app.
 
-| Clip | Action | Peer | Picker key |
-|---|---|---|---|
-| Image, file(s) | Quick Look | Look | Q |
-| Image | Analyze with Lens / Pin | Lens | A / P |
-| Image | Extract text | Lens | E |
-| Image | Convert to PNG / Compress | Box | N / C |
-| Text / JSON (peer accepts `text/plain`) | Format JSON / Clean text | Box | J / T |
-| Text, link, rich text, image, file(s) | Add to Shelf | Shelf | H |
+Each entry shows the peer's glyph, ↗, and a preview of the selected clip. The
+picker runs it with Ctrl+Alt plus its letter. The letters people already know
+stay: Q (Look's Quick Look), A and P (Lens's Analyze and Pin), E (Lens's Read
+text), H (Shelf's Add to Shelf). Any other entry takes the first free letter of
+its title; an entry with no free letter has no key.
 
-Extracted text and Box results become new clips, using the existing capture,
-validation, encryption, dedup and device sync path. They never write the local
-system clipboard. Private mode denies these requests. Secret hints and Lens
-secret findings prevent importing a result into the mesh.
-Box's Format JSON returns `structured/json` with formatted text; Clipboard
-stores that specific result as a text clip. Other structured outputs remain
-metadata and are not imported.
+A result comes back as a new clip when the action hands back text, a file or a
+JSON document (`produces` has `text/*`, `file/*` or `structured/json`) and has
+no window of its own. It uses the existing capture, validation, encryption,
+dedup and device sync path, never the local system clipboard. Private mode
+denies these requests. Secret hints and Lens secret findings prevent importing
+a result into the mesh. A JSON document returned inline (Box's JSON formatter)
+is stored as its text; other structured outputs (Lens findings) remain
+metadata and are not imported. A result too large to be a clip stays where the
+app saved it, and the action still succeeds.
 
 Add to Shelf sends the clip to Arcade Shelf's `shelf.add` (v1) and shows
 Shelf's reply ("Added 1 item to …") as a notice; nothing is imported back.
@@ -56,7 +61,8 @@ deadline (ordinary invoke replies retain the protocol client's 30-second
 read timeout); there are no idle polling timers.
 
 Copied photos between 16 and 32 MiB can wait locally for an opt-in **Compress**
-when Box's image compressor is available. They are never inserted into history
+when Box's image compressor (`box:arcade.image.compress#web-200kb`, offered
+under `link_offers`' own `compress` key, never through the menu) is available. They are never inserted into history
 or sent uncompressed. In-memory photos are staged in private handoff files in
 512 KiB chunks; existing image files are passed by path. Discard, replacement,
 completion and shutdown remove staging. The native clipboard reader's 32 MiB

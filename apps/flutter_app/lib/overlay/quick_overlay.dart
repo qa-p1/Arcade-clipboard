@@ -276,7 +276,8 @@ class _MeshOverlayState extends State<MeshOverlay> {
         _visible.isNotEmpty) {
       final item = _visible[_selectedIndex(_visible)];
       for (final action in widget.controller.linkActions(item)) {
-        if (event.logicalKey.keyLabel.toUpperCase() == action.shortcut &&
+        if (action.shortcut.isNotEmpty &&
+            event.logicalKey.keyLabel.toUpperCase() == action.shortcut &&
             action.enabled) {
           widget.controller.invokeItemAction(item, action);
           return KeyEventResult.handled;
@@ -389,7 +390,8 @@ class _OverlayLinkAction extends StatelessWidget {
               Text(action.title,
                   style: ArcadeTokens.textControl.copyWith(color: c.text)),
               const SizedBox(width: ArcadeTokens.space8),
-              ArcadeKeyCombo(['Ctrl', 'Alt', action.shortcut]),
+              if (action.shortcut.isNotEmpty)
+                ArcadeKeyCombo(['Ctrl', 'Alt', action.shortcut]),
             ]),
           ),
         ),
