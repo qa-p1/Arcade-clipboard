@@ -71,6 +71,15 @@ When Arcade Tools is running, its tray icon hosts Clipboard's menu, including **
 
 See [how Clipboard works with other Arcade apps](docs/user/with-other-apps.md) and the [Arcade Link reference](docs/dev/link.md).
 
+## Use it from anywhere
+
+With [Arcade Tools](https://github.com/qa-p1/Arcade-tools) 1.1 or later installed, its Arcade helper puts **Send to my
+devices** in your file manager's right-click menu (Files, Dolphin, Caja, Nemo, Thunar and "Open With" on Linux, File
+Explorer on Windows, Finder's Quick Actions on macOS): the selected files join your encrypted history and sync to your
+paired devices without opening Clipboard. It takes up to 32 items, each file up to 16 MB, and runs in one click. The
+Arcade browser extension will offer it on images, links, selected text, pages and downloads when it ships. See Tools'
+[Everywhere guide](https://github.com/qa-p1/Arcade-tools/blob/main/docs/user/everywhere.md) for pinning and defaults.
+
 ## Usage
 
 1. On the first device choose **Create a mesh**, then **Devices → Add device** to show a QR code and pairing code (valid for two minutes).

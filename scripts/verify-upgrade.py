@@ -13,8 +13,8 @@ user's profile is the default one):
   * OLD is installed from a download folder (`--install --silent --no-launch`, which also adds the login entry),
     started with `--background` and set up the way a first-time user does (the window's "Start on this device");
   * three clips are copied the way a user copies them (X11 selection: text, a link and a file) and OLD must capture
-    them; three non-default settings are changed in OLD's Settings page (Keep history 7 days, History limit 1,000
-    clips, Appearance Dark);
+    them; three non-default settings are changed in OLD's Settings page (Keep history 7 days, Storage budget 1 GB,
+    Appearance Dark);
   * the profile is snapshotted: history.sqlite (the rows' metadata, the mesh and device records, the settings table),
     settings.json and the Secret Service item that holds the history key (its attributes and a hash of its value).
 NEW is then downloaded and installed over OLD while OLD runs, the way a user updates by hand. NEW must replace the
@@ -51,15 +51,18 @@ LINK = "https://example.invalid/upgrade-test/pomelo"
 FILE_NAME = "papaya-budget.txt"
 FILE_CONTENT = "papaya budget\nline two of the user's file\n"
 # The three settings a user changes in OLD's Settings page: the database's `settings` table (retention_hours,
-# max_items; the defaults of 0.3 were 24 hours and 500 clips) and Flutter's settings.json (appearance_mode).
+# max_storage_mb; 1.0's defaults are Forever and 256 MB) and Flutter's settings.json (appearance_mode). 1.0 replaced
+# 0.3's History limit (max_items) with Storage budget.
 RETENTION_HOURS = "168"
-MAX_ITEMS = "1000"
+MAX_STORAGE_MB = "1024"
 APPEARANCE = "dark"
-# Where the controls are in OLD's window (1040x740, content origin at the window's corner). Measured on 0.3.2:
-# the Settings page, scrolled down by 12 wheel clicks for the two drop-downs, scrolled back for Appearance.
+# Where the controls are in OLD's window (1040x740, content origin at the window's corner). Measured on 1.0.0 (the
+# previous release since 2026-11-21; 0.3.2's page was laid out differently): the Settings page, scrolled down by 12
+# wheel clicks for the two drop-downs, scrolled back for Appearance. A drop-down's menu opens with the current value
+# over the button, so the positions of "7 days" and "1 GB" assume the defaults (Forever, 256 MB).
 UI_DARK = (963, 138)
-UI_KEEP_DROPDOWN, UI_KEEP_7_DAYS = (950, 123), (940, 176)
-UI_LIMIT_DROPDOWN, UI_LIMIT_1000 = (940, 179), (934, 228)
+UI_KEEP_DROPDOWN, UI_KEEP_7_DAYS = (950, 72), (940, 224)
+UI_BUDGET_DROPDOWN, UI_BUDGET_1_GB = (950, 137), (936, 184)
 UI_SCROLL_AT = (620, 400)
 
 
@@ -398,11 +401,11 @@ def main():
             wait(lambda: settings_table(read_database(history)).get("retention_hours") == RETENTION_HOURS,
                  f"Keep history to change to 7 days in OLD (retention_hours is "
                  f"{settings_table(read_database(history)).get('retention_hours')!r})", 10)
-            click(page, UI_LIMIT_DROPDOWN)
-            click(page, UI_LIMIT_1000)
-            wait(lambda: settings_table(read_database(history)).get("max_items") == MAX_ITEMS,
-                 f"History limit to change to 1,000 clips in OLD (max_items is "
-                 f"{settings_table(read_database(history)).get('max_items')!r})", 10)
+            click(page, UI_BUDGET_DROPDOWN)
+            click(page, UI_BUDGET_1_GB)
+            wait(lambda: settings_table(read_database(history)).get("max_storage_mb") == MAX_STORAGE_MB,
+                 f"Storage budget to change to 1 GB in OLD (max_storage_mb is "
+                 f"{settings_table(read_database(history)).get('max_storage_mb')!r})", 10)
             scroll(page, -12)
             click(page, UI_DARK)
             wait(lambda: settings_json.exists() and json.loads(settings_json.read_text()).get("appearance_mode") == APPEARANCE,
@@ -422,14 +425,14 @@ def main():
                   "OLD changed its history when it started again")
             check(len(before["items"][1]) == 3, f"{old_version} holds {len(before['items'][1])} clips, expected 3")
             old_settings = settings_table(before)
-            check(old_settings["retention_hours"] == RETENTION_HOURS and old_settings["max_items"] == MAX_ITEMS,
+            check(old_settings["retention_hours"] == RETENTION_HOURS and old_settings["max_storage_mb"] == MAX_STORAGE_MB,
                   f"{old_version} changed the settings it was given: {old_settings}")
             check(old_settings_json.get("appearance_mode") == APPEARANCE, old_settings_json)
             old_meta = meta_table(before)
             ((old_username, (old_secret_hash, old_secret_attributes)),) = old_secrets.items()
             print(f"{old_version} installed at {installed} and running with the user's data: "
                   f"{len(before['items'][1])} clips (text, link, file), mesh {old_meta['mesh_id']}, "
-                  f"settings retention {old_settings['retention_hours']} h, limit {old_settings['max_items']}, "
+                  f"settings retention {old_settings['retention_hours']} h, budget {old_settings['max_storage_mb']} MB, "
                   f"appearance {old_settings_json['appearance_mode']}, history key {old_username[:20]}...", flush=True)
 
             old_pids = set(clipboard_processes(root))
@@ -537,8 +540,8 @@ def main():
                 new_settings = settings_table(after)
                 check(new_settings.get("retention_hours") == RETENTION_HOURS,
                       f"Keep history is {new_settings.get('retention_hours')!r} hours after the upgrade, was {RETENTION_HOURS}")
-                check(new_settings.get("max_items") == MAX_ITEMS,
-                      f"History limit is {new_settings.get('max_items')!r} after the upgrade, was {MAX_ITEMS}")
+                check(new_settings.get("max_storage_mb") == MAX_STORAGE_MB,
+                      f"Storage budget is {new_settings.get('max_storage_mb')!r} MB after the upgrade, was {MAX_STORAGE_MB}")
                 check(new_settings.get("paused") == old_settings["paused"], f"Private mode changed: {new_settings}")
                 new_settings_json = json.loads(settings_json.read_text())
                 for name, value in old_settings_json.items():
@@ -573,8 +576,8 @@ def main():
             for path, value in user_files.items():
                 check(digest(path) == value, f"The user's own file {path} was changed")
             print(f"{new_version} replaced {old_version} in place: {len(before["items"][1])} clips read back through the "
-                  f"picker (text, link, file), the mesh and device, Keep history {RETENTION_HOURS} h, limit "
-                  f"{MAX_ITEMS}, Dark appearance and the same history key kept; one launcher, {len(logins)} login entry, "
+                  f"picker (text, link, file), the mesh and device, Keep history {RETENTION_HOURS} h, budget "
+                  f"{MAX_STORAGE_MB} MB, Dark appearance and the same history key kept; one launcher, {len(logins)} login entry, "
                   f"both start the installed file; clip ciphertext {'unchanged' if identical else 're-encrypted'}",
                   flush=True)
         except Exception:
