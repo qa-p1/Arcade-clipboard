@@ -1,5 +1,25 @@
 # Arcade Clipboard: status
 
+## 1.1.0 (2026-11-23)
+
+Released: 1.0.0 (2026-11-21) and 1.1.0 (2026-11-23); `CHANGELOG.md` says what each changed and
+`docs/v1/PROGRESS.md` links their Release, Gates and Promote runs.
+
+- 1.1.0 is Clipboard's part of "Arcade everywhere": its clip menus and picker take other apps' actions from Arcade
+  Link 1.1.1's shared offers, and **Send to my devices** is on its card for Arcade's file manager menus (and the
+  browser extension once it ships).
+- The crypto updates (chacha20poly1305 0.11, x25519-dalek 3, base64 0.23) keep 1.0.0's bytes: unit tests pin the
+  identity, relay route, stored clips and key encoding, and the release gate upgraded a real 1.0.0 profile to 1.1.0
+  with its history, settings, history key and integration intact (ciphertext unchanged).
+- `scripts/verify-upgrade.py` now drives 1.0.0's Settings (the storage budget replaced the item count; positions
+  measured on 1.0.0).
+- Not taken: hotkey_manager 0.4 and window_manager 0.7 (they need Flutter 3.50 / Dart 3.14; take them with that
+  move).
+- Open: the Android job has no Gradle cache, so a Maven Central rate limit (HTTP 429) can fail it, as it did once on
+  the rc.2 Release run. Add a Gradle cache saved only on main.
+
+The notes below are from 0.3.x (before 1.0).
+
 ## 0.3.2 (2026-11-06)
 
 - Fix secure identity lookup after the standard data-folder migration. Only
