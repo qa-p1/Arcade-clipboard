@@ -2,6 +2,25 @@
 
 Detail for `qa-p1/Arcade-catalog` › `dev/v1/PROGRESS.md`. Newest first.
 
+## 2026-11-23 (cloud session) - 1.1.0 released
+
+- #37 (769a136): Link 1.1.1 offers in the clip menus and picker, **Send to my devices** on the card, catalog app
+  list, the crypto and other dependency updates with byte-compatibility tests against 1.0.0.
+- `v1.1.0-rc.1` (769a136) [Release](https://github.com/qa-p1/Arcade-clipboard/actions/runs/45186657831) passed;
+  [Gates](https://github.com/qa-p1/Arcade-clipboard/actions/runs/45191227418) failed one job, the upgrade from
+  1.0.0 with the user's data: `scripts/verify-upgrade.py` still clicked 0.3.2's Settings positions. Not promoted.
+- #38 (e0337a3): the upgrade check drives 1.0.0's Settings (storage budget instead of item count, positions measured
+  on 1.0.0); passed twice locally with the published 1.0.0 and the rc.1 AppImage (history, settings, history key
+  and integration kept, ciphertext unchanged). README "Use it from anywhere".
+- `v1.1.0-rc.2` (e0337a3) [Release](https://github.com/qa-p1/Arcade-clipboard/actions/runs/45199348785): the
+  Android job failed once on Maven Central's HTTP 429 (Too Many Requests) while Gradle fetched its plugins; its one
+  re-run passed. [Gates](https://github.com/qa-p1/Arcade-clipboard/actions/runs/45206610053) with
+  `previous: v1.0.0`: all 13 jobs passed, including the upgrade from 1.0.0 with the user's data.
+- [Promote](https://github.com/qa-p1/Arcade-clipboard/actions/runs/45208433855) made `v1.1.0` from rc.2. Verified:
+  the AppImage, tar.gz, dmg, Windows installer and SHA256SUMS.txt are byte for byte rc.2's; `arcade-release.json`
+  and `manifest.json` differ only in channel, tag and notes link, and `manifest.json.sig` is added. `v1.1.0` is the
+  latest release and not a prerelease.
+
 ## 2026-11-21 (cloud session) - 1.0.0 released
 
 - #35 (5218265): the launcher answers an unknown option with exit 2 and the usage, and `--arcade-manifest` without
