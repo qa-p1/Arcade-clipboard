@@ -5,6 +5,8 @@ and versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-23
+
 ### Added
 - **Send to my devices** is offered everywhere Arcade offers actions: the file manager's Arcade menu, the browser
   extension (on images, links, selections, pages and finished downloads) and searchable lists. Its card states its
