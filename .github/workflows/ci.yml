@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
           command: check
@@ -43,7 +43,7 @@ jobs:
     env:
       RUSTUP_TOOLCHAIN: '1.98.1'
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: App dev/Arcade-clipboard
       - name: Install Rust and native dependencies
@@ -69,7 +69,7 @@ jobs:
     env:
       RUSTUP_TOOLCHAIN: '1.98.1'
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: App dev/Arcade-clipboard
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
@@ -107,7 +107,7 @@ jobs:
           python3 scripts/native-notices.py --check "dist/Arcade-Clipboard-$release_version-x86_64.AppImage"
       - name: Upload the regenerated native notices
         if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: native-notices
           path: App dev/Arcade-clipboard/packaging/linux/native
@@ -158,7 +158,7 @@ jobs:
           /usr/bin/python3 "$RUNNER_TEMP/link/tools/e2e.py" run -- /usr/bin/python3 tests/tray-registration.py apps/flutter_app/build/linux/x64/release/bundle/clipboard "$RUNNER_TEMP/link/target/release/arcade-link" clipboard
       - name: Folder move from 0.2 (isolated)
         run: /usr/bin/python3 "$RUNNER_TEMP/link/tools/e2e.py" run -- xvfb-run -a /usr/bin/python3 tests/folder-migration.py apps/flutter_app/build/linux/x64/release/bundle/clipboard
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: Arcade-Clipboard-linux-x64
           path: |
@@ -173,19 +173,19 @@ jobs:
   # above; Tier 2: start, --status, tray and quit on sway, KWin, Mutter and X11.
   desktop:
     needs: linux
-    uses: qa-p1/Arcade-Link/.github/workflows/desktop-e2e.yml@v1.0.13
+    uses: qa-p1/Arcade-Link/.github/workflows/desktop-e2e.yml@v1.1.1
     with:
       name: clipboard
       test: tests/desktop/clipboard_desktop.py
       args: '"$APP"'
       artifact: Arcade-Clipboard-linux-x64
-      link-ref: v1.0.13
+      link-ref: v1.1.1
   desktop-tier2:
     needs: linux
-    uses: qa-p1/Arcade-Link/.github/workflows/desktop-tier2.yml@v1.0.14
+    uses: qa-p1/Arcade-Link/.github/workflows/desktop-tier2.yml@v1.1.1
     with:
       artifact: Arcade-Clipboard-linux-x64
-      link-ref: v1.0.14
+      link-ref: v1.1.1
 
   android:
     name: Android release build and signing check
@@ -195,7 +195,7 @@ jobs:
       RUSTUP_TOOLCHAIN: '1.98.1'
       ANDROID_NDK_VERSION: '28.2.13676358'
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: App dev/Arcade-clipboard
       - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
@@ -263,7 +263,7 @@ jobs:
     env:
       RUSTUP_TOOLCHAIN: '1.98.1'
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: App dev/Arcade-clipboard
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
@@ -305,7 +305,7 @@ jobs:
         run: |
           pwsh -NoProfile -File scripts/test-windows-installer.ps1 -Version $env:INSTALLER_VERSION
           if ($LASTEXITCODE -ne 0) { throw 'Windows installer lifecycle checks failed' }
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: Arcade-Clipboard-windows-installer
@@ -320,7 +320,7 @@ jobs:
     env:
       RUSTUP_TOOLCHAIN: '1.98.1'
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: App dev/Arcade-clipboard
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
@@ -349,7 +349,7 @@ jobs:
           images=(dist/packages/Arcade-Clipboard_*_macos_*.dmg)
           [[ ${#images[@]} -eq 1 && -f "${images[0]}" ]]
           bash scripts/verify-dmg.sh "${images[0]}" "$release_version"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: Arcade-Clipboard-macos-dmg

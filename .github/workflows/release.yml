@@ -33,7 +33,7 @@ jobs:
       tag: ${{ steps.release.outputs.tag }}
       version: ${{ steps.release.outputs.version }}
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: App dev/Arcade-clipboard
       - name: The tag is this version's release candidate
@@ -68,7 +68,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 75
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: App dev/Arcade-clipboard
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
@@ -115,7 +115,7 @@ jobs:
         run: |
           bundle_version="$(python3 -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("Cargo.toml").read_text())["workspace"]["package"]["version"])')"
           bash scripts/verify-dmg.sh "dist/packages/Arcade-Clipboard_${RELEASE_VERSION}_macos_universal.dmg" "$bundle_version" "$RELEASE_VERSION"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-${{ matrix.platform }}
           path: App dev/Arcade-clipboard/dist/packages/*
@@ -125,7 +125,7 @@ jobs:
     needs: [prepare, ci, packages]
     permissions:
       contents: write
-    uses: qa-p1/Arcade-Link/.github/workflows/app-publish.yml@v1.0.13
+    uses: qa-p1/Arcade-Link/.github/workflows/app-publish.yml@v1.1.1
     with:
       app: arcade.clipboard
       version: ${{ needs.prepare.outputs.version }}
@@ -133,4 +133,4 @@ jobs:
       channel: test
       artifacts: release-*
       windows-installer: inno
-      link-ref: v1.0.13
+      link-ref: v1.1.1

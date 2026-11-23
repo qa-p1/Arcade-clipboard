@@ -124,6 +124,15 @@ pub fn verification_code(handshake_hash: &[u8]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// base64 0.23 encodes keys and signatures exactly as 1.0.0 (base64 0.22.1) did.
+    #[test]
+    fn encoding_matches_1_0_0() {
+        let bytes = [0xfbu8, 0xff, 0x00, 0x7e, 0x3f];
+        assert_eq!(encode(&bytes), "-_8Afj8");
+        assert_eq!(decode("-_8Afj8").unwrap(), bytes);
+        assert!(decode("-_8Afj8=").is_err());
+    }
     use crate::model::MemberCertificate;
 
     #[test]

@@ -53,7 +53,8 @@ class LinkActionLabel extends StatelessWidget {
                   style: Theme.of(context).textTheme.bodySmall),
             ])),
         const SizedBox(width: 8),
-        ArcadeKeyCombo(['Ctrl', 'Alt', action.shortcut]),
+        if (action.shortcut.isNotEmpty)
+          ArcadeKeyCombo(['Ctrl', 'Alt', action.shortcut]),
       ]));
 }
 

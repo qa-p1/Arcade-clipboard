@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "app": "arcade.clipboard",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "groups": [
     {
       "title": "Global",
@@ -29,11 +29,7 @@
         { "id": "quick-look", "title": "Open the selected item in Arcade Look", "keys": { "default": "Ctrl+Alt+Q" } },
         { "id": "analyze-with-lens", "title": "Analyze the selected image with Lens", "keys": { "default": "Ctrl+Alt+A" } },
         { "id": "pin-with-lens", "title": "Pin the selected image with Lens", "keys": { "default": "Ctrl+Alt+P" } },
-        { "id": "extract-text", "title": "Extract text from the selected image", "keys": { "default": "Ctrl+Alt+E" } },
-        { "id": "convert-to-png", "title": "Convert the selected image to PNG", "keys": { "default": "Ctrl+Alt+N" } },
-        { "id": "compress-image", "title": "Compress an oversized image", "keys": { "default": "Ctrl+Alt+C" } },
-        { "id": "format-json", "title": "Format selected JSON text", "keys": { "default": "Ctrl+Alt+J" } },
-        { "id": "clean-text", "title": "Clean the selected text", "keys": { "default": "Ctrl+Alt+T" } },
+        { "id": "extract-text", "title": "Read the text in the selected image with Lens", "keys": { "default": "Ctrl+Alt+E" } },
         { "id": "add-to-shelf", "title": "Add the selected clip to Arcade Shelf", "keys": { "default": "Ctrl+Alt+H" } }
       ]
     },

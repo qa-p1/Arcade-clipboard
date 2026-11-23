@@ -19,7 +19,7 @@ every Dart package into `data/flutter_assets/NOTICES.Z`. That file ships in the 
 
 ## Dart packages
 
-- archive 4.3.0 (MIT) — https://github.com/brendan-duncan/archive
+- archive 4.7.1 (MIT) — https://github.com/brendan-duncan/archive
 - args 2.7.0 (BSD-3-Clause) — https://github.com/dart-lang/core/tree/main/pkgs/args
 - async 2.13.1 (BSD-3-Clause) — https://github.com/dart-lang/core/tree/main/pkgs/async
 - build_cli_annotations 2.1.1 (MIT) — https://github.com/kevmoo/build_cli
@@ -28,7 +28,7 @@ every Dart package into `data/flutter_assets/NOTICES.Z`. That file ships in the 
 - code_assets 2.1.0 (BSD-3-Clause) — https://github.com/dart-lang/native/tree/main/pkgs/code_assets
 - collection 1.19.1 (BSD-3-Clause) — https://github.com/dart-lang/core/tree/main/pkgs/collection
 - cross_file 0.3.5+5 (BSD-3-Clause) — https://github.com/flutter/packages/tree/main/packages/cross_file
-- crypto 3.0.7 (BSD-3-Clause) — https://github.com/dart-lang/core/tree/main/pkgs/crypto
+- crypto 3.0.8 (BSD-3-Clause) — https://github.com/dart-lang/core/tree/main/pkgs/crypto
 - ffi 2.2.0 (BSD-3-Clause) — https://github.com/dart-lang/native/tree/main/pkgs/ffi
 - file 7.0.1 (BSD-3-Clause) — https://github.com/dart-lang/tools/tree/main/pkgs/file
 - file_selector 1.1.0 [plugin: android, ios, linux, macos, web, windows] (BSD-3-Clause) — https://github.com/flutter/packages/tree/main/packages/file_selector/file_selector
@@ -49,7 +49,7 @@ every Dart package into `data/flutter_assets/NOTICES.Z`. That file ships in the 
 - hotkey_manager_windows 0.2.0 [plugin: windows] (MIT) — https://github.com/leanflutter/hotkey_manager/tree/main/packages/hotkey_manager_windows
 - http 1.6.0 (BSD-3-Clause) — https://github.com/dart-lang/http/tree/master/pkgs/http
 - http_parser 4.1.2 (BSD-3-Clause) — https://github.com/dart-lang/http/tree/master/pkgs/http_parser
-- image 4.10.1 (MIT) — https://github.com/brendan-duncan/image
+- image 4.13.1 (MIT) — https://github.com/brendan-duncan/image
 - jni 1.1.0 [plugin: android, linux, windows] (BSD-3-Clause) — https://github.com/dart-lang/native/tree/main/pkgs/jni
 - jni_flutter 1.0.4+1 [plugin: android] (BSD-3-Clause) — https://github.com/dart-lang/native/tree/main/pkgs/jni_flutter
 - jni_util 1.0.0 (BSD-3-Clause) — https://github.com/dart-lang/native/tree/main/pkgs/jni_util
@@ -57,7 +57,7 @@ every Dart package into `data/flutter_assets/NOTICES.Z`. That file ships in the 
 - logging 1.3.0 (BSD-3-Clause) — https://github.com/dart-lang/core/tree/main/pkgs/logging
 - material_color_utilities 0.13.0 (Apache-2.0) — https://github.com/material-foundation/material-color-utilities/tree/main/dart
 - meta 1.19.0 (BSD-3-Clause) — https://github.com/dart-lang/sdk/tree/main/pkg/meta
-- mobile_scanner 7.4.2 [plugin: android, ios, macos, web] (BSD-3-Clause) — https://github.com/juliansteenbakker/mobile_scanner
+- mobile_scanner 7.5.0 [plugin: android, ios, macos, web] (BSD-3-Clause) — https://github.com/juliansteenbakker/mobile_scanner
 - objective_c 9.6.2 (BSD-3-Clause) — https://github.com/dart-lang/native/tree/main/pkgs/objective_c
 - package_config 3.0.0 (BSD-3-Clause) — https://github.com/dart-lang/tools/tree/main/pkgs/package_config
 - path 1.9.1 (BSD-3-Clause) — https://github.com/dart-lang/core/tree/main/pkgs/path
@@ -79,7 +79,7 @@ every Dart package into `data/flutter_assets/NOTICES.Z`. That file ships in the 
 - screen_retriever_macos 0.2.2 [plugin: macos] (MIT) — https://github.com/leanflutter/screen_retriever/tree/main/packages/screen_retriever_macos
 - screen_retriever_platform_interface 0.2.2 (MIT) — https://github.com/leanflutter/screen_retriever/blob/main/packages/screen_retriever_platform_interface
 - screen_retriever_windows 0.2.2 [plugin: windows] (MIT) — https://github.com/leanflutter/screen_retriever/tree/main/packages/screen_retriever_windows
-- shared_preferences 2.5.5 [plugin: android, ios, linux, macos, web, windows] (BSD-3-Clause) — https://github.com/flutter/packages/tree/main/packages/shared_preferences/shared_preferences
+- shared_preferences 2.5.6 [plugin: android, ios, linux, macos, web, windows] (BSD-3-Clause) — https://github.com/flutter/packages/tree/main/packages/shared_preferences/shared_preferences
 - shared_preferences_android 2.4.28 [plugin: android] (BSD-3-Clause) — https://github.com/flutter/packages/tree/main/packages/shared_preferences/shared_preferences_android
 - shared_preferences_foundation 2.5.7 [plugin: ios, macos] (BSD-3-Clause) — https://github.com/flutter/packages/tree/main/packages/shared_preferences/shared_preferences_foundation
 - shared_preferences_linux 2.4.1 [plugin: linux] (BSD-3-Clause) — https://github.com/flutter/packages/tree/main/packages/shared_preferences/shared_preferences_linux
@@ -104,6 +104,7 @@ every Dart package into `data/flutter_assets/NOTICES.Z`. That file ships in the 
 - addr2line 0.25.1 (Apache-2.0 OR MIT) — https://github.com/gimli-rs/addr2line
 - adler2 2.0.1 (0BSD OR MIT OR Apache-2.0) — https://github.com/oyvindln/adler2
 - aead 0.5.2 (MIT OR Apache-2.0) — https://github.com/RustCrypto/traits
+- aead 0.6.1 (MIT OR Apache-2.0) — https://github.com/RustCrypto/traits
 - aes 0.8.4 (MIT OR Apache-2.0) — https://github.com/RustCrypto/block-ciphers
 - aes-gcm 0.10.3 (Apache-2.0 OR MIT) — https://github.com/RustCrypto/AEADs
 - aho-corasick 1.1.5 (Unlicense OR MIT) — https://github.com/BurntSushi/aho-corasick
@@ -111,7 +112,7 @@ every Dart package into `data/flutter_assets/NOTICES.Z`. That file ships in the 
 - android_log-sys 0.3.2 (MIT OR Apache-2.0) — https://github.com/rust-mobile/android_log-sys-rs
 - android_logger 0.15.1 (MIT OR Apache-2.0) — https://github.com/rust-mobile/android_logger-rs
 - anyhow 1.0.104 (MIT OR Apache-2.0) — https://github.com/dtolnay/anyhow
-- arcade-link 1.0.13 (MIT OR Apache-2.0) — https://github.com/qa-p1/Arcade-link
+- arcade-link 1.1.1 (MIT OR Apache-2.0) — https://github.com/qa-p1/Arcade-link
 - arrayvec 0.7.8 (MIT OR Apache-2.0) — https://github.com/bluss/arrayvec
 - async-broadcast 0.7.2 (MIT OR Apache-2.0) — https://github.com/smol-rs/async-broadcast
 - async-channel 2.5.0 (Apache-2.0 OR MIT) — https://github.com/smol-rs/async-channel
@@ -127,7 +128,7 @@ every Dart package into `data/flutter_assets/NOTICES.Z`. That file ships in the 
 - atomic 0.5.3 (Apache-2.0/MIT) — https://github.com/Amanieu/atomic-rs
 - atomic-waker 1.1.2 (Apache-2.0 OR MIT) — https://github.com/smol-rs/atomic-waker
 - backtrace 0.3.76 (MIT OR Apache-2.0) — https://github.com/rust-lang/backtrace-rs
-- base64 0.22.1 (MIT OR Apache-2.0) — https://github.com/marshallpierce/rust-base64
+- base64 0.23.1 (MIT OR Apache-2.0) — https://github.com/marshallpierce/rust-base64
 - base64ct 1.8.3 (Apache-2.0 OR MIT) — https://github.com/RustCrypto/formats
 - bitflags 2.13.2 (MIT OR Apache-2.0) — https://github.com/bitflags/bitflags
 - blake2 0.10.6 (MIT OR Apache-2.0) — https://github.com/RustCrypto/hashes
@@ -148,7 +149,10 @@ every Dart package into `data/flutter_assets/NOTICES.Z`. That file ships in the 
 - chacha20 0.10.2 (MIT OR Apache-2.0) — https://github.com/RustCrypto/stream-ciphers
 - chacha20 0.9.1 (Apache-2.0 OR MIT) — https://github.com/RustCrypto/stream-ciphers
 - chacha20poly1305 0.10.1 (Apache-2.0 OR MIT) — https://github.com/RustCrypto/AEADs/tree/master/chacha20poly1305
+- chacha20poly1305 0.11.0 (Apache-2.0 OR MIT) — https://github.com/RustCrypto/AEADs
 - cipher 0.4.4 (MIT OR Apache-2.0) — https://github.com/RustCrypto/traits
+- cipher 0.5.2 (MIT OR Apache-2.0) — https://github.com/RustCrypto/traits
+- cmov 0.5.4 (Apache-2.0 OR MIT) — https://github.com/RustCrypto/utils
 - combine 4.6.8 (MIT) — https://github.com/Marwes/combine
 - concurrent-queue 2.5.0 (Apache-2.0 OR MIT) — https://github.com/smol-rs/concurrent-queue
 - console_error_panic_hook 0.1.7 (Apache-2.0/MIT) — https://github.com/rustwasm/console_error_panic_hook
@@ -164,7 +168,9 @@ every Dart package into `data/flutter_assets/NOTICES.Z`. That file ships in the 
 - crypto-common 0.1.7 (MIT OR Apache-2.0) — https://github.com/RustCrypto/traits
 - crypto-common 0.2.2 (MIT OR Apache-2.0) — https://github.com/RustCrypto/traits
 - ctr 0.9.2 (MIT OR Apache-2.0) — https://github.com/RustCrypto/block-modes
+- ctutils 0.4.8 (Apache-2.0 OR MIT) — https://github.com/RustCrypto/utils
 - curve25519-dalek 4.1.3 (BSD-3-Clause) — https://github.com/dalek-cryptography/curve25519-dalek/tree/main/curve25519-dalek
+- curve25519-dalek 5.0.0 (BSD-3-Clause) — https://github.com/dalek-cryptography/curve25519-dalek/tree/main/curve25519-dalek
 - curve25519-dalek-derive 0.1.1 (MIT/Apache-2.0) — https://github.com/dalek-cryptography/curve25519-dalek
 - dart-sys 4.1.5 (MIT OR Apache-2.0) — https://github.com/dart-sys/dart-sys
 - dashmap 5.5.3 (MIT) — https://github.com/xacrimon/dashmap
@@ -191,6 +197,7 @@ every Dart package into `data/flutter_assets/NOTICES.Z`. That file ships in the 
 - fallible-streaming-iterator 0.1.9 (MIT/Apache-2.0) — https://github.com/sfackler/fallible-streaming-iterator
 - fastrand 2.5.0 (Apache-2.0 OR MIT) — https://github.com/smol-rs/fastrand
 - fiat-crypto 0.2.9 (MIT OR Apache-2.0 OR BSD-1-Clause) — https://github.com/mit-plv/fiat-crypto
+- fiat-crypto 0.3.0 (MIT OR Apache-2.0 OR BSD-1-Clause) — https://github.com/mit-plv/fiat-crypto
 - field-offset 0.3.6 (MIT OR Apache-2.0) — https://github.com/Diggsey/rust-field-offset
 - flume 0.12.0 (Apache-2.0/MIT) — https://github.com/zesterer/flume
 - flutter_rust_bridge 2.13.0 (MIT) — https://github.com/fzyzcjy/flutter_rust_bridge
@@ -198,7 +205,7 @@ every Dart package into `data/flutter_assets/NOTICES.Z`. That file ships in the 
 - foldhash 0.2.0 (Zlib) — https://github.com/orlp/foldhash
 - foreign-types 0.3.2 (MIT/Apache-2.0) — https://github.com/sfackler/foreign-types
 - foreign-types-shared 0.1.1 (MIT/Apache-2.0) — https://github.com/sfackler/foreign-types
-- form_urlencoded 1.2.2 (MIT OR Apache-2.0) — https://github.com/servo/rust-url
+- form_urlencoded 1.2.3 (MIT OR Apache-2.0) — https://github.com/servo/rust-url
 - fs2 0.4.3 (MIT/Apache-2.0) — https://github.com/danburkert/fs2-rs
 - fsevent-sys 4.1.0 (MIT) — https://github.com/octplane/fsevent-rust/tree/master/fsevent-sys
 - futures 0.3.31 (MIT OR Apache-2.0) — https://github.com/rust-lang/futures-rs
@@ -255,6 +262,7 @@ every Dart package into `data/flutter_assets/NOTICES.Z`. That file ships in the 
 - inotify 0.11.5 (ISC) — https://github.com/hannobraun/inotify-rs
 - inotify-sys 0.1.8 (ISC) — https://github.com/hannobraun/inotify-sys
 - inout 0.1.4 (MIT OR Apache-2.0) — https://github.com/RustCrypto/utils
+- inout 0.2.6 (MIT OR Apache-2.0) — https://github.com/RustCrypto/utils
 - interprocess 2.4.4 (0BSD OR Apache-2.0) — https://github.com/kotauskas/interprocess
 - itoa 1.0.18 (MIT OR Apache-2.0) — https://github.com/dtolnay/itoa
 - jni 0.21.1 (MIT/Apache-2.0) — https://github.com/jni-rs/jni-rs
@@ -274,7 +282,7 @@ every Dart package into `data/flutter_assets/NOTICES.Z`. That file ships in the 
 - lock_api 0.4.14 (MIT OR Apache-2.0) — https://github.com/Amanieu/parking_lot
 - log 0.4.34 (MIT OR Apache-2.0) — https://github.com/rust-lang/log
 - md-5 0.10.6 (MIT OR Apache-2.0) — https://github.com/RustCrypto/hashes
-- mdns-sd 0.21.4 (Apache-2.0 OR MIT) — https://github.com/keepsimple1/mdns-sd
+- mdns-sd 0.21.7 (Apache-2.0 OR MIT) — https://github.com/keepsimple1/mdns-sd
 - memchr 2.8.3 (Unlicense OR MIT) — https://github.com/BurntSushi/memchr
 - memoffset 0.9.1 (MIT) — https://github.com/Gilnaa/memoffset
 - miniz_oxide 0.8.9 (MIT OR Zlib OR Apache-2.0) — https://github.com/Frommi/miniz_oxide/tree/master/miniz_oxide
@@ -308,6 +316,7 @@ every Dart package into `data/flutter_assets/NOTICES.Z`. That file ships in the 
 - pkcs8 0.10.2 (Apache-2.0 OR MIT) — https://github.com/RustCrypto/formats/tree/master/pkcs8
 - polling 3.11.0 (Apache-2.0 OR MIT) — https://github.com/smol-rs/polling
 - poly1305 0.8.0 (Apache-2.0 OR MIT) — https://github.com/RustCrypto/universal-hashes
+- poly1305 0.9.1 (Apache-2.0 OR MIT) — https://github.com/RustCrypto/universal-hashes
 - polyval 0.6.2 (Apache-2.0 OR MIT) — https://github.com/RustCrypto/universal-hashes
 - portable-atomic 1.15.0 (Apache-2.0 OR MIT) — https://github.com/taiki-e/portable-atomic
 - potential_utf 0.1.6 (Unicode-3.0) — https://github.com/unicode-org/icu4x
@@ -335,17 +344,16 @@ every Dart package into `data/flutter_assets/NOTICES.Z`. That file ships in the 
 - rustls 0.23.46 (Apache-2.0 OR ISC OR MIT) — https://github.com/rustls/rustls
 - rustls-pki-types 1.15.1 (MIT OR Apache-2.0) — https://github.com/rustls/pki-types
 - rustls-webpki 0.103.16 (ISC) — https://github.com/rustls/webpki
-- ryu 1.0.23 (Apache-2.0 OR BSL-1.0) — https://github.com/dtolnay/ryu
 - same-file 1.0.6 (Unlicense/MIT) — https://github.com/BurntSushi/same-file
 - scopeguard 1.2.0 (MIT OR Apache-2.0) — https://github.com/bluss/scopeguard
 - secret-service 4.0.0 (MIT OR Apache-2.0) — https://github.com/hwchen/secret-service-rs.git
 - security-framework 2.11.1 (MIT OR Apache-2.0) — https://github.com/kornelski/rust-security-framework
 - security-framework 3.7.0 (MIT OR Apache-2.0) — https://github.com/kornelski/rust-security-framework
 - security-framework-sys 2.17.0 (MIT OR Apache-2.0) — https://github.com/kornelski/rust-security-framework
-- serde 1.0.228 (MIT OR Apache-2.0) — https://github.com/serde-rs/serde
-- serde_core 1.0.228 (MIT OR Apache-2.0) — https://github.com/serde-rs/serde
-- serde_derive 1.0.228 (MIT OR Apache-2.0) — https://github.com/serde-rs/serde
-- serde_json 1.0.145 (MIT OR Apache-2.0) — https://github.com/serde-rs/json
+- serde 1.0.229 (MIT OR Apache-2.0) — https://github.com/serde-rs/serde
+- serde_core 1.0.229 (MIT OR Apache-2.0) — https://github.com/serde-rs/serde
+- serde_derive 1.0.229 (MIT OR Apache-2.0) — https://github.com/serde-rs/serde
+- serde_json 1.0.154 (MIT OR Apache-2.0) — https://github.com/serde-rs/json
 - serde_repr 0.1.21 (MIT OR Apache-2.0) — https://github.com/dtolnay/serde-repr
 - sha1 0.10.7 (MIT OR Apache-2.0) — https://github.com/RustCrypto/hashes
 - sha1 0.11.0 (MIT OR Apache-2.0) — https://github.com/RustCrypto/hashes
@@ -373,14 +381,14 @@ every Dart package into `data/flutter_assets/NOTICES.Z`. That file ships in the 
 - thiserror-impl 2.0.21 (MIT OR Apache-2.0) — https://github.com/dtolnay/thiserror
 - threadpool 1.8.1 (MIT/Apache-2.0) — https://github.com/rust-threadpool/rust-threadpool
 - tinystr 0.8.4 (Unicode-3.0) — https://github.com/unicode-org/icu4x
-- tokio 1.53.3 (MIT) — https://github.com/tokio-rs/tokio
+- tokio 1.54.1 (MIT) — https://github.com/tokio-rs/tokio
 - tokio-macros 2.7.2 (MIT) — https://github.com/tokio-rs/tokio
 - tokio-rustls 0.26.6 (MIT OR Apache-2.0) — https://github.com/rustls/tokio-rustls
 - tokio-tungstenite 0.30.0 (MIT) — https://github.com/snapview/tokio-tungstenite
 - toml_datetime 1.1.3+spec-1.1.0 (MIT OR Apache-2.0) — https://github.com/toml-rs/toml
 - toml_edit 0.25.15+spec-1.1.0 (MIT OR Apache-2.0) — https://github.com/toml-rs/toml
 - toml_parser 1.1.5+spec-1.1.0 (MIT OR Apache-2.0) — https://github.com/toml-rs/toml
-- tracing 0.1.41 (MIT) — https://github.com/tokio-rs/tracing
+- tracing 0.1.44 (MIT) — https://github.com/tokio-rs/tracing
 - tracing-attributes 0.1.31 (MIT) — https://github.com/tokio-rs/tracing
 - tracing-core 0.1.36 (MIT) — https://github.com/tokio-rs/tracing
 - tungstenite 0.30.0 (MIT OR Apache-2.0) — https://github.com/snapview/tungstenite-rs
@@ -388,10 +396,11 @@ every Dart package into `data/flutter_assets/NOTICES.Z`. That file ships in the 
 - uds_windows 1.2.1 (MIT) — https://github.com/haraldh/rust_uds_windows
 - unicode-ident 1.0.26 ((MIT OR Apache-2.0) AND Unicode-3.0) — https://github.com/dtolnay/unicode-ident
 - universal-hash 0.5.1 (MIT OR Apache-2.0) — https://github.com/RustCrypto/traits
+- universal-hash 0.6.1 (MIT OR Apache-2.0) — https://github.com/RustCrypto/traits
 - untrusted 0.9.0 (ISC) — https://github.com/briansmith/untrusted
-- url 2.5.8 (MIT OR Apache-2.0) — https://github.com/servo/rust-url
+- url 2.5.9 (MIT OR Apache-2.0) — https://github.com/servo/rust-url
 - utf8_iter 1.0.4 (Apache-2.0 OR MIT) — https://github.com/hsivonen/utf8_iter
-- uuid 1.26.1 (Apache-2.0 OR MIT) — https://github.com/uuid-rs/uuid
+- uuid 1.29.3 (Apache-2.0 OR MIT) — https://github.com/uuid-rs/uuid
 - valuable 0.1.1 (MIT) — https://github.com/tokio-rs/valuable
 - walkdir 2.5.0 (Unlicense/MIT) — https://github.com/BurntSushi/walkdir
 - wasi 0.11.1+wasi-snapshot-preview1 (Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT) — https://github.com/bytecodealliance/wasi
@@ -444,7 +453,7 @@ every Dart package into `data/flutter_assets/NOTICES.Z`. That file ships in the 
 - winnow 1.0.4 (MIT) — https://github.com/winnow-rs/winnow
 - wit-bindgen 0.57.1 (Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT) — https://github.com/bytecodealliance/wit-bindgen
 - writeable 0.6.4 (Unicode-3.0) — https://github.com/unicode-org/icu4x
-- x25519-dalek 2.0.1 (BSD-3-Clause) — https://github.com/dalek-cryptography/curve25519-dalek/tree/main/x25519-dalek
+- x25519-dalek 3.0.0 (BSD-3-Clause) — https://github.com/dalek-cryptography/curve25519-dalek/tree/main/x25519-dalek
 - xdg-home 1.3.0 (MIT) — https://github.com/zeenix/xdg-home
 - yoke 0.8.3 (Unicode-3.0) — https://github.com/unicode-org/icu4x
 - yoke-derive 0.8.4 (Unicode-3.0) — https://github.com/unicode-org/icu4x
@@ -460,6 +469,7 @@ every Dart package into `data/flutter_assets/NOTICES.Z`. That file ships in the 
 - zerotrie 0.2.5 (Unicode-3.0) — https://github.com/unicode-org/icu4x
 - zerovec 0.11.8 (Unicode-3.0) — https://github.com/unicode-org/icu4x
 - zerovec-derive 0.11.6 (Unicode-3.0) — https://github.com/unicode-org/icu4x
+- zmij 1.0.23 (MIT) — https://github.com/dtolnay/zmij
 - zvariant 4.2.0 (MIT) — https://github.com/dbus2/zbus/
 - zvariant_derive 4.2.0 (MIT) — https://github.com/dbus2/zbus/
 - zvariant_utils 2.1.0 (MIT) — https://github.com/dbus2/zbus/
@@ -475,7 +485,7 @@ every Dart package into `data/flutter_assets/NOTICES.Z`. That file ships in the 
 
 ## Fonts, icons and files copied from Arcade Link
 
-- Arcade Link v1.0.13 (a24146f): installer and shortcut assets, design kit, Arcade icons, arcade_trim.h (vendored, see scripts/VENDORED) (MIT OR Apache-2.0) — https://github.com/qa-p1/Arcade-Link
+- Arcade Link v1.1.1 (d04f3ca): installer and shortcut assets, design kit, Arcade icons, arcade_trim.h (vendored, see scripts/VENDORED) (MIT OR Apache-2.0) — https://github.com/qa-p1/Arcade-Link
 - Inter (typeface, assets/fonts/InterVariable.ttf) (OFL-1.1) — https://rsms.me/inter/
 - Material Icons (fonts/MaterialIcons-Regular.otf, added by `uses-material-design`) (Apache-2.0) — https://github.com/google/material-design-icons
 
@@ -501,7 +511,7 @@ other libraries the app links are not bundled; the system provides them.
 
 ## Licence texts
 
-### 1. Used by addr2line 0.25.1, arrayvec 0.7.8, async-channel 2.5.0, async-io 2.6.0, async-lock 3.4.2, async-process 2.5.0, async-recursion 1.1.1, async-signal 0.2.14, async-task 4.7.1, atomic 0.5.3, atomic-waker 1.1.2, backtrace 0.3.76, base64 0.22.1, bitflags 2.13.2, blocking 1.7.0, bumpalo 3.20.3, cfg-if 1.0.5, concurrent-queue 2.5.0, core-foundation 0.10.1, core-foundation 0.9.4, core-foundation-sys 0.8.7, crossbeam-utils 0.8.23, curve25519-dalek-derive 0.1.1, dbus-secret-service 4.1.0, displaydoc 0.2.7, equivalent 1.0.2, errno 0.3.14, event-listener 5.4.2, event-listener-strategy 0.5.4, fastrand 2.5.0, form_urlencoded 1.2.2, fs2 0.4.3, futures-lite 2.6.1, gimli 0.32.3, hashbrown 0.14.5, hashbrown 0.17.1, heck 0.5.0, hermit-abi 0.5.3, httparse 1.10.1, idna 1.1.0, idna_adapter 1.2.2, indexmap 2.14.2, jni 0.21.1, js-sys 0.3.106, lazy_static 1.5.0, linux-raw-sys 0.12.1, lock_api 0.4.14, log 0.4.34, num 0.4.3, num-bigint 0.4.8, num-complex 0.4.6, num-integer 0.1.47, num-iter 0.1.46, num-rational 0.4.2, num-traits 0.2.19, num_cpus 1.17.0, object 0.37.3, once_cell 1.21.4, ordered-stream 0.2.0, parking 2.2.1, parking_lot_core 0.9.12, percent-encoding 2.3.2, piper 0.2.5, polling 3.11.0, regex 1.13.1, regex-automata 0.4.18, regex-syntax 0.8.11, rustc-demangle 0.1.28, rustix 1.1.6, rustls 0.23.46, scopeguard 1.2.0, secret-service 4.0.0, security-framework 2.11.1, security-framework 3.7.0, security-framework-sys 2.17.0, signal-hook-registry 1.4.8, smallvec 1.16.2, socket2 0.6.5, stable_deref_trait 1.2.1, tempfile 3.27.0, threadpool 1.8.1, tungstenite 0.30.0, url 2.5.8, uuid 1.26.1, wasi 0.11.1+wasi-snapshot-preview1, wasip2 1.0.4+wasi-0.2.12, wasm-bindgen 0.2.129, wasm-bindgen-futures 0.4.79, wasm-bindgen-macro 0.2.129, wasm-bindgen-macro-support 0.2.129, wasm-bindgen-shared 0.2.129, web-sys 0.3.106, wit-bindgen 0.57.1
+### 1. Used by addr2line 0.25.1, arrayvec 0.7.8, async-channel 2.5.0, async-io 2.6.0, async-lock 3.4.2, async-process 2.5.0, async-recursion 1.1.1, async-signal 0.2.14, async-task 4.7.1, atomic 0.5.3, atomic-waker 1.1.2, backtrace 0.3.76, base64 0.23.1, bitflags 2.13.2, blocking 1.7.0, bumpalo 3.20.3, cfg-if 1.0.5, concurrent-queue 2.5.0, core-foundation 0.10.1, core-foundation 0.9.4, core-foundation-sys 0.8.7, crossbeam-utils 0.8.23, curve25519-dalek-derive 0.1.1, dbus-secret-service 4.1.0, displaydoc 0.2.7, equivalent 1.0.2, errno 0.3.14, event-listener 5.4.2, event-listener-strategy 0.5.4, fastrand 2.5.0, form_urlencoded 1.2.3, fs2 0.4.3, futures-lite 2.6.1, gimli 0.32.3, hashbrown 0.14.5, hashbrown 0.17.1, heck 0.5.0, hermit-abi 0.5.3, httparse 1.10.1, idna 1.1.0, idna_adapter 1.2.2, indexmap 2.14.2, jni 0.21.1, js-sys 0.3.106, lazy_static 1.5.0, linux-raw-sys 0.12.1, lock_api 0.4.14, log 0.4.34, num 0.4.3, num-bigint 0.4.8, num-complex 0.4.6, num-integer 0.1.47, num-iter 0.1.46, num-rational 0.4.2, num-traits 0.2.19, num_cpus 1.17.0, object 0.37.3, once_cell 1.21.4, ordered-stream 0.2.0, parking 2.2.1, parking_lot_core 0.9.12, percent-encoding 2.3.2, piper 0.2.5, polling 3.11.0, regex 1.13.1, regex-automata 0.4.18, regex-syntax 0.8.11, rustc-demangle 0.1.28, rustix 1.1.6, rustls 0.23.46, scopeguard 1.2.0, secret-service 4.0.0, security-framework 2.11.1, security-framework 3.7.0, security-framework-sys 2.17.0, signal-hook-registry 1.4.8, smallvec 1.16.2, socket2 0.6.5, stable_deref_trait 1.2.1, tempfile 3.27.0, threadpool 1.8.1, tungstenite 0.30.0, url 2.5.9, uuid 1.29.3, wasi 0.11.1+wasi-snapshot-preview1, wasip2 1.0.4+wasi-0.2.12, wasm-bindgen 0.2.129, wasm-bindgen-futures 0.4.79, wasm-bindgen-macro 0.2.129, wasm-bindgen-macro-support 0.2.129, wasm-bindgen-shared 0.2.129, web-sys 0.3.106, wit-bindgen 0.57.1
 
 ```text
                               Apache License
@@ -960,7 +970,7 @@ AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
 OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ```
 
-### 5. Used by adler2 2.0.1, anyhow 1.0.104, async-channel 2.5.0, async-io 2.6.0, async-lock 3.4.2, async-process 2.5.0, async-recursion 1.1.1, async-signal 0.2.14, async-task 4.7.1, async-trait 0.1.92, atomic-waker 1.1.2, blocking 1.7.0, concurrent-queue 2.5.0, curve25519-dalek-derive 0.1.1, displaydoc 0.2.7, endi 1.1.1, event-listener 5.4.2, event-listener-strategy 0.5.4, fastrand 2.5.0, flume 0.12.0, futures-lite 2.6.1, hermit-abi 0.5.3, itoa 1.0.18, linux-raw-sys 0.12.1, once_cell 1.21.4, ordered-stream 0.2.0, parking 2.2.1, pin-project-lite 0.2.17, piper 0.2.5, polling 3.11.0, portable-atomic 1.15.0, proc-macro-crate 3.5.0, proc-macro2 1.0.107, quote 1.0.47, rustix 1.1.6, serde 1.0.228, serde_core 1.0.228, serde_derive 1.0.228, serde_json 1.0.145, serde_repr 0.1.21, syn 2.0.119, syn 3.0.6, thiserror 1.0.69, thiserror 2.0.21, thiserror-impl 1.0.69, thiserror-impl 2.0.21, unicode-ident 1.0.26, wasi 0.11.1+wasi-snapshot-preview1, wasip2 1.0.4+wasi-0.2.12, wit-bindgen 0.57.1, xdg-home 1.3.0, zbus_names 3.0.0, zvariant_utils 2.1.0
+### 5. Used by adler2 2.0.1, anyhow 1.0.104, async-channel 2.5.0, async-io 2.6.0, async-lock 3.4.2, async-process 2.5.0, async-recursion 1.1.1, async-signal 0.2.14, async-task 4.7.1, async-trait 0.1.92, atomic-waker 1.1.2, blocking 1.7.0, concurrent-queue 2.5.0, curve25519-dalek-derive 0.1.1, displaydoc 0.2.7, endi 1.1.1, event-listener 5.4.2, event-listener-strategy 0.5.4, fastrand 2.5.0, flume 0.12.0, futures-lite 2.6.1, hermit-abi 0.5.3, itoa 1.0.18, linux-raw-sys 0.12.1, once_cell 1.21.4, ordered-stream 0.2.0, parking 2.2.1, pin-project-lite 0.2.17, piper 0.2.5, polling 3.11.0, portable-atomic 1.15.0, proc-macro-crate 3.5.0, proc-macro2 1.0.107, quote 1.0.47, rustix 1.1.6, serde 1.0.229, serde_core 1.0.229, serde_derive 1.0.229, serde_json 1.0.154, serde_repr 0.1.21, syn 2.0.119, syn 3.0.6, thiserror 1.0.69, thiserror 2.0.21, thiserror-impl 1.0.69, thiserror-impl 2.0.21, unicode-ident 1.0.26, wasi 0.11.1+wasi-snapshot-preview1, wasip2 1.0.4+wasi-0.2.12, wit-bindgen 0.57.1, xdg-home 1.3.0, zbus_names 3.0.0, zmij 1.0.23, zvariant_utils 2.1.0
 
 ```text
 Permission is hereby granted, free of charge, to any
@@ -988,7 +998,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 6. Used by aead 0.5.2, aes 0.8.4, aes-gcm 0.10.3, base64ct 1.8.3, blake2 0.10.6, block-buffer 0.10.4, block-buffer 0.12.1, block-padding 0.3.3, cbc 0.1.2, chacha20 0.10.2, chacha20 0.9.1, chacha20poly1305 0.10.1, cipher 0.4.4, const-oid 0.10.2, const-oid 0.9.6, cpufeatures 0.2.17, cpufeatures 0.3.1, crypto-common 0.1.7, crypto-common 0.2.2, ctr 0.9.2, der 0.7.10, digest 0.10.7, digest 0.11.3, ghash 0.5.1, hkdf 0.12.4, hmac 0.12.1, hybrid-array 0.4.15, inout 0.1.4, md-5 0.10.6, opaque-debug 0.3.1, pkcs8 0.10.2, poly1305 0.8.0, polyval 0.6.2, sha1 0.10.7, sha1 0.11.0, sha2 0.10.9, signature 2.2.0, spki 0.7.3, universal-hash 0.5.1
+### 6. Used by aead 0.5.2, aead 0.6.1, aes 0.8.4, aes-gcm 0.10.3, base64ct 1.8.3, blake2 0.10.6, block-buffer 0.10.4, block-buffer 0.12.1, block-padding 0.3.3, cbc 0.1.2, chacha20 0.10.2, chacha20 0.9.1, chacha20poly1305 0.10.1, chacha20poly1305 0.11.0, cipher 0.4.4, cipher 0.5.2, const-oid 0.10.2, const-oid 0.9.6, cpufeatures 0.2.17, cpufeatures 0.3.1, crypto-common 0.1.7, crypto-common 0.2.2, ctr 0.9.2, der 0.7.10, digest 0.10.7, digest 0.11.3, ghash 0.5.1, hkdf 0.12.4, hmac 0.12.1, hybrid-array 0.4.15, inout 0.1.4, inout 0.2.6, md-5 0.10.6, opaque-debug 0.3.1, pkcs8 0.10.2, poly1305 0.8.0, poly1305 0.9.1, polyval 0.6.2, sha1 0.10.7, sha1 0.11.0, sha2 0.10.9, signature 2.2.0, spki 0.7.3, universal-hash 0.5.1, universal-hash 0.6.1
 
 ```text
                               Apache License
@@ -1225,7 +1235,38 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 8. Used by aes 0.8.4
+### 8. Used by aead 0.6.1
+
+```text
+Copyright (c) 2019-2026 The RustCrypto Project Developers
+Copyright (c) 2019 MobileCoin, LLC
+
+Permission is hereby granted, free of charge, to any
+person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the
+Software without restriction, including without
+limitation the rights to use, copy, modify, merge,
+publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software
+is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice
+shall be included in all copies or substantial portions
+of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
+ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
+SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+```
+
+### 9. Used by aes 0.8.4
 
 ```text
 Copyright (c) 2018 Artyom Pavlov
@@ -1255,7 +1296,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 9. Used by aes-gcm 0.10.3, chacha20poly1305 0.10.1
+### 10. Used by aes-gcm 0.10.3, chacha20poly1305 0.10.1
 
 ```text
 Copyright (c) 2019 The RustCrypto Project Developers
@@ -1285,7 +1326,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 10. Used by aho-corasick 1.1.5, byteorder 1.5.0, memchr 2.8.3, walkdir 2.5.0
+### 11. Used by aho-corasick 1.1.5, byteorder 1.5.0, memchr 2.8.3, walkdir 2.5.0
 
 ```text
 The MIT License (MIT)
@@ -1311,7 +1352,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### 11. Used by aho-corasick 1.1.5, byteorder 1.5.0, memchr 2.8.3, same-file 1.0.6, walkdir 2.5.0, winapi-util 0.1.11
+### 12. Used by aho-corasick 1.1.5, byteorder 1.5.0, memchr 2.8.3, same-file 1.0.6, walkdir 2.5.0, winapi-util 0.1.11
 
 ```text
 This project is dual-licensed under the Unlicense and MIT licenses.
@@ -1319,7 +1360,7 @@ This project is dual-licensed under the Unlicense and MIT licenses.
 You may use this code under the terms of either license.
 ```
 
-### 12. Used by allo-isolate 0.1.27, static_assertions 1.1.0, utf8_iter 1.0.4, zeroize 1.9.0, zeroize_derive 1.5.0
+### 13. Used by allo-isolate 0.1.27, cmov 0.5.4, ctutils 0.4.8, static_assertions 1.1.0, utf8_iter 1.0.4, zeroize 1.9.0, zeroize_derive 1.5.0
 
 ```text
                                  Apache License
@@ -1525,7 +1566,7 @@ You may use this code under the terms of either license.
    limitations under the License.
 ```
 
-### 13. Used by android_log-sys 0.3.2
+### 14. Used by android_log-sys 0.3.2
 
 ```text
 Apache License
@@ -1731,7 +1772,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-### 14. Used by android_log-sys 0.3.2
+### 15. Used by android_log-sys 0.3.2
 
 ```text
 Copyright (c) 2016 The android_log_sys Developers
@@ -1755,7 +1796,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 15. Used by android_logger 0.15.1
+### 16. Used by android_logger 0.15.1
 
 ```text
 Apache License
@@ -1961,7 +2002,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-### 16. Used by android_logger 0.15.1
+### 17. Used by android_logger 0.15.1
 
 ```text
 Copyright (c) 2016 The android_logger Developers
@@ -1985,7 +2026,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 17. Used by AppImage type2-runtime (Linux AppImage)
+### 18. Used by AppImage type2-runtime (Linux AppImage)
 
 ```text
 MIT License
@@ -2008,7 +2049,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTI
 USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### 18. Used by anyhow 1.0.104, Arcade Link v1.0.13 (a24146f): installer and shortcut assets, design kit, Arcade icons, arcade_trim.h (vendored, see scripts/VENDORED), arcade-link 1.0.13, async-trait 0.1.92, constant_time_eq 0.4.2, itoa 1.0.18, libc 0.2.189, proc-macro2 1.0.107, quote 1.0.47, ryu 1.0.23, serde 1.0.228, serde_core 1.0.228, serde_derive 1.0.228, serde_json 1.0.145, serde_repr 0.1.21, syn 2.0.119, syn 3.0.6, thiserror 1.0.69, thiserror 2.0.21, thiserror-impl 1.0.69, thiserror-impl 2.0.21, unicode-ident 1.0.26
+### 19. Used by anyhow 1.0.104, Arcade Link v1.1.1 (d04f3ca): installer and shortcut assets, design kit, Arcade icons, arcade_trim.h (vendored, see scripts/VENDORED), arcade-link 1.1.1, async-trait 0.1.92, constant_time_eq 0.4.2, itoa 1.0.18, libc 0.2.189, proc-macro2 1.0.107, quote 1.0.47, serde 1.0.229, serde_core 1.0.229, serde_derive 1.0.229, serde_json 1.0.154, serde_repr 0.1.21, syn 2.0.119, syn 3.0.6, thiserror 1.0.69, thiserror 2.0.21, thiserror-impl 1.0.69, thiserror-impl 2.0.21, unicode-ident 1.0.26
 
 ```text
                               Apache License
@@ -2189,7 +2230,7 @@ TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
 END OF TERMS AND CONDITIONS
 ```
 
-### 19. Used by Arcade Link v1.0.13 (a24146f): installer and shortcut assets, design kit, Arcade icons, arcade_trim.h (vendored, see scripts/VENDORED), arcade-link 1.0.13
+### 20. Used by Arcade Link v1.1.1 (d04f3ca): installer and shortcut assets, design kit, Arcade icons, arcade_trim.h (vendored, see scripts/VENDORED), arcade-link 1.1.1
 
 ```text
 MIT License
@@ -2221,7 +2262,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 20. Used by archive 4.3.0
+### 21. Used by archive 4.7.1
 
 ```text
 Some code has been derived from the following projects:
@@ -2298,28 +2339,59 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 Julian Seward, jseward@bzip.org
 bzip2/libbzip2 version 1.0.6 of 6 September 2010
 
-pointycastle:
-Copyright (c) 2000 - 2019 The Legion of the Bouncy Castle Inc. (https://www.bouncycastle.org)
+crc32 (Chorba algorithm, https://arxiv.org/abs/2412.16398):
+zlib-ng, https://github.com/zlib-ng/zlib-ng, crc32_chorba_c.c
+(C) 1995-2024 Jean-loup Gailly and Mark Adler
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of
-this software and associated documentation files (the "Software"), to deal in
-the Software without restriction, including without limitation the rights to
-use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
-of the Software, and to permit persons to whom the Software is furnished to do
-so, subject to the following conditions:
+This software is provided 'as-is', without any express or implied
+warranty. In no event will the authors be held liable for any damages
+arising from the use of this software.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+Permission is granted to anyone to use this software for any purpose,
+including commercial applications, and to alter it and redistribute it
+freely, subject to the following restrictions:
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+1. The origin of this software must not be misrepresented; you must not
+   claim that you wrote the original software. If you use this software
+   in a product, an acknowledgment in the product documentation would be
+   appreciated but is not required.
+
+2. Altered source versions must be plainly marked as such, and must not be
+   misrepresented as being the original software.
+
+3. This notice may not be removed or altered from any source distribution.
+
+zstd and xxh64:
+Zstandard 1.5.7, https://github.com/facebook/zstd, including lib/common/xxhash.h
+Copyright (c) Meta Platforms, Inc. and affiliates. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
+
+ * Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+ * Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+ * Neither the name Facebook, nor Meta, nor the names of its contributors may
+   be used to endorse or promote products derived from this software without
+   specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### 21. Used by archive 4.3.0
+### 22. Used by archive 4.7.1
 
 ```text
 The MIT License
@@ -2346,7 +2418,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### 22. Used by args 2.7.0, logging 1.3.0
+### 23. Used by args 2.7.0, logging 1.3.0
 
 ```text
 Copyright 2013, the Dart project authors.
@@ -2378,7 +2450,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### 23. Used by arrayvec 0.7.8
+### 24. Used by arrayvec 0.7.8
 
 ```text
 Copyright (c) Ulrik Sverdrup "bluss" 2015-2023
@@ -2408,7 +2480,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 24. Used by async 2.13.1, collection 1.19.1, crypto 3.0.7, typed_data 1.4.0
+### 25. Used by async 2.13.1, collection 1.19.1, crypto 3.0.8, typed_data 1.4.0
 
 ```text
 Copyright 2015, the Dart project authors.
@@ -2440,7 +2512,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### 25. Used by async-broadcast 0.7.2
+### 26. Used by async-broadcast 0.7.2
 
 ```text
                                  Apache License
@@ -2635,7 +2707,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
    limitations under the License.
 ```
 
-### 26. Used by async-broadcast 0.7.2
+### 27. Used by async-broadcast 0.7.2
 
 ```text
 The MIT License (MIT)
@@ -2661,7 +2733,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 27. Used by atk 0.19.0, atk-sys 0.19.0, cairo-rs 0.22.11, cairo-sys-rs 0.22.9, gdk 0.19.0, gdk-pixbuf 0.22.11, gdk-pixbuf-sys 0.22.9, gdk-sys 0.19.0, gio 0.22.11, gio-sys 0.22.11, glib 0.22.11, glib-macros 0.22.11, glib-sys 0.22.11, gobject-sys 0.22.9, gtk 0.19.0, gtk-sys 0.19.0, gtk3-macros 0.19.0, pango 0.22.9, pango-sys 0.22.11
+### 28. Used by atk 0.19.0, atk-sys 0.19.0, cairo-rs 0.22.11, cairo-sys-rs 0.22.9, gdk 0.19.0, gdk-pixbuf 0.22.11, gdk-pixbuf-sys 0.22.9, gdk-sys 0.19.0, gio 0.22.11, gio-sys 0.22.11, glib 0.22.11, glib-macros 0.22.11, glib-sys 0.22.11, gobject-sys 0.22.9, gtk 0.19.0, gtk-sys 0.19.0, gtk3-macros 0.19.0, pango 0.22.9, pango-sys 0.22.11
 
 ```text
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -2683,7 +2755,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 28. Used by atk 0.19.0, cairo-rs 0.22.11, gdk 0.19.0, gdk-pixbuf 0.22.11, gio 0.22.11, glib 0.22.11, glib-macros 0.22.11, gtk 0.19.0, gtk3-macros 0.19.0, pango 0.22.9
+### 29. Used by atk 0.19.0, cairo-rs 0.22.11, gdk 0.19.0, gdk-pixbuf 0.22.11, gio 0.22.11, glib 0.22.11, glib-macros 0.22.11, gtk 0.19.0, gtk3-macros 0.19.0, pango 0.22.9
 
 ```text
 The gtk-rs Project is licensed under the MIT license, see the LICENSE file or
@@ -2702,7 +2774,7 @@ LGPL or other licenses. For more information check the license of each GNOME
 library.
 ```
 
-### 29. Used by atomic 0.5.3, lock_api 0.4.14, parking_lot_core 0.9.12
+### 30. Used by atomic 0.5.3, lock_api 0.4.14, parking_lot_core 0.9.12
 
 ```text
 Copyright (c) 2016 The Rust Project Developers
@@ -2732,7 +2804,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 30. Used by atomic-waker 1.1.2, futures-lite 2.6.1
+### 31. Used by atomic-waker 1.1.2, futures-lite 2.6.1
 
 ```text
 ===============================================================================
@@ -2782,7 +2854,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 31. Used by backtrace 0.3.76, cfg-if 1.0.5, js-sys 0.3.106, openssl-sys 0.9.117, rustc-demangle 0.1.28, socket2 0.6.5, wasm-bindgen 0.2.129, wasm-bindgen-futures 0.4.79, wasm-bindgen-macro 0.2.129, wasm-bindgen-macro-support 0.2.129, wasm-bindgen-shared 0.2.129, web-sys 0.3.106
+### 32. Used by backtrace 0.3.76, cfg-if 1.0.5, js-sys 0.3.106, openssl-sys 0.9.117, rustc-demangle 0.1.28, socket2 0.6.5, wasm-bindgen 0.2.129, wasm-bindgen-futures 0.4.79, wasm-bindgen-macro 0.2.129, wasm-bindgen-macro-support 0.2.129, wasm-bindgen-shared 0.2.129, web-sys 0.3.106
 
 ```text
 Copyright (c) 2014 Alex Crichton
@@ -2812,12 +2884,12 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 32. Used by base64 0.22.1
+### 33. Used by base64 0.23.1
 
 ```text
 The MIT License (MIT)
 
-Copyright (c) 2015 Alice Maz
+Copyright (c) 2025 Alice Maz, Marshall Pierce
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -2838,7 +2910,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### 33. Used by base64ct 1.8.3
+### 34. Used by base64ct 1.8.3
 
 ```text
 Copyright (c) 2014 Steve "Sc00bz" Thomas (steve at tobtu dot com)
@@ -2869,7 +2941,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 34. Used by bitflags 2.13.2, log 0.4.34, num 0.4.3, num-bigint 0.4.8, num-complex 0.4.6, num-integer 0.1.47, num-iter 0.1.46, num-rational 0.4.2, num-traits 0.2.19, regex 1.13.1, regex-automata 0.4.18, regex-syntax 0.8.11, threadpool 1.8.1
+### 35. Used by bitflags 2.13.2, log 0.4.34, num 0.4.3, num-bigint 0.4.8, num-complex 0.4.6, num-integer 0.1.47, num-iter 0.1.46, num-rational 0.4.2, num-traits 0.2.19, regex 1.13.1, regex-automata 0.4.18, regex-syntax 0.8.11, threadpool 1.8.1
 
 ```text
 Copyright (c) 2014 The Rust Project Developers
@@ -2899,7 +2971,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 35. Used by blake2 0.10.6
+### 36. Used by blake2 0.10.6
 
 ```text
 Copyright (c) 2015-2016 The blake2-rfc Developers, Cesar Barros
@@ -2930,7 +3002,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 36. Used by blake3 1.8.7
+### 37. Used by blake3 1.8.7
 
 ```text
                                  Apache License
@@ -3153,7 +3225,7 @@ the License, but only in their entirety and only with respect to the Combined
 Software.
 ```
 
-### 37. Used by blake3 1.8.7
+### 38. Used by blake3 1.8.7
 
 ```text
                                  Apache License
@@ -3359,7 +3431,7 @@ Software.
    limitations under the License.
 ```
 
-### 38. Used by blake3 1.8.7, constant_time_eq 0.4.2
+### 39. Used by blake3 1.8.7, constant_time_eq 0.4.2
 
 ```text
 Creative Commons Legal Code
@@ -3485,7 +3557,7 @@ express Statement of Purpose.
     this CC0 or use of the Work.
 ```
 
-### 39. Used by block-buffer 0.10.4, block-padding 0.3.3
+### 40. Used by block-buffer 0.10.4, block-padding 0.3.3
 
 ```text
 Copyright (c) 2018-2019 The RustCrypto Project Developers
@@ -3515,7 +3587,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 40. Used by block-buffer 0.12.1
+### 41. Used by block-buffer 0.12.1
 
 ```text
 Copyright (c) 2018-2025 The RustCrypto Project Developers
@@ -3545,7 +3617,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 41. Used by build_cli_annotations 2.1.1
+### 42. Used by build_cli_annotations 2.1.1
 
 ```text
 MIT License
@@ -3571,7 +3643,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 42. Used by bumpalo 3.20.3
+### 43. Used by bumpalo 3.20.3
 
 ```text
 Copyright (c) 2019 Nick Fitzgerald
@@ -3601,7 +3673,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 43. Used by bytemuck 1.25.2
+### 44. Used by bytemuck 1.25.2
 
 ```text
 Apache License
@@ -3667,7 +3739,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-### 44. Used by bytemuck 1.25.2
+### 45. Used by bytemuck 1.25.2
 
 ```text
 Copyright (c) 2019 Daniel "Lokathor" Gee.
@@ -3683,7 +3755,7 @@ Permission is granted to anyone to use this software for any purpose, including 
 3. This notice may not be removed or altered from any source distribution.
 ```
 
-### 45. Used by bytemuck 1.25.2
+### 46. Used by bytemuck 1.25.2
 
 ```text
 MIT License
@@ -3697,7 +3769,7 @@ The above copyright notice and this permission notice (including the next paragr
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### 46. Used by bytes 1.12.1
+### 47. Used by bytes 1.12.1
 
 ```text
 Copyright (c) 2018 Carl Lerche
@@ -3727,7 +3799,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 47. Used by cbc 0.1.2, ctr 0.9.2
+### 48. Used by cbc 0.1.2, ctr 0.9.2
 
 ```text
 Copyright (c) 2018-2022 RustCrypto Developers
@@ -3758,7 +3830,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 48. Used by cesu8 1.1.0
+### 49. Used by cesu8 1.1.0
 
 ```text
 Short version for non-lawyers:
@@ -4185,7 +4257,7 @@ their own copyright notices and license terms:
   copyright itself, held by the contributor.
 ```
 
-### 49. Used by chacha20 0.10.2, zeroize_derive 1.5.0
+### 50. Used by chacha20 0.10.2, chacha20poly1305 0.11.0, zeroize_derive 1.5.0
 
 ```text
 Copyright (c) 2019-2026 The RustCrypto Project Developers
@@ -4215,7 +4287,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 50. Used by chacha20 0.9.1
+### 51. Used by chacha20 0.9.1
 
 ```text
 Copyright (c) 2019-2023 The RustCrypto Project Developers
@@ -4245,7 +4317,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 51. Used by characters 1.4.1, ffi 2.2.0, package_config 3.0.0
+### 52. Used by characters 1.4.1, ffi 2.2.0, package_config 3.0.0
 
 ```text
 Copyright 2019, the Dart project authors.
@@ -4277,7 +4349,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### 52. Used by charcode 1.4.0
+### 53. Used by charcode 1.4.0
 
 ```text
 Copyright 2014, the Dart project authors. All rights reserved.
@@ -4308,7 +4380,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### 53. Used by cipher 0.4.4
+### 54. Used by cipher 0.4.4
 
 ```text
 Copyright (c) 2016-2020 RustCrypto Developers
@@ -4338,7 +4410,67 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 54. Used by code_assets 2.1.0, hooks 2.2.0
+### 55. Used by cipher 0.5.2
+
+```text
+Copyright (c) 2016-2025 RustCrypto Developers
+
+Permission is hereby granted, free of charge, to any
+person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the
+Software without restriction, including without
+limitation the rights to use, copy, modify, merge,
+publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software
+is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice
+shall be included in all copies or substantial portions
+of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
+ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
+SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+```
+
+### 56. Used by cmov 0.5.4, hybrid-array 0.4.15
+
+```text
+Copyright (c) 2022-2026 The RustCrypto Project Developers
+
+Permission is hereby granted, free of charge, to any
+person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the
+Software without restriction, including without
+limitation the rights to use, copy, modify, merge,
+publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software
+is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice
+shall be included in all copies or substantial portions
+of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
+ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
+SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+```
+
+### 57. Used by code_assets 2.1.0, hooks 2.2.0
 
 ```text
 Copyright 2025, the Dart project authors.
@@ -4370,7 +4502,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### 55. Used by combine 4.6.8
+### 58. Used by combine 4.6.8
 
 ```text
 The MIT License (MIT)
@@ -4396,7 +4528,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### 56. Used by console_error_panic_hook 0.1.7
+### 59. Used by console_error_panic_hook 0.1.7
 
 ```text
                               Apache License
@@ -4602,7 +4734,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-### 57. Used by console_error_panic_hook 0.1.7
+### 60. Used by console_error_panic_hook 0.1.7
 
 ```text
 Copyright (c) 2018 Nick Fitzgerald
@@ -4632,7 +4764,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 58. Used by const-oid 0.10.2, cpufeatures 0.3.1
+### 61. Used by const-oid 0.10.2, cpufeatures 0.3.1
 
 ```text
 Copyright (c) 2020-2026 The RustCrypto Project Developers
@@ -4662,7 +4794,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 59. Used by const-oid 0.9.6
+### 62. Used by const-oid 0.9.6
 
 ```text
 Copyright (c) 2020-2022 The RustCrypto Project Developers
@@ -4692,7 +4824,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 60. Used by constant_time_eq 0.4.2
+### 63. Used by constant_time_eq 0.4.2
 
 ```text
 Permission is hereby granted, free of charge, to any person obtaining a
@@ -4711,7 +4843,7 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### 61. Used by core-foundation 0.10.1, core-foundation 0.9.4, core-foundation-sys 0.8.7
+### 64. Used by core-foundation 0.10.1, core-foundation 0.9.4, core-foundation-sys 0.8.7
 
 ```text
 Copyright (c) 2012-2013 Mozilla Foundation
@@ -4741,7 +4873,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 62. Used by cpufeatures 0.2.17
+### 65. Used by cpufeatures 0.2.17
 
 ```text
 Copyright (c) 2020-2025 The RustCrypto Project Developers
@@ -4771,7 +4903,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 63. Used by cross_file 0.3.5+5, file_selector 1.1.0 [plugin: android, ios, linux, macos, web, windows], file_selector_ios 0.5.3+6 [plugin: ios], file_selector_linux 0.9.4+1 [plugin: linux], file_selector_macos 0.9.5+1 [plugin: macos], file_selector_platform_interface 2.7.0, file_selector_web 0.9.5 [plugin: web], file_selector_windows 0.9.3+6 [plugin: windows], path_provider 2.1.6 [plugin: android, ios, linux, macos, windows], path_provider_android 2.3.1 [plugin: android], path_provider_foundation 2.6.0 [plugin: ios, macos], path_provider_linux 2.2.2 [plugin: linux], path_provider_platform_interface 2.1.3, shared_preferences 2.5.5 [plugin: android, ios, linux, macos, web, windows], shared_preferences_android 2.4.28 [plugin: android], shared_preferences_foundation 2.5.7 [plugin: ios, macos], shared_preferences_platform_interface 2.4.2, vector_math 2.4.3
+### 66. Used by cross_file 0.3.5+5, file_selector 1.1.0 [plugin: android, ios, linux, macos, web, windows], file_selector_ios 0.5.3+6 [plugin: ios], file_selector_linux 0.9.4+1 [plugin: linux], file_selector_macos 0.9.5+1 [plugin: macos], file_selector_platform_interface 2.7.0, file_selector_web 0.9.5 [plugin: web], file_selector_windows 0.9.3+6 [plugin: windows], path_provider 2.1.6 [plugin: android, ios, linux, macos, windows], path_provider_android 2.3.1 [plugin: android], path_provider_foundation 2.6.0 [plugin: ios, macos], path_provider_linux 2.2.2 [plugin: linux], path_provider_platform_interface 2.1.3, shared_preferences 2.5.6 [plugin: android, ios, linux, macos, web, windows], shared_preferences_android 2.4.28 [plugin: android], shared_preferences_foundation 2.5.7 [plugin: ios, macos], shared_preferences_platform_interface 2.4.2, vector_math 2.4.3
 
 ```text
 Copyright 2013 The Flutter Authors
@@ -4801,7 +4933,7 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### 64. Used by crossbeam-utils 0.8.23
+### 67. Used by crossbeam-utils 0.8.23
 
 ```text
 The MIT License (MIT)
@@ -4833,7 +4965,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 65. Used by crypto-common 0.1.7
+### 68. Used by crypto-common 0.1.7
 
 ```text
 Copyright (c) 2021 RustCrypto Developers
@@ -4863,7 +4995,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 66. Used by crypto-common 0.2.2
+### 69. Used by crypto-common 0.2.2
 
 ```text
 Copyright (c) 2021-2026 RustCrypto Developers
@@ -4893,7 +5025,37 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 67. Used by curve25519-dalek 4.1.3
+### 70. Used by ctutils 0.4.8
+
+```text
+Copyright (c) 2025-2026 The RustCrypto Project Developers
+
+Permission is hereby granted, free of charge, to any
+person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the
+Software without restriction, including without
+limitation the rights to use, copy, modify, merge,
+publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software
+is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice
+shall be included in all copies or substantial portions
+of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
+ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
+SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+```
+
+### 71. Used by curve25519-dalek 4.1.3
 
 ```text
 Copyright (c) 2016-2021 isis agora lovecruft. All rights reserved.
@@ -4963,7 +5125,41 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### 68. Used by D-Bus 1.14.4 (libdbus, built into arcade_core by libdbus-sys; Linux only)
+### 72. Used by curve25519-dalek 5.0.0
+
+```text
+Copyright (c) 2016-2021 isis agora lovecruft. All rights reserved.
+Copyright (c) 2016-2021 Henry de Valence. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+1. Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright
+notice, this list of conditions and the following disclaimer in the
+documentation and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```
+
+### 73. Used by D-Bus 1.14.4 (libdbus, built into arcade_core by libdbus-sys; Linux only)
 
 ```text
 dbus is licensed to you under your choice of the Academic Free
@@ -5520,7 +5716,7 @@ library.  If this is what you want to do, use the GNU Library General
 Public License instead of this License.
 ```
 
-### 69. Used by dart-sys 4.1.5
+### 74. Used by dart-sys 4.1.5
 
 ```text
 dart-sys is offered under MIT OR Apache-2.0; it publishes no licence file, so the standard MIT text follows.
@@ -5545,7 +5741,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTI
 USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### 70. Used by dashmap 5.5.3
+### 75. Used by dashmap 5.5.3
 
 ```text
 MIT License
@@ -5571,7 +5767,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 71. Used by data-encoding 2.11.1
+### 76. Used by data-encoding 2.11.1
 
 ```text
 The MIT License (MIT)
@@ -5598,7 +5794,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 72. Used by dbus 0.9.12, libdbus-sys 0.2.7
+### 77. Used by dbus 0.9.12, libdbus-sys 0.2.7
 
 ```text
 Apache License
@@ -5804,7 +6000,7 @@ Apache License
    limitations under the License.
 ```
 
-### 73. Used by dbus 0.9.12, libdbus-sys 0.2.7
+### 78. Used by dbus 0.9.12, libdbus-sys 0.2.7
 
 ```text
 Copyright (c) 2014-2018 David Henningsson <diwic@ubuntu.com> and other contributors
@@ -5828,7 +6024,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 74. Used by dbus-secret-service 4.1.0, secret-service 4.0.0
+### 79. Used by dbus-secret-service 4.1.0, secret-service 4.0.0
 
 ```text
 Copyright (c) 2016 secret-service Developers
@@ -5858,7 +6054,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 75. Used by delegate-attr 0.3.1
+### 80. Used by delegate-attr 0.3.1
 
 ```text
 Copyright (c) 2020 Xidorn Quan
@@ -5888,7 +6084,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 76. Used by der 0.7.10, pkcs8 0.10.2
+### 81. Used by der 0.7.10, pkcs8 0.10.2
 
 ```text
 Copyright (c) 2020-2023 The RustCrypto Project Developers
@@ -5918,7 +6114,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 77. Used by digest 0.10.7, hmac 0.12.1
+### 82. Used by digest 0.10.7, hmac 0.12.1
 
 ```text
 Copyright (c) 2017 Artyom Pavlov
@@ -5948,7 +6144,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 78. Used by digest 0.11.3
+### 83. Used by digest 0.11.3
 
 ```text
 Copyright (c) 2017-2025 RustCrypto Developers
@@ -5979,7 +6175,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 79. Used by doctest-file 1.1.1
+### 84. Used by doctest-file 1.1.1
 
 ```text
 BSD Zero Clause License
@@ -5998,7 +6194,7 @@ OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 PERFORMANCE OF THIS SOFTWARE.
 ```
 
-### 80. Used by ed25519 2.2.3
+### 85. Used by ed25519 2.2.3
 
 ```text
                               Apache License
@@ -6204,7 +6400,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-### 81. Used by ed25519 2.2.3, signature 2.2.0
+### 86. Used by ed25519 2.2.3, signature 2.2.0
 
 ```text
 Copyright (c) 2018-2023 RustCrypto Developers
@@ -6234,7 +6430,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 82. Used by ed25519-dalek 2.2.0
+### 87. Used by ed25519-dalek 2.2.0
 
 ```text
 Copyright (c) 2017-2019 isis agora lovecruft. All rights reserved.
@@ -6267,7 +6463,7 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### 83. Used by enumflags2 0.7.12
+### 88. Used by enumflags2 0.7.12
 
 ```text
 Apache License
@@ -6340,7 +6536,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-### 84. Used by enumflags2 0.7.12
+### 89. Used by enumflags2 0.7.12
 
 ```text
 Copyright (c) 2017-2023 Maik Klein, Maja Kądziołka
@@ -6370,7 +6566,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 85. Used by enumflags2_derive 0.7.12
+### 90. Used by enumflags2_derive 0.7.12
 
 ```text
 Apache License
@@ -6443,7 +6639,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-### 86. Used by enumflags2_derive 0.7.12
+### 91. Used by enumflags2_derive 0.7.12
 
 ```text
 Copyright (c) 2017 Maik Klein
@@ -6473,7 +6669,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 87. Used by env_filter 0.1.4, fallible-iterator 0.3.0, fallible-streaming-iterator 0.1.9, foreign-types 0.3.2, foreign-types-shared 0.1.1, hex 0.4.3, jni-sys 0.3.1, jni-sys 0.4.1, openssl 0.10.81, openssl-macros 0.1.1, toml_edit 0.25.15+spec-1.1.0, winapi 0.3.9
+### 92. Used by env_filter 0.1.4, fallible-iterator 0.3.0, fallible-streaming-iterator 0.1.9, foreign-types 0.3.2, foreign-types-shared 0.1.1, hex 0.4.3, jni-sys 0.3.1, jni-sys 0.4.1, openssl 0.10.81, openssl-macros 0.1.1, toml_edit 0.25.15+spec-1.1.0, winapi 0.3.9
 
 ```text
                                  Apache License
@@ -6679,7 +6875,7 @@ DEALINGS IN THE SOFTWARE.
    limitations under the License.
 ```
 
-### 88. Used by env_filter 0.1.4, toml_datetime 1.1.3+spec-1.1.0, toml_edit 0.25.15+spec-1.1.0, toml_parser 1.1.5+spec-1.1.0
+### 93. Used by env_filter 0.1.4, toml_datetime 1.1.3+spec-1.1.0, toml_edit 0.25.15+spec-1.1.0, toml_parser 1.1.5+spec-1.1.0
 
 ```text
 Copyright (c) Individual contributors
@@ -6703,7 +6899,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 89. Used by equivalent 1.0.2
+### 94. Used by equivalent 1.0.2
 
 ```text
 Copyright (c) 2016--2023
@@ -6733,7 +6929,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 90. Used by errno 0.3.14
+### 95. Used by errno 0.3.14
 
 ```text
 Copyright (c) 2014 Chris Wong
@@ -6763,7 +6959,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 91. Used by fallible-iterator 0.3.0
+### 96. Used by fallible-iterator 0.3.0
 
 ```text
 Copyright (c) 2015 The rust-openssl-verify Developers
@@ -6787,7 +6983,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 92. Used by fallible-streaming-iterator 0.1.9
+### 97. Used by fallible-streaming-iterator 0.1.9
 
 ```text
 Copyright (c) 2016 The fallible-streaming-iterator Developers
@@ -6811,7 +7007,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 93. Used by fiat-crypto 0.2.9
+### 98. Used by fiat-crypto 0.2.9, fiat-crypto 0.3.0
 
 ```text
 SPDX-License-Identifier: MIT OR Apache-2.0 OR BSD-1-Clause
@@ -6823,7 +7019,7 @@ the BSD 1-Clause License <LICENSE-BSD-1> or
 <https://spdx.org/licenses/BSD-1-Clause.html>, at your option.
 ```
 
-### 94. Used by fiat-crypto 0.2.9
+### 99. Used by fiat-crypto 0.2.9, fiat-crypto 0.3.0
 
 ```text
 The Apache License, Version 2.0 (Apache-2.0)
@@ -6843,7 +7039,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-### 95. Used by fiat-crypto 0.2.9
+### 100. Used by fiat-crypto 0.2.9, fiat-crypto 0.3.0
 
 ```text
 The BSD 1-Clause License (BSD-1-Clause)
@@ -6871,7 +7067,7 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### 96. Used by fiat-crypto 0.2.9
+### 101. Used by fiat-crypto 0.2.9, fiat-crypto 0.3.0
 
 ```text
 The MIT License (MIT)
@@ -6897,7 +7093,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 97. Used by field-offset 0.3.6, miniz_oxide 0.8.9, pin-project-lite 0.2.17, portable-atomic 1.15.0, widestring 1.2.1
+### 102. Used by field-offset 0.3.6, miniz_oxide 0.8.9, pin-project-lite 0.2.17, portable-atomic 1.15.0, widestring 1.2.1
 
 ```text
                                  Apache License
@@ -7078,7 +7274,7 @@ SOFTWARE.
    END OF TERMS AND CONDITIONS
 ```
 
-### 98. Used by field-offset 0.3.6
+### 103. Used by field-offset 0.3.6
 
 ```text
 MIT License
@@ -7104,7 +7300,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 99. Used by file 7.0.1, json_annotation 4.12.0, platform 3.2.0
+### 104. Used by file 7.0.1, json_annotation 4.12.0, platform 3.2.0
 
 ```text
 Copyright 2017, the Dart project authors. All rights reserved.
@@ -7135,7 +7331,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### 100. Used by file_selector_android 0.5.2+11 [plugin: android]
+### 105. Used by file_selector_android 0.5.2+11 [plugin: android]
 
 ```text
 Copyright 2013 The Flutter Authors
@@ -7369,7 +7565,7 @@ aFileChooser
    limitations under the License.
 ```
 
-### 101. Used by fixnum 1.1.1, http 1.6.0, http_parser 4.1.2, path 1.9.1, pub_semver 2.2.1, source_span 1.10.2, string_scanner 1.4.1
+### 106. Used by fixnum 1.1.1, http 1.6.0, http_parser 4.1.2, path 1.9.1, pub_semver 2.2.1, source_span 1.10.2, string_scanner 1.4.1
 
 ```text
 Copyright 2014, the Dart project authors.
@@ -7401,7 +7597,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### 102. Used by flume 0.12.0
+### 107. Used by flume 0.12.0
 
 ```text
    Apache License
@@ -7607,7 +7803,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
    limitations under the License.
 ```
 
-### 103. Used by Flutter 3.47.2: framework and engine (libflutter_linux_gtk.so, with the Dart runtime)
+### 108. Used by Flutter 3.47.2: framework and engine (libflutter_linux_gtk.so, with the Dart runtime)
 
 ```text
 Copyright 2014 The Flutter Authors. All rights reserved.
@@ -7637,7 +7833,7 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### 104. Used by flutter_rust_bridge 2.13.0
+### 109. Used by flutter_rust_bridge 2.13.0
 
 ```text
 MIT License
@@ -7663,7 +7859,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 105. Used by flutter_rust_bridge 2.13.0
+### 110. Used by flutter_rust_bridge 2.13.0
 
 ```text
 flutter_rust_bridge is offered under MIT; it publishes no licence file, so the standard MIT text follows.
@@ -7688,7 +7884,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTI
 USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### 106. Used by flutter_rust_bridge_macros 2.13.0
+### 111. Used by flutter_rust_bridge_macros 2.13.0
 
 ```text
 flutter_rust_bridge_macros is offered under MIT; it publishes no licence file, so the standard MIT text follows.
@@ -7713,7 +7909,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTI
 USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### 107. Used by foldhash 0.2.0
+### 112. Used by foldhash 0.2.0
 
 ```text
 Copyright (c) 2024 Orson Peters
@@ -7737,7 +7933,7 @@ the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 ```
 
-### 108. Used by foreign-types 0.3.2, foreign-types-shared 0.1.1
+### 113. Used by foreign-types 0.3.2, foreign-types-shared 0.1.1
 
 ```text
 Copyright (c) 2017 The foreign-types Developers
@@ -7761,7 +7957,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 109. Used by form_urlencoded 1.2.2
+### 114. Used by form_urlencoded 1.2.3
 
 ```text
 Copyright (c) 2013-2016 The rust-url developers
@@ -7791,7 +7987,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 110. Used by fs2 0.4.3, gimli 0.32.3, heck 0.5.0
+### 115. Used by fs2 0.4.3, gimli 0.32.3, heck 0.5.0
 
 ```text
 Copyright (c) 2015 The Rust Project Developers
@@ -7821,7 +8017,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 111. Used by fsevent-sys 4.1.0
+### 116. Used by fsevent-sys 4.1.0
 
 ```text
 The MIT License (MIT)
@@ -7847,7 +8043,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 112. Used by futures 0.3.31, futures-channel 0.3.34, futures-core 0.3.34, futures-executor 0.3.31, futures-io 0.3.34, futures-macro 0.3.34, futures-sink 0.3.34, futures-task 0.3.34, futures-util 0.3.34
+### 117. Used by futures 0.3.31, futures-channel 0.3.34, futures-core 0.3.34, futures-executor 0.3.31, futures-io 0.3.34, futures-macro 0.3.34, futures-sink 0.3.34, futures-task 0.3.34, futures-util 0.3.34
 
 ```text
                               Apache License
@@ -8054,7 +8250,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-### 113. Used by futures 0.3.31, futures-channel 0.3.34, futures-core 0.3.34, futures-executor 0.3.31, futures-io 0.3.34, futures-macro 0.3.34, futures-sink 0.3.34, futures-task 0.3.34, futures-util 0.3.34
+### 118. Used by futures 0.3.31, futures-channel 0.3.34, futures-core 0.3.34, futures-executor 0.3.31, futures-io 0.3.34, futures-macro 0.3.34, futures-sink 0.3.34, futures-task 0.3.34, futures-util 0.3.34
 
 ```text
 Copyright (c) 2016 Alex Crichton
@@ -8085,7 +8281,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 114. Used by generic-array 0.14.7
+### 119. Used by generic-array 0.14.7
 
 ```text
 The MIT License (MIT)
@@ -8111,7 +8307,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 115. Used by getrandom 0.2.17, getrandom 0.3.4, getrandom 0.4.3, rand_chacha 0.3.1
+### 120. Used by getrandom 0.2.17, getrandom 0.3.4, getrandom 0.4.3, rand_chacha 0.3.1
 
 ```text
                               Apache License
@@ -8317,7 +8513,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-### 116. Used by getrandom 0.2.17
+### 121. Used by getrandom 0.2.17
 
 ```text
 Copyright (c) 2018-2024 The rust-random Project Developers
@@ -8348,7 +8544,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 117. Used by getrandom 0.3.4
+### 122. Used by getrandom 0.3.4
 
 ```text
 Copyright (c) 2018-2025 The rust-random Project Developers
@@ -8379,7 +8575,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 118. Used by getrandom 0.4.3
+### 123. Used by getrandom 0.4.3
 
 ```text
 Copyright (c) 2018-2026 The rust-random Project Developers
@@ -8410,7 +8606,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 119. Used by ghash 0.5.1
+### 124. Used by ghash 0.5.1
 
 ```text
 Copyright (c) 2019 RustCrypto Developers
@@ -8440,7 +8636,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 120. Used by hashbrown 0.14.5, hashbrown 0.17.1
+### 125. Used by hashbrown 0.14.5, hashbrown 0.17.1
 
 ```text
 Copyright (c) 2016 Amanieu d'Antras
@@ -8470,7 +8666,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 121. Used by hashlink 0.12.2
+### 126. Used by hashlink 0.12.2
 
 ```text
                               Apache License
@@ -8676,7 +8872,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-### 122. Used by hashlink 0.12.2
+### 127. Used by hashlink 0.12.2
 
 ```text
 This work is derived in part from the `linked-hash-map` crate, Copyright (c)
@@ -8707,7 +8903,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 123. Used by hex 0.4.3
+### 128. Used by hex 0.4.3
 
 ```text
 Copyright (c) 2013-2014 The Rust Project Developers.
@@ -8732,7 +8928,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 124. Used by hkdf 0.12.4
+### 129. Used by hkdf 0.12.4
 
 ```text
 Copyright (c) 2015-2018 Vlad Filippov
@@ -8763,7 +8959,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 125. Used by hotkey_manager 0.2.3 [plugin: linux, macos, windows], hotkey_manager_linux 0.2.0 (vendored and patched in this repository) [plugin: linux], hotkey_manager_linux 0.2.0, native part (platform/desktop/vendor/hotkey_manager_linux/linux), hotkey_manager_macos 0.2.0 [plugin: macos], hotkey_manager_platform_interface 0.2.0, hotkey_manager_windows 0.2.0 [plugin: windows], screen_retriever 0.2.2 [plugin: linux, macos, windows], screen_retriever_linux 0.2.2 [plugin: linux], screen_retriever_macos 0.2.2 [plugin: macos], screen_retriever_platform_interface 0.2.2, screen_retriever_windows 0.2.2 [plugin: windows]
+### 130. Used by hotkey_manager 0.2.3 [plugin: linux, macos, windows], hotkey_manager_linux 0.2.0 (vendored and patched in this repository) [plugin: linux], hotkey_manager_linux 0.2.0, native part (platform/desktop/vendor/hotkey_manager_linux/linux), hotkey_manager_macos 0.2.0 [plugin: macos], hotkey_manager_platform_interface 0.2.0, hotkey_manager_windows 0.2.0 [plugin: windows], screen_retriever 0.2.2 [plugin: linux, macos, windows], screen_retriever_linux 0.2.2 [plugin: linux], screen_retriever_macos 0.2.2 [plugin: macos], screen_retriever_platform_interface 0.2.2, screen_retriever_windows 0.2.2 [plugin: windows]
 
 ```text
 MIT License
@@ -8789,7 +8985,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 126. Used by http 1.5.0
+### 131. Used by http 1.5.0
 
 ```text
                               Apache License
@@ -8995,7 +9191,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-### 127. Used by http 1.5.0
+### 132. Used by http 1.5.0
 
 ```text
 Copyright (c) 2017 http-rs authors
@@ -9025,7 +9221,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 128. Used by httparse 1.10.1, num_cpus 1.17.0
+### 133. Used by httparse 1.10.1, num_cpus 1.17.0
 
 ```text
 Copyright (c) 2015-2025 Sean McArthur
@@ -9049,37 +9245,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### 129. Used by hybrid-array 0.4.15
-
-```text
-Copyright (c) 2022-2026 The RustCrypto Project Developers
-
-Permission is hereby granted, free of charge, to any
-person obtaining a copy of this software and associated
-documentation files (the "Software"), to deal in the
-Software without restriction, including without
-limitation the rights to use, copy, modify, merge,
-publish, distribute, sublicense, and/or sell copies of
-the Software, and to permit persons to whom the Software
-is furnished to do so, subject to the following
-conditions:
-
-The above copyright notice and this permission notice
-shall be included in all copies or substantial portions
-of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
-ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
-TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
-SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
-IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
-```
-
-### 130. Used by icu_collections 2.3.0, icu_locale_core 2.3.0, icu_normalizer 2.3.0, icu_normalizer_data 2.3.0, icu_properties 2.3.0, icu_properties_data 2.3.0, icu_provider 2.3.1, litemap 0.8.3, potential_utf 0.1.6, tinystr 0.8.4, writeable 0.6.4, yoke 0.8.3, yoke-derive 0.8.4, zerofrom 0.1.8, zerofrom-derive 0.1.8, zerotrie 0.2.5, zerovec 0.11.8, zerovec-derive 0.11.6
+### 134. Used by icu_collections 2.3.0, icu_locale_core 2.3.0, icu_normalizer 2.3.0, icu_normalizer_data 2.3.0, icu_properties 2.3.0, icu_properties_data 2.3.0, icu_provider 2.3.1, litemap 0.8.3, potential_utf 0.1.6, tinystr 0.8.4, writeable 0.6.4, yoke 0.8.3, yoke-derive 0.8.4, zerofrom 0.1.8, zerofrom-derive 0.1.8, zerotrie 0.2.5, zerovec 0.11.8, zerovec-derive 0.11.6
 
 ```text
 UNICODE LICENSE V3
@@ -9130,7 +9296,7 @@ Portions of ICU4X may have been adapted from ICU4C and/or ICU4J.
 ICU 1.8.1 to ICU 57.1 © 1995-2016 International Business Machines Corporation and others.
 ```
 
-### 131. Used by idna 1.1.0, percent-encoding 2.3.2, url 2.5.8
+### 135. Used by idna 1.1.0, percent-encoding 2.3.2, url 2.5.9
 
 ```text
 Copyright (c) 2013-2025 The rust-url developers
@@ -9160,7 +9326,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 132. Used by idna_adapter 1.2.2
+### 136. Used by idna_adapter 1.2.2
 
 ```text
 Copyright (c) The rust-url developers
@@ -9190,7 +9356,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 133. Used by if-addrs 0.15.0
+### 137. Used by if-addrs 0.15.0
 
 ```text
 Copyright 2018 MaidSafe.net limited.
@@ -9203,7 +9369,7 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### 134. Used by if-addrs 0.15.0
+### 138. Used by if-addrs 0.15.0
 
 ```text
 Copyright 2018 MaidSafe.net limited.
@@ -9220,7 +9386,7 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### 135. Used by image 4.10.1
+### 139. Used by image 4.13.1
 
 ```text
 Parts of the Image library were ported from the following sources:
@@ -9390,7 +9556,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### 136. Used by image 4.10.1
+### 140. Used by image 4.13.1
 
 ```text
 The MIT License
@@ -9417,7 +9583,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### 137. Used by indexmap 2.14.2
+### 141. Used by indexmap 2.14.2
 
 ```text
 Copyright (c) 2016--2017
@@ -9447,7 +9613,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 138. Used by inotify 0.11.5, inotify-sys 0.1.8
+### 142. Used by inotify 0.11.5, inotify-sys 0.1.8
 
 ```text
 Copyright (c) Hanno Braun and contributors
@@ -9465,7 +9631,7 @@ TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
 THIS SOFTWARE.
 ```
 
-### 139. Used by inout 0.1.4
+### 143. Used by inout 0.1.4
 
 ```text
 Copyright (c) 2022 The RustCrypto Project Developers
@@ -9496,7 +9662,38 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 140. Used by Inter (typeface, assets/fonts/InterVariable.ttf)
+### 144. Used by inout 0.2.6
+
+```text
+Copyright (c) 2022-2025 The RustCrypto Project Developers
+Copyright (c) 2022 Artyom Pavlov
+
+Permission is hereby granted, free of charge, to any
+person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the
+Software without restriction, including without
+limitation the rights to use, copy, modify, merge,
+publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software
+is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice
+shall be included in all copies or substantial portions
+of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
+ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
+SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+```
+
+### 145. Used by Inter (typeface, assets/fonts/InterVariable.ttf)
 
 ```text
 Copyright (c) 2016 The Inter Project Authors (https://github.com/rsms/inter)
@@ -9593,7 +9790,7 @@ FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.
 ```
 
-### 141. Used by interprocess 2.4.4
+### 146. Used by interprocess 2.4.4
 
 ```text
 										Apache License
@@ -9774,7 +9971,7 @@ TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
 END OF TERMS AND CONDITIONS
 ```
 
-### 142. Used by interprocess 2.4.4
+### 147. Used by interprocess 2.4.4
 
 ```text
 BSD Zero Clause License
@@ -9793,7 +9990,7 @@ OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 PERFORMANCE OF THIS SOFTWARE.
 ```
 
-### 143. Used by jni 0.21.1
+### 148. Used by jni 0.21.1
 
 ```text
 The MIT License (MIT)
@@ -9819,7 +10016,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 144. Used by jni 1.1.0 [plugin: android, linux, windows]
+### 149. Used by jni 1.1.0 [plugin: android, linux, windows]
 
 ```text
 Copyright 2022, the Dart project authors.
@@ -9851,7 +10048,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### 145. Used by jni-sys 0.3.1, jni-sys 0.4.1
+### 150. Used by jni-sys 0.3.1, jni-sys 0.4.1
 
 ```text
 Copyright (c) 2015 The rust-jni-sys Developers
@@ -9875,7 +10072,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 146. Used by jni-sys-macros 0.4.1
+### 151. Used by jni-sys-macros 0.4.1
 
 ```text
 jni-sys-macros is offered under MIT OR Apache-2.0; it publishes no licence file, so the standard MIT text follows.
@@ -9900,7 +10097,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTI
 USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### 147. Used by jni_flutter 1.0.4+1 [plugin: android], jni_util 1.0.0
+### 152. Used by jni_flutter 1.0.4+1 [plugin: android], jni_util 1.0.0
 
 ```text
 Copyright 2026, the Dart project authors.
@@ -9932,7 +10129,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### 148. Used by keyring 3.6.3
+### 153. Used by keyring 3.6.3
 
 ```text
                               Apache License
@@ -10138,7 +10335,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-### 149. Used by keyring 3.6.3
+### 154. Used by keyring 3.6.3
 
 ```text
 Copyright (c) 2016 keyring Developers
@@ -10168,7 +10365,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 150. Used by kqueue 1.2.1, kqueue-sys 1.1.2
+### 155. Used by kqueue 1.2.1, kqueue-sys 1.1.2
 
 ```text
 Copyright (c) 2016 William Orr <will@worrbase.com>
@@ -10192,7 +10389,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 151. Used by lazy_static 1.5.0
+### 156. Used by lazy_static 1.5.0
 
 ```text
 Copyright (c) 2010 The Rust Project Developers
@@ -10222,7 +10419,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 152. Used by libc 0.2.189
+### 157. Used by libc 0.2.189
 
 ```text
 Copyright (c) The Rust Project Developers
@@ -10252,7 +10449,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 153. Used by libfuse (inside the AppImage runtime, statically linked)
+### 158. Used by libfuse (inside the AppImage runtime, statically linked)
 
 ```text
                   GNU LESSER GENERAL PUBLIC LICENSE
@@ -10759,7 +10956,7 @@ necessary.  Here is a sample; alter the names:
 That's all there is to it!
 ```
 
-### 154. Used by libkeybinder-3.0-0 (Ubuntu package)
+### 159. Used by libkeybinder-3.0-0 (Ubuntu package)
 
 ```text
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
@@ -10826,7 +11023,7 @@ License: public-domain
  This work is placed in the public domain.
 ```
 
-### 155. Used by libsqlite3-sys 0.39.1, rusqlite 0.41.1
+### 160. Used by libsqlite3-sys 0.39.1, rusqlite 0.41.1
 
 ```text
 Copyright (c) 2014 The rusqlite developers
@@ -10850,7 +11047,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### 156. Used by libzstd (inside the AppImage runtime)
+### 161. Used by libzstd (inside the AppImage runtime)
 
 ```text
 Copyright (c) the zstd authors
@@ -10866,7 +11063,7 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### 157. Used by linux-raw-sys 0.12.1, rustix 1.1.6, wasi 0.11.1+wasi-snapshot-preview1, wasip2 1.0.4+wasi-0.2.12, wit-bindgen 0.57.1
+### 162. Used by linux-raw-sys 0.12.1, rustix 1.1.6, wasi 0.11.1+wasi-snapshot-preview1, wasip2 1.0.4+wasi-0.2.12, wit-bindgen 0.57.1
 
 ```text
                                  Apache License
@@ -11089,7 +11286,7 @@ the License, but only in their entirety and only with respect to the Combined
 Software.
 ```
 
-### 158. Used by linux-raw-sys 0.12.1
+### 163. Used by linux-raw-sys 0.12.1
 
 ```text
 Short version for non-lawyers:
@@ -11123,7 +11320,7 @@ is licensed under:
 at your option.
 ```
 
-### 159. Used by Material Icons (fonts/MaterialIcons-Regular.otf, added by `uses-material-design`)
+### 164. Used by Material Icons (fonts/MaterialIcons-Regular.otf, added by `uses-material-design`)
 
 ```text
 Apache License
@@ -11201,7 +11398,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-### 160. Used by material_color_utilities 0.13.0
+### 165. Used by material_color_utilities 0.13.0
 
 ```text
                                  Apache License
@@ -11407,7 +11604,7 @@ limitations under the License.
    limitations under the License.
 ```
 
-### 161. Used by md-5 0.10.6, sha1 0.10.7, sha2 0.10.9
+### 166. Used by md-5 0.10.6, sha1 0.10.7, sha2 0.10.9
 
 ```text
 Copyright (c) 2006-2009 Graydon Hoare
@@ -11439,7 +11636,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 162. Used by mdns-sd 0.21.4
+### 167. Used by mdns-sd 0.21.7
 
 ```text
                               Apache License
@@ -11645,7 +11842,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-### 163. Used by mdns-sd 0.21.4
+### 168. Used by mdns-sd 0.21.7
 
 ```text
 MIT License
@@ -11671,7 +11868,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 164. Used by memoffset 0.9.1
+### 169. Used by memoffset 0.9.1
 
 ```text
 Copyright (c) 2017 Gilad Naaman
@@ -11695,7 +11892,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 165. Used by meta 1.19.0
+### 170. Used by meta 1.19.0
 
 ```text
 Copyright 2016, the Dart project authors.
@@ -11727,7 +11924,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### 166. Used by miniz_oxide 0.8.9
+### 171. Used by miniz_oxide 0.8.9
 
 ```text
 Copyright 2013-2014 RAD Game Tools and Valve Software
@@ -11746,7 +11943,7 @@ Permission is granted to anyone to use this software for any purpose, including 
 3. This notice may not be removed or altered from any source distribution.
 ```
 
-### 167. Used by miniz_oxide 0.8.9
+### 172. Used by miniz_oxide 0.8.9
 
 ```text
 MIT License
@@ -11776,7 +11973,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 168. Used by miniz_oxide 0.8.9
+### 173. Used by miniz_oxide 0.8.9
 
 ```text
 MIT License
@@ -11805,7 +12002,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 169. Used by mio 1.2.3
+### 174. Used by mio 1.2.3
 
 ```text
 Copyright (c) 2014 Carl Lerche and other MIO contributors
@@ -11829,7 +12026,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### 170. Used by mobile_scanner 7.4.2 [plugin: android, ios, macos, web]
+### 175. Used by mobile_scanner 7.5.0 [plugin: android, ios, macos, web]
 
 ```text
 BSD 3-Clause License
@@ -11863,7 +12060,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### 171. Used by musl libc (inside the AppImage runtime)
+### 176. Used by musl libc (inside the AppImage runtime)
 
 ```text
 MIT License
@@ -11886,7 +12083,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTI
 USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### 172. Used by nix 0.29.0
+### 177. Used by nix 0.29.0
 
 ```text
 The MIT License (MIT)
@@ -11912,7 +12109,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### 173. Used by notify 8.2.0
+### 178. Used by notify 8.2.0
 
 ```text
 Creative Commons CC0 1.0 Universal
@@ -11958,7 +12155,7 @@ For these and/or other purposes and motivations, and without any expectation of 
      d. Affirmer understands and acknowledges that Creative Commons is not a party to this document and has no duty or obligation with respect to this CC0 or use of the Work.
 ```
 
-### 174. Used by notify-types 2.1.0
+### 179. Used by notify-types 2.1.0
 
 ```text
                               Apache License
@@ -12164,7 +12361,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-### 175. Used by notify-types 2.1.0
+### 180. Used by notify-types 2.1.0
 
 ```text
 Copyright (c) 2023 Notify Contributors
@@ -12194,7 +12391,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 176. Used by object 0.37.3
+### 181. Used by object 0.37.3
 
 ```text
 Copyright (c) 2015 The Gimli Developers
@@ -12224,7 +12421,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 177. Used by objective_c 9.6.2, record_use 1.1.1
+### 182. Used by objective_c 9.6.2, record_use 1.1.1
 
 ```text
 Copyright 2024, the Dart project authors.
@@ -12256,7 +12453,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### 178. Used by opaque-debug 0.3.1
+### 183. Used by opaque-debug 0.3.1
 
 ```text
 Copyright (c) 2018-2024 The RustCrypto Project Developers
@@ -12286,7 +12483,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 179. Used by openssl 0.10.81
+### 184. Used by openssl 0.10.81
 
 ```text
 Copyright 2011-2017 Google Inc.
@@ -12306,7 +12503,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-### 180. Used by openssl-macros 0.1.1
+### 185. Used by openssl-macros 0.1.1
 
 ```text
 Copyright (c) 2022 Steven Fackler
@@ -12330,7 +12527,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 181. Used by oslog 0.2.0
+### 186. Used by oslog 0.2.0
 
 ```text
 MIT License
@@ -12356,7 +12553,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 182. Used by parking 2.2.1
+### 187. Used by parking 2.2.1
 
 ```text
 ===============================================================================
@@ -12370,7 +12567,7 @@ option. All files in the project carrying such notice may not be
 copied, modified, or distributed except according to those terms.
 ```
 
-### 183. Used by path_provider_windows 2.3.0 [plugin: windows], plugin_platform_interface 2.1.8, shared_preferences_linux 2.4.1 [plugin: linux], shared_preferences_web 2.4.3 [plugin: web], shared_preferences_windows 2.4.1 [plugin: windows], xdg_directories 1.1.0
+### 188. Used by path_provider_windows 2.3.0 [plugin: windows], plugin_platform_interface 2.1.8, shared_preferences_linux 2.4.1 [plugin: linux], shared_preferences_web 2.4.3 [plugin: web], shared_preferences_windows 2.4.1 [plugin: windows], xdg_directories 1.1.0
 
 ```text
 Copyright 2013 The Flutter Authors. All rights reserved.
@@ -12400,7 +12597,7 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### 184. Used by poly1305 0.8.0
+### 189. Used by poly1305 0.8.0
 
 ```text
 Copyright (c) 2015-2019 RustCrypto Developers
@@ -12430,7 +12627,37 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 185. Used by polyval 0.6.2
+### 190. Used by poly1305 0.9.1
+
+```text
+Copyright (c) 2015-2026 The RustCrypto Project Developers
+
+Permission is hereby granted, free of charge, to any
+person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the
+Software without restriction, including without
+limitation the rights to use, copy, modify, merge,
+publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software
+is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice
+shall be included in all copies or substantial portions
+of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
+ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
+SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+```
+
+### 191. Used by polyval 0.6.2
 
 ```text
 Copyright (c) 2019-2023 RustCrypto Developers
@@ -12460,7 +12687,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 186. Used by posix 6.5.2
+### 192. Used by posix 6.5.2
 
 ```text
 MIT License
@@ -12486,7 +12713,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 187. Used by ppv-lite86 0.2.21
+### 193. Used by ppv-lite86 0.2.21
 
 ```text
                               Apache License
@@ -12692,7 +12919,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-### 188. Used by ppv-lite86 0.2.21
+### 194. Used by ppv-lite86 0.2.21
 
 ```text
 Copyright (c) 2019 The CryptoCorrosion Contributors
@@ -12722,7 +12949,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 189. Used by qr 3.0.2
+### 195. Used by qr 3.0.2
 
 ```text
 Copyright 2014, the Dart QR project authors. All rights reserved.
@@ -12753,7 +12980,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### 190. Used by qr_flutter 4.1.0
+### 196. Used by qr_flutter 4.1.0
 
 ```text
 BSD 3-Clause License
@@ -12787,7 +13014,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### 191. Used by r-efi 5.3.0, r-efi 6.0.0
+### 197. Used by r-efi 5.3.0, r-efi 6.0.0
 
 ```text
 r-efi is offered under MIT OR Apache-2.0 OR LGPL-2.1-or-later; it publishes no licence file, so the standard MIT text follows.
@@ -12812,7 +13039,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTI
 USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### 192. Used by rand 0.10.3, rand 0.8.8, snow 0.10.0
+### 198. Used by rand 0.10.3, rand 0.8.8, snow 0.10.0
 
 ```text
                               Apache License
@@ -12993,7 +13220,7 @@ TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
 END OF TERMS AND CONDITIONS
 ```
 
-### 193. Used by rand 0.10.3, rand 0.8.8, rand_chacha 0.3.1, rand_core 0.6.4
+### 199. Used by rand 0.10.3, rand 0.8.8, rand_chacha 0.3.1, rand_core 0.6.4
 
 ```text
 Copyright 2018 Developers of the Rand project
@@ -13024,7 +13251,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 194. Used by rand 0.10.3, rand 0.8.8, rand_chacha 0.3.1, rand_core 0.6.4
+### 200. Used by rand 0.10.3, rand 0.8.8, rand_chacha 0.3.1, rand_core 0.6.4
 
 ```text
 Copyrights in the Rand project are retained by their contributors. No
@@ -13041,7 +13268,7 @@ The Rand project includes code from the Rust project
 published under these same licenses.
 ```
 
-### 195. Used by rand_core 0.10.1, rand_core 0.6.4
+### 201. Used by rand_core 0.10.1, rand_core 0.6.4
 
 ```text
                               Apache License
@@ -13233,7 +13460,7 @@ APPENDIX: How to apply the Apache License to your work.
    identification within third-party archives.
 ```
 
-### 196. Used by rand_core 0.10.1
+### 202. Used by rand_core 0.10.1
 
 ```text
 Copyright (c) 2018-2026 The Rand Project Developers
@@ -13263,7 +13490,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 197. Used by rand_core 0.10.1
+### 203. Used by rand_core 0.10.1
 
 ```text
 Copyrights in the Rand project are retained by their contributors. No
@@ -13277,7 +13504,7 @@ licensed under the Apache License, Version 2.0 <LICENSE-APACHE> or
 <LICENSE-MIT> or <http://opensource.org/licenses/MIT>, at your option.
 ```
 
-### 198. Used by recvmsg 1.0.0
+### 204. Used by recvmsg 1.0.0
 
 ```text
 BSD Zero Clause License
@@ -13296,7 +13523,7 @@ OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 PERFORMANCE OF THIS SOFTWARE.
 ```
 
-### 199. Used by redox_syscall 0.5.18
+### 205. Used by redox_syscall 0.5.18
 
 ```text
 Copyright (c) 2017 Redox OS Developers
@@ -13323,7 +13550,7 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### 200. Used by ring 0.17.14
+### 206. Used by ring 0.17.14
 
 ```text
                                  Apache License
@@ -13599,7 +13826,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### 201. Used by ring 0.17.14
+### 207. Used by ring 0.17.14
 
 ```text
 *ring* uses an "ISC" license, like BoringSSL used to use, for new code
@@ -13613,7 +13840,7 @@ See src/polyfill/once_cell/LICENSE-APACHE and src/polyfill/once_cell/LICENSE-MIT
 for the license to code that was sourced from the once_cell project.
 ```
 
-### 202. Used by ring 0.17.14
+### 208. Used by ring 0.17.14
 
 ```text
 Copyright 2015-2025 Brian Smith.
@@ -13631,7 +13858,7 @@ OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ```
 
-### 203. Used by rsqlite-vfs 0.2.0
+### 209. Used by rsqlite-vfs 0.2.0
 
 ```text
 rsqlite-vfs is offered under MIT; it publishes no licence file, so the standard MIT text follows.
@@ -13656,7 +13883,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTI
 USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### 204. Used by rustix 1.1.6
+### 210. Used by rustix 1.1.6
 
 ```text
 Short version for non-lawyers:
@@ -13690,7 +13917,7 @@ is licensed under:
 at your option.
 ```
 
-### 205. Used by rustls 0.23.46
+### 211. Used by rustls 0.23.46
 
 ```text
 Copyright (c) 2016 Joseph Birr-Pixton <jpixton@gmail.com>
@@ -13720,7 +13947,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 206. Used by rustls 0.23.46
+### 212. Used by rustls 0.23.46
 
 ```text
 ISC License (ISC)
@@ -13740,7 +13967,7 @@ ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
 THIS SOFTWARE.
 ```
 
-### 207. Used by rustls-pki-types 1.15.1
+### 213. Used by rustls-pki-types 1.15.1
 
 ```text
                               Apache License
@@ -13946,7 +14173,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-### 208. Used by rustls-pki-types 1.15.1
+### 214. Used by rustls-pki-types 1.15.1
 
 ```text
 Copyright (c) 2023 Dirkjan Ochtman <dirkjan@ochtman.nl>
@@ -13976,7 +14203,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 209. Used by rustls-webpki 0.103.16
+### 215. Used by rustls-webpki 0.103.16
 
 ```text
 Except as otherwise noted, this project is licensed under the following
@@ -14000,35 +14227,7 @@ The files under third-party/chromium are licensed as described in
 third-party/chromium/LICENSE.
 ```
 
-### 210. Used by ryu 1.0.23
-
-```text
-Boost Software License - Version 1.0 - August 17th, 2003
-
-Permission is hereby granted, free of charge, to any person or organization
-obtaining a copy of the software and accompanying documentation covered by
-this license (the "Software") to use, reproduce, display, distribute,
-execute, and transmit the Software, and to prepare derivative works of the
-Software, and to permit third-parties to whom the Software is furnished to
-do so, all subject to the following:
-
-The copyright notices in the Software and this entire statement, including
-the above license grant, this restriction and the following disclaimer,
-must be included in all copies of the Software, in whole or in part, and
-all derivative works of the Software, unless such copies or derivative
-works are solely in the form of machine-executable object code generated by
-a source language processor.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE, TITLE AND NON-INFRINGEMENT. IN NO EVENT
-SHALL THE COPYRIGHT HOLDERS OR ANYONE DISTRIBUTING THE SOFTWARE BE LIABLE
-FOR ANY DAMAGES OR OTHER LIABILITY, WHETHER IN CONTRACT, TORT OR OTHERWISE,
-ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
-```
-
-### 211. Used by same-file 1.0.6, winapi-util 0.1.11
+### 216. Used by same-file 1.0.6, winapi-util 0.1.11
 
 ```text
 The MIT License (MIT)
@@ -14054,7 +14253,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### 212. Used by scopeguard 1.2.0
+### 217. Used by scopeguard 1.2.0
 
 ```text
 Copyright (c) 2016-2019 Ulrik Sverdrup "bluss" and scopeguard developers
@@ -14084,7 +14283,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 213. Used by security-framework 2.11.1, security-framework 3.7.0, security-framework-sys 2.17.0
+### 218. Used by security-framework 2.11.1, security-framework 3.7.0, security-framework-sys 2.17.0
 
 ```text
 The MIT License (MIT)
@@ -14109,7 +14308,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### 214. Used by sha1 0.11.0
+### 219. Used by sha1 0.11.0
 
 ```text
 Copyright (c) 2016-2026 The RustCrypto Project Developers
@@ -14142,7 +14341,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 215. Used by signal-hook-registry 1.4.8
+### 220. Used by signal-hook-registry 1.4.8
 
 ```text
 Copyright (c) 2017 tokio-jsonrpc developers
@@ -14172,7 +14371,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 216. Used by slab 0.4.12
+### 221. Used by slab 0.4.12
 
 ```text
 Copyright (c) 2019 Carl Lerche
@@ -14202,7 +14401,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 217. Used by smallvec 1.16.2
+### 222. Used by smallvec 1.16.2
 
 ```text
 Copyright (c) 2018 The Servo Project Developers
@@ -14232,7 +14431,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 218. Used by snow 0.10.0
+### 223. Used by snow 0.10.0
 
 ```text
 MIT License
@@ -14258,7 +14457,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 219. Used by socket-pktinfo 0.4.1
+### 224. Used by socket-pktinfo 0.4.1
 
 ```text
 MIT License
@@ -14284,7 +14483,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 220. Used by spin 0.9.9
+### 225. Used by spin 0.9.9
 
 ```text
 The MIT License (MIT)
@@ -14310,7 +14509,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 221. Used by spki 0.7.3
+### 226. Used by spki 0.7.3
 
 ```text
 Copyright (c) 2021-2023 The RustCrypto Project Developers
@@ -14340,7 +14539,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 222. Used by SQLite 3.54.1 (built into arcade_core by libsqlite3-sys)
+### 227. Used by SQLite 3.54.1 (built into arcade_core by libsqlite3-sys)
 
 ```text
 SQLite is in the public domain. Its source says:
@@ -14349,7 +14548,7 @@ The author disclaims copyright to this source code.  In place of
 a legal notice, here is a blessing:
 ```
 
-### 223. Used by sqlite-wasm-rs 0.6.3
+### 228. Used by sqlite-wasm-rs 0.6.3
 
 ```text
 MIT License
@@ -14375,7 +14574,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 224. Used by squashfuse (inside the AppImage runtime)
+### 229. Used by squashfuse (inside the AppImage runtime)
 
 ```text
 Copyright (c) the squashfuse authors. All rights reserved.
@@ -14398,7 +14597,7 @@ WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWIS
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### 225. Used by stable_deref_trait 1.2.1
+### 230. Used by stable_deref_trait 1.2.1
 
 ```text
 Copyright (c) 2017 Robert Grosse
@@ -14428,7 +14627,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 226. Used by static_assertions 1.1.0
+### 231. Used by static_assertions 1.1.0
 
 ```text
 MIT License
@@ -14454,7 +14653,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 227. Used by subtle 2.6.1
+### 232. Used by subtle 2.6.1
 
 ```text
 Copyright (c) 2016-2017 Isis Agora Lovecruft, Henry de Valence. All rights reserved.
@@ -14488,7 +14687,7 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### 228. Used by synstructure 0.14.0
+### 233. Used by synstructure 0.14.0
 
 ```text
 Copyright 2016 Nika Layzell
@@ -14500,7 +14699,7 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### 229. Used by tempfile 3.27.0
+### 234. Used by tempfile 3.27.0
 
 ```text
 Copyright (c) 2015 Steven Allen
@@ -14530,7 +14729,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 230. Used by term_glyph 1.2.2
+### 235. Used by term_glyph 1.2.2
 
 ```text
 Copyright 2017, the Dart project authors.
@@ -14562,7 +14761,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### 231. Used by tokio 1.53.3
+### 236. Used by tokio 1.54.1
 
 ```text
 MIT License
@@ -14588,7 +14787,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 232. Used by tokio-macros 2.7.2
+### 237. Used by tokio-macros 2.7.2
 
 ```text
 MIT License
@@ -14615,7 +14814,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 233. Used by tokio-rustls 0.26.6
+### 238. Used by tokio-rustls 0.26.6
 
 ```text
                               Apache License
@@ -14821,7 +15020,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-### 234. Used by tokio-rustls 0.26.6
+### 239. Used by tokio-rustls 0.26.6
 
 ```text
 Copyright (c) 2017 quininer kel
@@ -14851,7 +15050,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 235. Used by tokio-tungstenite 0.30.0
+### 240. Used by tokio-tungstenite 0.30.0
 
 ```text
 Copyright (c) 2017 Daniel Abramov
@@ -14876,7 +15075,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### 236. Used by toml_datetime 1.1.3+spec-1.1.0, toml_parser 1.1.5+spec-1.1.0
+### 241. Used by toml_datetime 1.1.3+spec-1.1.0, toml_parser 1.1.5+spec-1.1.0
 
 ```text
                                  Apache License
@@ -15082,7 +15281,7 @@ THE SOFTWARE.
    limitations under the License.
 ```
 
-### 237. Used by tracing 0.1.41, tracing-attributes 0.1.31, tracing-core 0.1.36
+### 242. Used by tracing 0.1.44, tracing-attributes 0.1.31, tracing-core 0.1.36
 
 ```text
 Copyright (c) 2019 Tokio Contributors
@@ -15112,7 +15311,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 238. Used by tungstenite 0.30.0
+### 243. Used by tungstenite 0.30.0
 
 ```text
 Copyright (c) 2017 Alexey Galakhov
@@ -15137,7 +15336,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### 239. Used by typenum 1.20.1
+### 244. Used by typenum 1.20.1
 
 ```text
                               Apache License
@@ -15343,13 +15542,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-### 240. Used by typenum 1.20.1
+### 245. Used by typenum 1.20.1
 
 ```text
 MIT OR Apache-2.0
 ```
 
-### 241. Used by typenum 1.20.1
+### 246. Used by typenum 1.20.1
 
 ```text
 The MIT License (MIT)
@@ -15375,7 +15574,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 242. Used by uds_windows 1.2.1
+### 247. Used by uds_windows 1.2.1
 
 ```text
     MIT License
@@ -15401,7 +15600,7 @@ SOFTWARE.
     SOFTWARE
 ```
 
-### 243. Used by uni_platform 0.1.3
+### 248. Used by uni_platform 0.1.3
 
 ```text
 MIT License
@@ -15427,7 +15626,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 244. Used by unicode-ident 1.0.26
+### 249. Used by unicode-ident 1.0.26
 
 ```text
 UNICODE LICENSE V3
@@ -15471,7 +15670,7 @@ dealings in these Data Files or Software without prior written
 authorization of the copyright holder.
 ```
 
-### 245. Used by universal-hash 0.5.1
+### 250. Used by universal-hash 0.5.1
 
 ```text
 Copyright (c) 2019-2020 RustCrypto Developers
@@ -15501,7 +15700,37 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 246. Used by untrusted 0.9.0
+### 251. Used by universal-hash 0.6.1
+
+```text
+Copyright (c) 2019-2025 RustCrypto Developers
+
+Permission is hereby granted, free of charge, to any
+person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the
+Software without restriction, including without
+limitation the rights to use, copy, modify, merge,
+publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software
+is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice
+shall be included in all copies or substantial portions
+of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
+ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
+SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+```
+
+### 252. Used by untrusted 0.9.0
 
 ```text
 // Copyright 2015-2016 Brian Smith.
@@ -15519,7 +15748,7 @@ DEALINGS IN THE SOFTWARE.
 // OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ```
 
-### 247. Used by utf8_iter 1.0.4
+### 253. Used by utf8_iter 1.0.4
 
 ```text
 Copyright Mozilla Foundation
@@ -15566,7 +15795,7 @@ licensed under the Apache License, Version 2.0 <LICENSE-APACHE> or
 <LICENSE-MIT> or <http://opensource.org/licenses/MIT>, at your option.
 ```
 
-### 248. Used by utf8_iter 1.0.4
+### 254. Used by utf8_iter 1.0.4
 
 ```text
 Copyright Mozilla Foundation
@@ -15596,7 +15825,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 249. Used by uuid 1.26.1
+### 255. Used by uuid 1.29.3
 
 ```text
 Copyright (c) 2014 The Rust Project Developers
@@ -15627,7 +15856,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 250. Used by uuid 4.6.0
+### 256. Used by uuid 4.6.0
 
 ```text
 Copyright (c) 2021 Yulian Kuncheff
@@ -15639,7 +15868,7 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### 251. Used by valuable 0.1.1
+### 257. Used by valuable 0.1.1
 
 ```text
 valuable is offered under MIT; it publishes no licence file, so the standard MIT text follows.
@@ -15664,7 +15893,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTI
 USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### 252. Used by web 1.1.1
+### 258. Used by web 1.1.1
 
 ```text
 Copyright 2023, the Dart project authors.
@@ -15695,7 +15924,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### 253. Used by webpki-roots 0.26.11, webpki-roots 1.0.10
+### 259. Used by webpki-roots 0.26.11, webpki-roots 1.0.10
 
 ```text
 # Community Data License Agreement - Permissive - Version 2.0
@@ -15761,7 +15990,7 @@ of Data, including for example machine learning models and models'
 insights.
 ```
 
-### 254. Used by widestring 1.2.1
+### 260. Used by widestring 1.2.1
 
 ```text
 MIT License
@@ -15785,7 +16014,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 255. Used by winapi 0.3.9
+### 261. Used by winapi 0.3.9
 
 ```text
 Copyright (c) 2015-2018 The winapi-rs Developers
@@ -15809,7 +16038,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 256. Used by winapi-i686-pc-windows-gnu 0.4.0
+### 262. Used by winapi-i686-pc-windows-gnu 0.4.0
 
 ```text
 winapi-i686-pc-windows-gnu is offered under MIT/Apache-2.0; it publishes no licence file, so the standard MIT text follows.
@@ -15834,7 +16063,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTI
 USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### 257. Used by winapi-x86_64-pc-windows-gnu 0.4.0
+### 263. Used by winapi-x86_64-pc-windows-gnu 0.4.0
 
 ```text
 winapi-x86_64-pc-windows-gnu is offered under MIT/Apache-2.0; it publishes no licence file, so the standard MIT text follows.
@@ -15859,7 +16088,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTI
 USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### 258. Used by window_manager 0.5.2 [plugin: linux, macos, windows]
+### 264. Used by window_manager 0.5.2 [plugin: linux, macos, windows]
 
 ```text
 MIT License
@@ -15885,7 +16114,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 259. Used by windows-link 0.2.1, windows-sys 0.45.0, windows-sys 0.52.0, windows-sys 0.59.0, windows-sys 0.60.2, windows-sys 0.61.2, windows-targets 0.42.2, windows-targets 0.52.6, windows-targets 0.53.5, windows_aarch64_gnullvm 0.42.2, windows_aarch64_gnullvm 0.52.6, windows_aarch64_gnullvm 0.53.1, windows_aarch64_msvc 0.42.2, windows_aarch64_msvc 0.52.6, windows_aarch64_msvc 0.53.1, windows_i686_gnu 0.42.2, windows_i686_gnu 0.52.6, windows_i686_gnu 0.53.1, windows_i686_gnullvm 0.52.6, windows_i686_gnullvm 0.53.1, windows_i686_msvc 0.42.2, windows_i686_msvc 0.52.6, windows_i686_msvc 0.53.1, windows_x86_64_gnu 0.42.2, windows_x86_64_gnu 0.52.6, windows_x86_64_gnu 0.53.1, windows_x86_64_gnullvm 0.42.2, windows_x86_64_gnullvm 0.52.6, windows_x86_64_gnullvm 0.53.1, windows_x86_64_msvc 0.42.2, windows_x86_64_msvc 0.52.6, windows_x86_64_msvc 0.53.1
+### 265. Used by windows-link 0.2.1, windows-sys 0.45.0, windows-sys 0.52.0, windows-sys 0.59.0, windows-sys 0.60.2, windows-sys 0.61.2, windows-targets 0.42.2, windows-targets 0.52.6, windows-targets 0.53.5, windows_aarch64_gnullvm 0.42.2, windows_aarch64_gnullvm 0.52.6, windows_aarch64_gnullvm 0.53.1, windows_aarch64_msvc 0.42.2, windows_aarch64_msvc 0.52.6, windows_aarch64_msvc 0.53.1, windows_i686_gnu 0.42.2, windows_i686_gnu 0.52.6, windows_i686_gnu 0.53.1, windows_i686_gnullvm 0.52.6, windows_i686_gnullvm 0.53.1, windows_i686_msvc 0.42.2, windows_i686_msvc 0.52.6, windows_i686_msvc 0.53.1, windows_x86_64_gnu 0.42.2, windows_x86_64_gnu 0.52.6, windows_x86_64_gnu 0.53.1, windows_x86_64_gnullvm 0.42.2, windows_x86_64_gnullvm 0.52.6, windows_x86_64_gnullvm 0.53.1, windows_x86_64_msvc 0.42.2, windows_x86_64_msvc 0.52.6, windows_x86_64_msvc 0.53.1
 
 ```text
                                  Apache License
@@ -16091,7 +16320,7 @@ SOFTWARE.
    limitations under the License.
 ```
 
-### 260. Used by windows-link 0.2.1, windows-sys 0.45.0, windows-sys 0.52.0, windows-sys 0.59.0, windows-sys 0.60.2, windows-sys 0.61.2, windows-targets 0.42.2, windows-targets 0.52.6, windows-targets 0.53.5, windows_aarch64_gnullvm 0.42.2, windows_aarch64_gnullvm 0.52.6, windows_aarch64_gnullvm 0.53.1, windows_aarch64_msvc 0.42.2, windows_aarch64_msvc 0.52.6, windows_aarch64_msvc 0.53.1, windows_i686_gnu 0.42.2, windows_i686_gnu 0.52.6, windows_i686_gnu 0.53.1, windows_i686_gnullvm 0.52.6, windows_i686_gnullvm 0.53.1, windows_i686_msvc 0.42.2, windows_i686_msvc 0.52.6, windows_i686_msvc 0.53.1, windows_x86_64_gnu 0.42.2, windows_x86_64_gnu 0.52.6, windows_x86_64_gnu 0.53.1, windows_x86_64_gnullvm 0.42.2, windows_x86_64_gnullvm 0.52.6, windows_x86_64_gnullvm 0.53.1, windows_x86_64_msvc 0.42.2, windows_x86_64_msvc 0.52.6, windows_x86_64_msvc 0.53.1
+### 266. Used by windows-link 0.2.1, windows-sys 0.45.0, windows-sys 0.52.0, windows-sys 0.59.0, windows-sys 0.60.2, windows-sys 0.61.2, windows-targets 0.42.2, windows-targets 0.52.6, windows-targets 0.53.5, windows_aarch64_gnullvm 0.42.2, windows_aarch64_gnullvm 0.52.6, windows_aarch64_gnullvm 0.53.1, windows_aarch64_msvc 0.42.2, windows_aarch64_msvc 0.52.6, windows_aarch64_msvc 0.53.1, windows_i686_gnu 0.42.2, windows_i686_gnu 0.52.6, windows_i686_gnu 0.53.1, windows_i686_gnullvm 0.52.6, windows_i686_gnullvm 0.53.1, windows_i686_msvc 0.42.2, windows_i686_msvc 0.52.6, windows_i686_msvc 0.53.1, windows_x86_64_gnu 0.42.2, windows_x86_64_gnu 0.52.6, windows_x86_64_gnu 0.53.1, windows_x86_64_gnullvm 0.42.2, windows_x86_64_gnullvm 0.52.6, windows_x86_64_gnullvm 0.53.1, windows_x86_64_msvc 0.42.2, windows_x86_64_msvc 0.52.6, windows_x86_64_msvc 0.53.1
 
 ```text
     MIT License
@@ -16117,7 +16346,7 @@ SOFTWARE.
     SOFTWARE
 ```
 
-### 261. Used by winnow 1.0.4
+### 267. Used by winnow 1.0.4
 
 ```text
 Permission is hereby granted, free of charge, to any person obtaining
@@ -16140,7 +16369,7 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### 262. Used by x25519-dalek 2.0.1
+### 268. Used by x25519-dalek 3.0.0
 
 ```text
 Copyright (c) 2017-2021 isis agora lovecruft. All rights reserved.
@@ -16174,7 +16403,7 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### 263. Used by yaml 3.1.4
+### 269. Used by yaml 3.1.4
 
 ```text
 Copyright (c) 2014, the Dart project authors.
@@ -16199,7 +16428,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### 264. Used by zbus 4.4.0, zbus_macros 4.4.0, zvariant 4.2.0, zvariant_derive 4.2.0
+### 270. Used by zbus 4.4.0, zbus_macros 4.4.0, zvariant 4.2.0, zvariant_derive 4.2.0
 
 ```text
 Copyright (c) 2024 Zeeshan Ali Khan & zbus contributors
@@ -16229,7 +16458,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 265. Used by zerocopy 0.8.59, zerocopy-derive 0.8.59
+### 271. Used by zerocopy 0.8.59, zerocopy-derive 0.8.59
 
 ```text
                                  Apache License
@@ -16435,7 +16664,7 @@ DEALINGS IN THE SOFTWARE.
    limitations under the License.
 ```
 
-### 266. Used by zerocopy 0.8.59, zerocopy-derive 0.8.59
+### 272. Used by zerocopy 0.8.59, zerocopy-derive 0.8.59
 
 ```text
 Copyright 2019 The Fuchsia Authors.
@@ -16464,7 +16693,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### 267. Used by zerocopy 0.8.59, zerocopy-derive 0.8.59
+### 273. Used by zerocopy 0.8.59, zerocopy-derive 0.8.59
 
 ```text
 Copyright 2023 The Fuchsia Authors
@@ -16494,7 +16723,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 268. Used by zeroize 1.9.0
+### 274. Used by zeroize 1.9.0
 
 ```text
 Copyright (c) 2018-2026 The RustCrypto Project Developers
@@ -16524,7 +16753,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 269. Used by zlib (inside the AppImage runtime)
+### 275. Used by zlib (inside the AppImage runtime)
 
 ```text
 zlib License
@@ -16540,7 +16769,7 @@ Permission is granted to anyone to use this software for any purpose, including 
      3. This notice may not be removed or altered from any source distribution.
 ```
 
-### 270. Used by zxing2 0.2.4
+### 276. Used by zxing2 0.2.4
 
 ```text
 Copyright (c) 2023, zxing-dart.

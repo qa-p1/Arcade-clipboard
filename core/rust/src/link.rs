@@ -24,7 +24,9 @@ use tokio::sync::Notify;
 
 use crate::portable_settings::{self, PortableSettings};
 use arcade_link::app::{ImportResult, ShortcutSetResult};
-use arcade_link::manifest::{Docs, ManifestAdditions, ManifestDocument, MenuItem, MenuKind};
+use arcade_link::manifest::{
+    surface, Docs, ManifestAdditions, ManifestDocument, MenuItem, MenuKind,
+};
 use arcade_link::receipt::InstallMethod;
 use arcade_link::trayhost::{TrayHostWatcher, TrayState, WatcherConfig};
 
@@ -99,20 +101,43 @@ pub(crate) fn manifest(settings: &LinkSettings) -> Manifest {
     m
 }
 
-/// The actions Clipboard exposes.
+/// The actions Clipboard exposes, and where other Arcade menus offer them
+/// (Link 1.1 card fields).
 pub(crate) fn actions() -> Vec<Action> {
     let mut add = Action::new("clipboard.add", "Send to my devices", "send")
         .accepts(&["text/*", "file/image", "file/any[]"])
         .effects(&["sends-to-device"]);
+    // One clip: up to 16 MiB in all and 32 parts. Longer text than the
+    // 32 KiB text field still goes, as a part of the clip.
     add.max_bytes = Some(MAX_PAYLOAD_BYTES as u64);
-    vec![
-        add,
-        Action::new("clipboard.pick", "Choose from clipboard history", "pick")
-            .produces(&["text/*", "file/*"])
-            .effects(&["opens-ui"])
-            .interactive(true),
-        Action::new("clipboard.devices", "My devices", "list").produces(&["structured/devices"]),
+    add.max_items = Some(MAX_PARTS as u32);
+    add.surfaces = [
+        surface::FILE_MENU,
+        surface::BROWSER_IMAGE,
+        surface::BROWSER_LINK,
+        surface::BROWSER_SELECTION,
+        surface::BROWSER_PAGE,
+        surface::BROWSER_DOWNLOAD,
+        surface::PALETTE,
     ]
+    .map(String::from)
+    .to_vec();
+    add.rank = [("*".to_string(), 35)].into();
+    add.keywords = ["phone", "send to phone", "devices", "sync", "copy"]
+        .map(String::from)
+        .to_vec();
+    add.one_click = true;
+    add.output = Some("none".into());
+    let mut pick = Action::new("clipboard.pick", "Choose from clipboard history", "pick")
+        .produces(&["text/*", "file/*"])
+        .effects(&["opens-ui"])
+        .interactive(true);
+    // Both answer another program, not a person in a menu.
+    pick.surfaces = vec!["internal".into()];
+    let mut devices =
+        Action::new("clipboard.devices", "My devices", "list").produces(&["structured/devices"]);
+    devices.surfaces = vec!["internal".into()];
+    vec![add, pick, devices]
 }
 
 /// Requests for the Flutter UI (quit now; the picker in `clipboard.pick`),
@@ -1286,6 +1311,53 @@ mod tests {
         let add = actions().remove(0);
         assert_eq!(add.max_bytes, Some(16 * 1024 * 1024));
         assert!(add.has_effect("sends-to-device"));
+    }
+
+    #[test]
+    fn card_says_where_send_to_my_devices_is_offered_and_its_limits() {
+        use arcade_link::offers::{offers, Item, Prefs, Rules};
+        let card = manifest(&LinkSettings::from_request(None));
+        let ask = |items: &[Item], surface: &str| {
+            offers(
+                items,
+                surface,
+                std::slice::from_ref(&card),
+                &Rules::default(),
+                &Prefs::default(),
+            )
+        };
+        let one = |kind: &str, surface: &str| ask(&[Item::new(kind)], surface);
+        for (kind, place) in [
+            ("file/pdf", surface::FILE_MENU),
+            ("file/image", surface::BROWSER_IMAGE),
+            ("text/url", surface::BROWSER_LINK),
+            ("text/url", surface::BROWSER_PAGE),
+            ("text/plain", surface::BROWSER_SELECTION),
+            ("file/video", surface::BROWSER_DOWNLOAD),
+            ("text/plain", surface::PALETTE),
+        ] {
+            let got = one(kind, place);
+            assert_eq!(got.len(), 1, "{kind} on {place}");
+            assert_eq!(
+                (got[0].action.as_str(), got[0].enabled, got[0].one_click),
+                ("clipboard.add", true, true)
+            );
+        }
+        // Folders aren't clips, and the picker and device list answer programs only.
+        assert!(one("folder/reference", surface::FOLDER_MENU).is_empty());
+        assert!(ask(&[], surface::PALETTE).is_empty());
+        // Over the limits: shown greyed out with the reason, never a broken entry.
+        let big = Item {
+            size: Some(MAX_PAYLOAD_BYTES as u64 + 1),
+            ..Item::new("file/video")
+        };
+        let got = ask(&[big], surface::FILE_MENU);
+        assert!(!got[0].enabled);
+        assert_eq!(got[0].reason.as_deref(), Some("Takes files up to 16 MB"));
+        let many: Vec<Item> = (0..=MAX_PARTS).map(|_| Item::new("file/pdf")).collect();
+        let got = ask(&many, surface::FILE_MENU);
+        assert!(!got[0].enabled);
+        assert_eq!(got[0].reason.as_deref(), Some("Takes at most 32 items"));
     }
 
     #[test]

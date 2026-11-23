@@ -9,6 +9,9 @@ import 'app_settings.dart';
 import 'core_api.dart';
 import 'diagnostics.dart';
 
+/// The id of the copied photo waiting for a compressor (too large to sync).
+const waitingPhotoId = 'waiting-photo';
+
 class LinkItemAction {
   LinkItemAction(this.data, {this.disabledReason});
   final Map<String, dynamic> data;
@@ -94,7 +97,9 @@ class LinkService {
   /// Pure cached reads: opening an item menu performs no I/O.
   List<LinkItemAction> actionsFor(ClipboardItem item, {bool private = false}) {
     if (!supported || !_enabled) return const [];
-    return (_offers[item.kind] ?? const [])
+    // A copied photo too large to sync is offered Box's compressor alone.
+    final key = item.id == waitingPhotoId ? 'compress' : item.kind;
+    return (_offers[key] ?? const [])
         .where((offer) =>
             offer['available'] == true && uses(offer['peer'] as String))
         .map((offer) {

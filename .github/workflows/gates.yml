@@ -21,12 +21,12 @@ concurrency:
 
 jobs:
   gates:
-    uses: qa-p1/Arcade-Link/.github/workflows/app-gates.yml@v1.0.13
+    uses: qa-p1/Arcade-Link/.github/workflows/app-gates.yml@v1.1.1
     with:
       app: arcade.clipboard
       name: clipboard
       previous: ${{ inputs.previous }}
-      link-ref: v1.0.13
+      link-ref: v1.1.1
       # Every library the AppImage takes from the system (`readelf -d` over every ELF of the 1.0.0 image minus what it
       # bundles: GTK 3 and its stack, X11, atk, cairo, pango, epoxy, fontconfig, harfbuzz, glib; glibc, libstdc++ and
       # libgcc are on the runner), what libepoxy and GTK load when the app runs (the GL/EGL stack and Mesa's software
@@ -64,7 +64,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # Every system library the previous release's AppImage and the rc's take from the desktop (readelf over both,
       # minus what they bundle, and what the running app maps), Ubuntu 24.04 names (t64 where it renamed them; checked
       # against its package index). The previous release (0.3.2) also needs zlib; the rc's list is the gates' above.
@@ -85,9 +85,9 @@ jobs:
               libxcb-xfixes0 && break
             sleep $((i * 10))
           done
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with: { name: gate-rc, path: rc }
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with: { name: gate-previous, path: previous }
       - name: Upgrade the previous release to the rc
         run: |
@@ -98,16 +98,16 @@ jobs:
   # Tier 1 (headless Hyprland) blocks on any failure; Tier 2 (sway, KWin, Mutter, X11) on a crash or data loss.
   desktop:
     needs: gates
-    uses: qa-p1/Arcade-Link/.github/workflows/desktop-e2e.yml@v1.0.13
+    uses: qa-p1/Arcade-Link/.github/workflows/desktop-e2e.yml@v1.1.1
     with:
       name: clipboard
       test: tests/desktop/clipboard_desktop.py
       args: '"$APP"'
       artifact: gate-appimage
-      link-ref: v1.0.13
+      link-ref: v1.1.1
   desktop-tier2:
     needs: gates
-    uses: qa-p1/Arcade-Link/.github/workflows/desktop-tier2.yml@v1.0.14
+    uses: qa-p1/Arcade-Link/.github/workflows/desktop-tier2.yml@v1.1.1
     with:
       artifact: gate-appimage
-      link-ref: v1.0.14
+      link-ref: v1.1.1

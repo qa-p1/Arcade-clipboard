@@ -1,7 +1,7 @@
 name: arcade_clipboard
 description: A calm, private clipboard mesh for your devices.
 publish_to: none
-version: 1.0.0+6
+version: 1.1.0+7
 
 environment:
   sdk: '>=3.4.0 <4.0.0'
@@ -12,13 +12,13 @@ dependencies:
     sdk: flutter
   flutter_rust_bridge: 2.13.0
   file_selector: ^1.1.0
-  crypto: ^3.0.7
+  crypto: ^3.0.8
   hotkey_manager: ^0.2.3
-  image: ^4.10.1
+  image: ^4.13.1
   path_provider: ^2.1.5
-  mobile_scanner: ^7.4.2
+  mobile_scanner: ^7.5.0
   qr_flutter: ^4.1.0
-  shared_preferences: ^2.5.3
+  shared_preferences: ^2.5.6
   window_manager: ^0.5.2
   zxing2: ^0.2.4
   arcade_desktop_bridge:
@@ -29,7 +29,7 @@ dev_dependencies:
     sdk: flutter
   flutter_test:
     sdk: flutter
-  flutter_lints: ^5.0.0
+  flutter_lints: ^6.0.0
 
 flutter:
   uses-material-design: true

@@ -1,5 +1,5 @@
-Arcade Link shared installer and shortcut assets are copied unchanged from tag v1.0.13 (commit
-a24146fd87ff77ed362f518a414eaf266512f839); the files are the same from v1.0.8 to v1.0.13:
+Arcade Link shared installer and shortcut assets are copied unchanged from tag v1.1.1 (commit
+d04f3ca33c01e31727a829afb54f2fbc1bb03e74); the files are the same from v1.0.8 to v1.1.1:
   packaging/windows/arcade.iss SHA-256 fe152028ff674fdacdef4aed8970bb0a7afeb2dd67d2a3af075d7d95683bf96b
   packaging/windows/arcade.nsh SHA-256 1f548b420bc08b479d6c65801a208aa67dc80fef851b5e2a49696d307562831e
   packaging/windows/arcade-integration.ps1 SHA-256 2b2a8b699dc1e6c81c02bb9ad9be1ddf2f8a5447541eb1dfe886056aa5dc4fd6
@@ -7,17 +7,17 @@ a24146fd87ff77ed362f518a414eaf266512f839); the files are the same from v1.0.8 to
   spec/shortcuts.schema.json SHA-256 68e8ed4c5adae97895b215813f5a528b53f2b720bb428112e94ab35489269a1a
   spec/vectors/shortcuts.json SHA-256 2691d5b60314b7060bac5c219ada25edbfdc30829ea8a22d7496714afe2d4cc5
 
-assets/strings/install.json is copied unchanged from Arcade Link tag v1.0.13 (commit
-a24146fd87ff77ed362f518a414eaf266512f839), the wording Link's installer shows:
+assets/strings/install.json is copied unchanged from Arcade Link tag v1.1.1 (commit
+d04f3ca33c01e31727a829afb54f2fbc1bb03e74), the wording Link's installer shows:
   assets/strings/install.json SHA-256 2567789e4eba440240fcf4de8c1e43f126b0eb0aadc6306d743e299cb4c80407
 
-The Linux runner's memory trimmer is copied unchanged from Arcade Link tag v1.0.13 (commit
-a24146fd87ff77ed362f518a414eaf266512f839), `qt/arcade_trim.h`, the C twin of `arcade_link::runtime::trim`
-(RT-5; the file is identical from v1.0.7 to v1.0.13). License: MIT OR Apache-2.0.
+The Linux runner's memory trimmer is copied unchanged from Arcade Link tag v1.1.1 (commit
+d04f3ca33c01e31727a829afb54f2fbc1bb03e74), `qt/arcade_trim.h`, the C twin of `arcade_link::runtime::trim`
+(RT-5; the file is identical from v1.0.7 to v1.1.1). License: MIT OR Apache-2.0.
   apps/flutter_app/linux/runner/arcade_trim.h SHA-256 9c1d65cac63d7aa59b705c442b8840a7f9576a9bfcbeaf39e5630bb303485131
 
-Arcade design kit files are copied unchanged from Arcade Link tag v1.0.13 (commit
-a24146fd87ff77ed362f518a414eaf266512f839) by scripts/sync-design.py; never edit them here.
+Arcade design kit files are copied unchanged from Arcade Link tag v1.1.1 (commit
+d04f3ca33c01e31727a829afb54f2fbc1bb03e74) by scripts/sync-design.py; never edit them here.
 License: MIT OR Apache-2.0; Inter is under the SIL Open Font License 1.1.
   apps/flutter_app/lib/design/arcade_format.dart SHA-256 7ffd1b47823a51e50eee82099eca6a7989e36a5e7a2f8cd930226b7e60ff845e
   apps/flutter_app/lib/design/arcade_icons.dart SHA-256 67efdd923436accbe8894126aa8f490d06489a67b61fe75d7fd459089e954bc4

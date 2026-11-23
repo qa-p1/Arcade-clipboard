@@ -14,17 +14,17 @@ jobs:
     outputs:
       version: ${{ steps.v.outputs.version }}
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: v
         run: echo "version=$(python3 -c 'import tomllib; print(tomllib.load(open("Cargo.toml", "rb"))["workspace"]["package"]["version"])')" >> "$GITHUB_OUTPUT"
   nightly:
     needs: version
-    uses: qa-p1/Arcade-Link/.github/workflows/app-nightly.yml@v1.0.13
+    uses: qa-p1/Arcade-Link/.github/workflows/app-nightly.yml@v1.1.1
     with:
       app: arcade.clipboard
       version: ${{ needs.version.outputs.version }}
       artifacts: Arcade-Clipboard-*
       windows-installer: inno
-      link-ref: v1.0.13
+      link-ref: v1.1.1
     secrets:
       ARCADE_UPDATE_SIGNING_KEY: ${{ secrets.ARCADE_UPDATE_SIGNING_KEY }}
