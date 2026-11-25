@@ -13,6 +13,7 @@ import 'app_settings.dart';
 import 'clip_capture.dart';
 import 'core_api.dart';
 import 'diagnostics.dart';
+import 'keyring_help.dart';
 import 'link_service.dart';
 
 class AppController extends ChangeNotifier with WidgetsBindingObserver {
@@ -1726,12 +1727,10 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     final message =
         exception.toString().replaceFirst(RegExp(r'^Exception: '), '').trim();
     final normalized = message.toLowerCase();
-    if (normalized.contains('keychain') ||
-        normalized.contains('keystore') ||
-        normalized.contains('secret service') ||
-        normalized.contains('keyring') ||
-        normalized.contains('secure store')) {
-      return 'The secure key store is unavailable. Unlock or set up your system keyring, then retry secure setup.';
+    if (isKeyStoreError(normalized)) {
+      return keyStoreHelp(message,
+          os: Platform.operatingSystem,
+          desktop: Platform.environment['XDG_CURRENT_DESKTOP']);
     }
     if (Platform.isIOS &&
         normalized.contains('could not reach the mesh owner')) {
