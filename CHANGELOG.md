@@ -5,6 +5,15 @@ and versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-11-25
+
+### Changed
+- When setting up sync can't use the system key store, the message says what is wrong and what to do here: unlock a
+  locked keyring, or, when none is running on Linux, which one to install for this desktop (GNOME Keyring on GNOME,
+  Cinnamon, MATE, Xfce and the like; KDE Wallet with its Secret Service option on KDE; GNOME Keyring started with the
+  session, or KeePassXC, on tiling compositors). macOS and Windows name the login keychain and Credential Manager.
+  The device key still never goes to a plain file.
+
 ## [1.1.0] - 2026-11-23
 
 ### Added

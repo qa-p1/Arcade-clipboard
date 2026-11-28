@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:arcade_clipboard/models.dart';
 import 'package:arcade_clipboard/platform/desktop_adapter.dart';
 import 'package:arcade_clipboard/services/app_controller.dart';
+import 'package:arcade_clipboard/services/keyring_help.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -195,7 +196,10 @@ void main() {
 
     await fixture.controller.createMesh('Laptop');
     expect(
-        fixture.controller.error, contains('secure key store is unavailable'));
+        fixture.controller.error,
+        keyStoreHelp('secure keyring is locked',
+            os: Platform.operatingSystem,
+            desktop: Platform.environment['XDG_CURRENT_DESKTOP']));
     expect(fixture.controller.hasMesh, isFalse);
 
     fixture.core.failures.remove('create_mesh');
