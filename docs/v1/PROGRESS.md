@@ -2,6 +2,17 @@
 
 Detail for `qa-p1/Arcade-catalog` › `dev/v1/PROGRESS.md`. Newest first.
 
+## 2026-11-28 (cloud session) - 1.1.1 released
+
+- #45 (09dede5): the key store message names the case (locked or missing) and what to install for this desktop
+  (`lib/services/keyring_help.dart`, with tests).
+- `v1.1.1-rc.1` (09dede5) [Release](https://github.com/qa-p1/Arcade-clipboard/actions/runs/46173950554) passed;
+  [Gates](https://github.com/qa-p1/Arcade-clipboard/actions/runs/46175441105) with `previous: v1.1.0`: all 13 jobs
+  passed.
+- [Promote](https://github.com/qa-p1/Arcade-clipboard/actions/runs/46176217277) made `v1.1.1` from rc.1. Verified:
+  the AppImage, tar.gz, dmg, Windows installer and SHA256SUMS.txt are byte for byte rc.1's; `arcade-release.json`
+  and `manifest.json` differ only in channel, tag and notes link, and `manifest.json.sig` is added.
+
 ## 2026-11-23 (cloud session) - 1.1.0 released
 
 - #37 (769a136): Link 1.1.1 offers in the clip menus and picker, **Send to my devices** on the card, catalog app

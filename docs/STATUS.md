@@ -1,8 +1,15 @@
 # Arcade Clipboard: status
 
+## 1.1.1 (2026-11-28)
+
+- When sync setup can't use the system key store, the message says whether the store is locked or missing and what
+  to install for this desktop (GNOME Keyring, KDE Wallet with Secret Service, or GNOME Keyring/KeePassXC started
+  with the session on tiling compositors). The key still never goes to a plain file. Not yet seen on a desktop
+  without a keyring.
+
 ## 1.1.0 (2026-11-23)
 
-Released: 1.0.0 (2026-11-21) and 1.1.0 (2026-11-23); `CHANGELOG.md` says what each changed and
+Released: 1.0.0 (2026-11-21), 1.1.0 (2026-11-23) and 1.1.1 (2026-11-28); `CHANGELOG.md` says what each changed and
 `docs/v1/PROGRESS.md` links their Release, Gates and Promote runs.
 
 - 1.1.0 is Clipboard's part of "Arcade everywhere": its clip menus and picker take other apps' actions from Arcade
