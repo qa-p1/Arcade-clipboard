@@ -5,7 +5,7 @@ and versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-## [1.1.1] - 2026-11-25
+## [1.1.1] - 2026-11-28
 
 ### Changed
 - When setting up sync can't use the system key store, the message says what is wrong and what to do here: unlock a
